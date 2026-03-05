@@ -1229,10 +1229,9 @@ async function zapiszIPrzeslij() {
 
   toast('📤 Wysyłanie na Google Drive...');
   try {
-    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d)});
-    const json = await r.json().catch(()=>({}));
-
-    d.viewUrl = json.viewUrl || null;
+    const r = await fetch(url, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(d)});
+    const json = {}; // no-cors - opaque response
+    d.viewUrl = null;
     protokoly.push(d);
     localStorage.setItem(SK, JSON.stringify(protokoly));
     updateBadge(); resetForm();
