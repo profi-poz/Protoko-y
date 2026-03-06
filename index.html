@@ -1333,7 +1333,7 @@ function renderHistory() {
   empty.style.display = 'none';
 
   list.innerHTML = [...all].map(p => `
-    <div class="proto-card" onclick="showDetail(${p.id})">
+    <div class="proto-card" onclick="showDetail('${p.id}')">
       <div class="proto-top">
         <span class="proto-nr">${p.nr||'-'}</span>
         <span class="type-badge tb-${p.typ.toLowerCase()}">${p.typ}</span>
@@ -1367,7 +1367,7 @@ function clearHistory() {
 
 // ===================== MODAL DETAIL =====================
 function showDetail(id) {
-  const p = allProtokoly.find(x => x.id === id) || protokoly.find(x => x.id === id);
+  const p = allProtokoly.find(x => String(x.id) === String(id)) || protokoly.find(x => String(x.id) === String(id));
   if (!p) return;
   const typ = p.typ;
   const allItems = getCL()[typ] || getCL().Inne || CL[typ] || CL.Inne;
@@ -1437,7 +1437,7 @@ function showDetail(id) {
       <div style="display:flex;flex-wrap:wrap;gap:6px">${p.photos.map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${src}','_blank')">`).join('')}</div>
     </div>` : ''}
     ${p.viewUrl ? `<button class="btn btn-ghost" style="flex:1;margin:0;color:var(--accent)" onclick="showLinkModal('${p.viewUrl}','${p.nr||''}')">🔗 Link</button>` : ''}
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="delProto(${p.id})">🗑️ Usuń</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="delProto('${p.id}')">🗑️ Usuń</button>
     </div>
   `;
   document.getElementById('detailModal').classList.add('open');
@@ -1481,7 +1481,7 @@ async function syncFromServer() {
 
 function delProto(id) {
   // Sprawdź czy to protokół lokalny czy serwerowy
-  const isLocal = protokoly.some(p => p.id === id);
+  const isLocal = protokoly.some(p => String(p.id) === String(id));
   if (!isLocal) {
     toast('⚠️ Można usuwać tylko własne protokoły');
     return;
@@ -1492,9 +1492,9 @@ function delProto(id) {
     toast('❌ Nieprawidłowy PIN');
     return;
   }
-  protokoly = protokoly.filter(p => p.id !== id);
+  protokoly = protokoly.filter(p => String(p.id) !== String(id));
   localStorage.setItem(SK, JSON.stringify(protokoly));
-  allProtokoly = allProtokoly.filter(p => p.id !== id);
+  allProtokoly = allProtokoly.filter(p => String(p.id) !== String(id));
   closeModal(); renderHistory(); updateBadge();
   toast('🗑️ Protokół usunięty');
 }
@@ -1988,7 +1988,7 @@ function panelRenderProtos(nazwa) {
       const wynikIco   = p.wynik?.startsWith('Nie') ? '❌'
                        : p.wynik?.includes('uwag') ? '⚠️' : '✅';
       const hasPhotos  = p.photos?.length > 0;
-      return `<div class="panel-proto-card" onclick="showDetail(${p.id})">
+      return `<div class="panel-proto-card" onclick="showDetail('${p.id}')">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span class="type-badge tb-${p.typ.toLowerCase()}">${p.typ}</span>
           <span style="font-size:12px;color:var(--muted);flex:1">${p.rodzaj}</span>
