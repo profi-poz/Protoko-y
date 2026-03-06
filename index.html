@@ -1901,7 +1901,7 @@ function panelShowLista() {
     var kolor = (last.wynik||'').startsWith('Nie') ? '#e74c3c' : (last.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
     var ico = (last.wynik||'').startsWith('Nie') ? '❌' : (last.wynik||'').includes('uwag') ? '⚠️' : '✅';
     var typy = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');
-    html += '<div class="obj-card" data-nazwa="'+encodeURIComponent(nazwa)+'" onclick="panelShowObiekt(decodeURIComponent(this.getAttribute(\"data-nazwa\")))">'; 
+    html += '<div class="obj-card" data-nazwa="'+encodeURIComponent(nazwa)+'" onclick="panelShowObiekt(decodeURIComponent(event.currentTarget.dataset.nazwa))">'; 
     html += '<div class="obj-name">'+nazwa+'</div>';
     html += '<div class="obj-meta"><span>📁 '+protos.length+' protokół'+(protos.length===1?'':'ów')+'</span><span>🔧 '+typy+'</span></div>';
     html += '<div class="obj-last"><div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">'+last.data+'</b> · '+(last.rodzaj||'')+'</div>';
