@@ -733,9 +733,9 @@ function panelGetFiltered() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
-  const _s = allProtokoly.length ? allProtokoly : protokoly;
-  const wszystkieObiekty = _s.map(p => JSON.stringify({o:p.obiekt,t:p.typ})).join(' | ');
-  alert('Szukam: ['+nazwa+'] | Dane ('+_s.length+'): '+wszystkieObiekty.substring(0,200));
+  // Wyraźnie pokaż ProtoView i schowaj ObiektView
+  document.getElementById('panelObiektView').style.display = 'none';
+  document.getElementById('panelProtoView').style.display = '';
   panelRenderProtos(nazwa);
 }
 
@@ -2060,9 +2060,9 @@ function panelRenderObiekty() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
-  const _s = allProtokoly.length ? allProtokoly : protokoly;
-  const wszystkieObiekty = _s.map(p => JSON.stringify({o:p.obiekt,t:p.typ})).join(' | ');
-  alert('Szukam: ['+nazwa+'] | Dane ('+_s.length+'): '+wszystkieObiekty.substring(0,200));
+  // Wyraźnie pokaż ProtoView i schowaj ObiektView
+  document.getElementById('panelObiektView').style.display = 'none';
+  document.getElementById('panelProtoView').style.display = '';
   panelRenderProtos(nazwa);
 }
 
