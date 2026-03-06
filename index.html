@@ -1055,8 +1055,9 @@ function showScreen(name) {
     syncFromServer().then(() => renderHistory());
   }
   if(name==='panel'){
-    _panelTyp='';_panelWynik='';_panelObiekt=null;panelRender();
-    syncFromServer().then(() => panelRender());
+    _panelTyp='';_panelWynik='';_panelObiekt=null;
+    document.getElementById('panelObiektView').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
+    syncFromServer().then(() => { panelRenderStats(); panelRenderObiekty(); });
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
 }
