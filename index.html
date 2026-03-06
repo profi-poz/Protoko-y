@@ -594,52 +594,27 @@ Content-Type: application/json
 
     <!-- PANEL PRZEGLĄDÓW -->
     <div class="screen" id="s-panel">
-
-      <!-- Nagłówek + wyszukiwarka -->
-      <div style="padding:16px 16px 0">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;letter-spacing:.5px;margin-bottom:12px">
-          📊 Panel przeglądów
-        </div>
-
-        <!-- Szukaj po obiekcie -->
-        <div style="position:relative;margin-bottom:10px">
-          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔍</span>
-          <input type="text" id="panelSearch" placeholder="Szukaj obiektu..."
-            oninput="panelRender()"
-            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-                   color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;
-                   padding:11px 12px 11px 38px;outline:none;box-sizing:border-box">
-        </div>
-
-        <!-- Filtry -->
-        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none">
-          <button class="pf-btn active" id="pf-all"   onclick="panelSetTyp('')">Wszystkie</button>
-          <button class="pf-btn" id="pf-SSP"    onclick="panelSetTyp('SSP')">SSP</button>
-          <button class="pf-btn" id="pf-DSO"    onclick="panelSetTyp('DSO')">DSO</button>
-          <button class="pf-btn" id="pf-SO_EL"  onclick="panelSetTyp('SO_EL')">SO El.</button>
-          <button class="pf-btn" id="pf-SO_PN"  onclick="panelSetTyp('SO_PN')">SO Pn.</button>
-          <button class="pf-btn" id="pf-PSP"    onclick="panelSetTyp('PSP')">PSP</button>
-          <button class="pf-btn" id="pf-SUG"    onclick="panelSetTyp('SUG')">SUG</button>
-          <button class="pf-btn" id="pf-Inne"   onclick="panelSetTyp('Inne')">Inne</button>
-        </div>
-
-        <!-- Filtr wynik -->
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button class="pf-btn pf-sm active" id="pw-all"     onclick="panelSetWynik('')">Wszystkie</button>
-          <button class="pf-btn pf-sm" id="pw-ok"      onclick="panelSetWynik('Sprawny')">✅ Sprawny</button>
-          <button class="pf-btn pf-sm" id="pw-uwagi"   onclick="panelSetWynik('Sprawny z uwagami')">⚠️ Z uwagami</button>
-          <button class="pf-btn pf-sm" id="pw-zly"     onclick="panelSetWynik('Niesprawny')">❌ Niesprawny</button>
-        </div>
-      </div>
-
-      <!-- Statystyki globalne -->
-      <div id="panelStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 12px"></div>
-
-      <!-- Widok: lista obiektów lub lista protokołów -->
-      <div id="panelObiektView" style="padding:0 16px 100px"></div>
-      <div id="panelProtoView"  style="padding:0 16px 100px;display:none"></div>
-
+  <div style="padding:16px 16px 0">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;margin-bottom:12px">📊 Panel przeglądów</div>
+    <input type="text" id="panelSearch" placeholder="🔍 Szukaj obiektu..." oninput="panelRender()"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:11px 12px;outline:none;box-sizing:border-box;margin-bottom:10px">
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none">
+      <button class="pf-btn active" id="pf-all"    onclick="panelSetTyp('')">Wszystkie</button>
+      <button class="pf-btn" id="pf-SSP"   onclick="panelSetTyp('SSP')">SSP</button>
+      <button class="pf-btn" id="pf-DSO"   onclick="panelSetTyp('DSO')">DSO</button>
+      <button class="pf-btn" id="pf-SO_EL" onclick="panelSetTyp('SO_EL')">SO El.</button>
+      <button class="pf-btn" id="pf-SO_PN" onclick="panelSetTyp('SO_PN')">SO Pn.</button>
     </div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none">
+      <button class="pf-btn active" id="pw-all"  onclick="panelSetWynik('')">Wszystkie</button>
+      <button class="pf-btn" id="pw-ok"   onclick="panelSetWynik('Sprawny')">✅ Sprawny</button>
+      <button class="pf-btn" id="pw-uwagi" onclick="panelSetWynik('uwagi')">⚠️ Z uwagami</button>
+      <button class="pf-btn" id="pw-zly"  onclick="panelSetWynik('Niesprawny')">❌ Niesprawny</button>
+    </div>
+    <div id="panelStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-bottom:12px"></div>
+  </div>
+  <div id="panelObiektView" style="padding:0 16px 100px"></div>
+  <div id="panelProtoView"  style="padding:0 16px 100px;display:none"></div>  </div>
   </div><!-- /content -->
 
   <!-- BOTTOM NAV -->
@@ -718,79 +693,7 @@ let serverProtokoly = []; // protokoły z serwera (wszystkich użytkowników)
 let allProtokoly = []; // połączone lokalne + serwer (bez duplikatów)
 
 
-function panelGetFiltered() {
-  var q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
-  const src = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
-  return src.filter(function(p) {
-    if (!p || !p.obiekt) return false;
-    if (_panelTyp && p.typ !== _panelTyp) return false;
-    if (_panelWynik === 'uwagi' && !(p.wynik||'').toLowerCase().includes('uwag')) return false;
-    if (_panelWynik && _panelWynik !== 'uwagi' && !(p.wynik||'').startsWith(_panelWynik)) return false;
-    if (q && !(p.obiekt||'').toLowerCase().includes(q)) return false;
-    return true;
-  });
-}
 
-function panelOpenObiekt(nazwa) {
-  _panelObiekt = nazwa;
-  document.getElementById('panelObiektView').style.display = 'none';
-  document.getElementById('panelProtoView').style.display = '';
-  // Użyj zapisanych danych lub pobierz z allProtokoly
-  const protos = (window._panelObiektyData && window._panelObiektyData[nazwa])
-    || (allProtokoly.length ? allProtokoly : protokoly).filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
-  panelRenderProtos(nazwa, protos);
-}
-
-function panelRenderProtos(nazwa, protos) {
-  document.getElementById('panelObiektView').style.display = 'none';
-  var el = document.getElementById('panelProtoView');
-  el.style.display = '';
-  if (!protos) {
-    const _s = allProtokoly.length ? allProtokoly : protokoly;
-    protos = _s.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
-  }
-
-  var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
-  var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
-  var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
-  var typy    = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(' / ');
-
-  var html = '<div onclick="panelBackToList()" style="display:flex;align-items:center;gap:6px;padding-bottom:12px;color:var(--red2);font-size:14px;font-weight:700;cursor:pointer">&#8592; Powrót do listy</div>';
-  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">';
-  html += '<div style="font-size:17px;font-weight:800;margin-bottom:6px">'+nazwa+'</div>';
-  html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Systemy: '+(typy||'-')+'</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-  html += '<div class="sbox"><div class="sbox-v" style="color:#4caf50">'+sprawne+'</div><div class="sbox-l">Sprawnych</div></div>';
-  html += '<div class="sbox"><div class="sbox-v" style="color:#ff9800">'+uwagi+'</div><div class="sbox-l">Z uwagami</div></div>';
-  html += '<div class="sbox"><div class="sbox-v" style="color:#e74c3c">'+zle+'</div><div class="sbox-l">Niesprawnych</div></div>';
-  html += '</div></div>';
-  html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Historia protokołów ('+protos.length+')</div>';
-
-  protos.forEach(function(p) {
-    var kolor = (p.wynik||'').startsWith('Nie') ? '#e74c3c' : (p.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
-    var ico   = (p.wynik||'').startsWith('Nie') ? '❌' : (p.wynik||'').includes('uwag') ? '⚠️' : '✅';
-    var pid = String(p.id);
-    html += '<div class="pp-card" onclick="showDetail(\"'+pid+'\")">';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-    html += '<span class="type-badge tb-'+(p.typ||'').toLowerCase()+'">'+p.typ+'</span>';
-    html += '<span style="font-size:12px;color:var(--muted);flex:1">'+(p.rodzaj||'')+'</span>';
-    html += '<span style="font-size:12px;color:var(--muted)">'+(p.data||'')+'</span>';
-    html += '</div>';
-    html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">&#128100; '+(p.serwisant||'-')+'</div>';
-    if(p.usterki) html += '<div style="font-size:12px;color:#ff9800;margin-bottom:6px">&#9888; '+p.usterki.substring(0,80)+(p.usterki.length>80?'…':'')+'</div>';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between">';
-    html += '<div style="font-size:13px;font-weight:700;color:'+kolor+'">'+ico+' '+(p.wynik||'-')+'</div>';
-    html += '<span style="font-size:11px;color:var(--red2)">Szczegóły →</span>';
-    html += '</div></div>';
-  });
-  el.innerHTML = html;
-}
-
-function panelBackToList() {
-  _panelObiekt = null;
-  const src = allProtokoly.length ? allProtokoly : protokoly;
-  panelRenderWithData(src);
-}
 
 
 
@@ -1072,12 +975,7 @@ function showScreen(name) {
     document.getElementById('panelObiektView').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
     document.getElementById('panelProtoView').style.display='none';
     document.getElementById('panelObiektView').style.display='';
-    syncFromServer().then(function(){
-      if (!_panelObiekt) {
-        const src = allProtokoly.length ? allProtokoly : protokoly;
-        panelRenderWithData(src);
-      }
-    });
+    syncFromServer().then(function(){ if(!_panelObiekt) panelShowLista(); });
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
 }
@@ -1923,37 +1821,13 @@ let _panelTyp   = '';
 let _panelWynik = '';
 let _panelObiekt = null; // null = widok listy obiektów
 
-function panelSetTyp(typ) {
-  _panelTyp = typ;
-  document.querySelectorAll('[id^="pf-"]').forEach(b => b.classList.remove('active'));
-  document.getElementById('pf-' + (typ || 'all')).classList.add('active');
-  _panelObiekt = null;
-  panelRender();
-}
 
-function panelSetWynik(w) {
-  _panelWynik = w;
-  document.querySelectorAll('[id^="pw-"]').forEach(b => b.classList.remove('active'));
-  const map = {'':'all','Sprawny':'ok','Sprawny z uwagami':'uwagi','Niesprawny':'zly','Nie w pełni sprawny':'zly'};
-  document.getElementById('pw-' + (map[w]||'all')).classList.add('active');
-  _panelObiekt = null;
-  panelRender();
-}
+// ===================== PANEL =====================
 
-function panelGetFiltered() {
-  const q = (document.getElementById('panelSearch')?.value || '').toLowerCase();
-  return [...protokoly].reverse().filter(p => {
-    if (_panelTyp && p.typ !== _panelTyp) return false;
-    if (_panelWynik && !p.wynik?.startsWith(_panelWynik)) return false;
-    if (q && !p.obiekt?.toLowerCase().includes(q)) return false;
-    return true;
-  });
-}
-
-function panelRender() {
-  var q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
+function panelGetSrc() {
   var src = allProtokoly.length ? allProtokoly : protokoly;
-  src = src.filter(function(p) {
+  var q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
+  return src.filter(function(p) {
     if (!p) return false;
     if (_panelTyp && p.typ !== _panelTyp) return false;
     if (_panelWynik === 'uwagi' && !(p.wynik||'').toLowerCase().includes('uwag')) return false;
@@ -1961,176 +1835,126 @@ function panelRender() {
     if (q && !(p.obiekt||'').toLowerCase().includes(q)) return false;
     return true;
   });
-  panelRenderWithData(src);
 }
 
-function panelRenderWithData(src) {
-  // Statystyki
-  const sprawne = src.filter(p => (p.wynik||'').startsWith('Sprawny') && !(p.wynik||'').includes('uwag')).length;
-  const uwagi   = src.filter(p => (p.wynik||'').includes('uwag')).length;
-  const zle     = src.filter(p => (p.wynik||'').startsWith('Nie') || p.wynik === 'Niesprawny').length;
-  document.getElementById('panelStats').innerHTML = `
-    <div class="stat-box"><div class="stat-box-v" style="color:var(--red2)">${src.length}</div><div class="stat-box-l">Protokołów</div></div>
-    <div class="stat-box"><div class="stat-box-v" style="color:#4caf50">${sprawne}</div><div class="stat-box-l">Sprawnych</div></div>
-    <div class="stat-box"><div class="stat-box-v" style="color:#ff9800">${uwagi}</div><div class="stat-box-l">Z uwagami</div></div>
-    <div class="stat-box"><div class="stat-box-v" style="color:#e74c3c">${zle}</div><div class="stat-box-l">Niesprawnych</div></div>
-  `;
+function panelRender() {
+  if (_panelObiekt) {
+    panelShowObiekt(_panelObiekt);
+  } else {
+    panelShowLista();
+  }
+}
 
-  if (_panelObiekt) { panelRenderProtos(_panelObiekt); return; }
+function panelSetTyp(typ) {
+  _panelTyp = typ;
+  _panelObiekt = null;
+  document.querySelectorAll('[id^="pf-"]').forEach(function(b){b.classList.remove('active');});
+  var el = document.getElementById('pf-'+(typ||'all'));
+  if(el) el.classList.add('active');
+  panelRender();
+}
 
-  const el = document.getElementById('panelObiektView');
+function panelSetWynik(w) {
+  _panelWynik = w;
+  _panelObiekt = null;
+  document.querySelectorAll('[id^="pw-"]').forEach(function(b){b.classList.remove('active');});
+  var map = {'':'all','Sprawny':'ok','uwagi':'uwagi','Niesprawny':'zly'};
+  var el = document.getElementById('pw-'+(map[w]||'all'));
+  if(el) el.classList.add('active');
+  panelRender();
+}
+
+function panelShowLista() {
+  var src = panelGetSrc();
   document.getElementById('panelProtoView').style.display = 'none';
-  el.style.display = '';
+  document.getElementById('panelObiektView').style.display = '';
+
+  // Statystyki
+  var sprawne = src.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
+  var uwagi = src.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
+  var zle = src.filter(function(p){return (p.wynik||'').startsWith('Nie')||(p.wynik||'')==='Niesprawny';}).length;
+  document.getElementById('panelStats').innerHTML =
+    '<div class="stat-box"><div class="stat-box-v" style="color:var(--red2)">'+src.length+'</div><div class="stat-box-l">Protokołów</div></div>'+
+    '<div class="stat-box"><div class="stat-box-v" style="color:#4caf50">'+sprawne+'</div><div class="stat-box-l">Sprawnych</div></div>'+
+    '<div class="stat-box"><div class="stat-box-v" style="color:#ff9800">'+uwagi+'</div><div class="stat-box-l">Z uwagami</div></div>'+
+    '<div class="stat-box"><div class="stat-box-v" style="color:#e74c3c">'+zle+'</div><div class="stat-box-l">Niesprawnych</div></div>';
 
   if (!src.length) {
-    el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak protokołów</div>';
+    document.getElementById('panelObiektView').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak protokołów</div>';
     return;
   }
 
   // Grupuj po obiekcie
-  const grupy = {};
-  src.forEach(p => {
-    const k = (p.obiekt || 'Brak nazwy').trim();
+  var grupy = {};
+  src.forEach(function(p) {
+    var k = (p.obiekt||'Brak nazwy').trim();
     if (!grupy[k]) grupy[k] = [];
     grupy[k].push(p);
   });
 
-  const sorted = Object.entries(grupy).sort((a,b) => (b[1][0]?.data||'').localeCompare(a[1][0]?.data||''));
-
-  // Zapisz dane obiektów globalnie żeby onclick miał dostęp
-  window._panelObiektyData = {};
-  sorted.forEach(([nazwa, protos]) => { window._panelObiektyData[nazwa] = protos; });
-
-  el.innerHTML = sorted.map(([nazwa, protos]) => {
-    const last = protos[0];
-    const wynikColor = (last.wynik||'').startsWith('Nie') ? '#e74c3c' : (last.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
-    const wynikIco   = (last.wynik||'').startsWith('Nie') ? '❌' : (last.wynik||'').includes('uwag') ? '⚠️' : '✅';
-    const typy = [...new Set(protos.map(p=>p.typ))].join(', ');
-    const n = nazwa.replace(/'/g,"\'");
-    return `<div class="obj-card" onclick="panelOpenObiekt('${n}')">
-      <div class="obj-name">${nazwa}</div>
-      <div class="obj-meta"><span>📁 ${protos.length} protokół${protos.length===1?'':'ów'}</span><span>🔧 ${typy}</span></div>
-      <div class="obj-last">
-        <div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">${last.data}</b> · ${last.rodzaj||''}</div>
-        <div style="font-size:12px;font-weight:700;color:${wynikColor}">${wynikIco} ${last.wynik||'-'}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function panelRenderStats() {
-  const all = panelGetFiltered();
-  const sprawne   = all.filter(p => p.wynik?.startsWith('Sprawny') && !p.wynik?.includes('uwag')).length;
-  const uwagi     = all.filter(p => p.wynik?.includes('uwag')).length;
-  const zle       = all.filter(p => p.wynik?.startsWith('Nie') || p.wynik === 'Niesprawny').length;
-  const obiekty   = new Set(all.map(p => p.obiekt)).size;
-  document.getElementById('panelStats').innerHTML = `
-    <div class="stat-box"><div class="stat-box-v" style="color:var(--red2)">${all.length}</div><div class="stat-box-l">Protokołów</div></div>
-    <div class="stat-box"><div class="stat-box-v" style="color:#4caf50">${sprawne}</div><div class="stat-box-l">Sprawnych</div></div>
-    <div class="stat-box"><div class="stat-box-v" style="color:#ff9800">${uwagi}</div><div class="stat-box-l">Z uwagami</div></div>
-    <div class="stat-box"><div class="stat-box-v" style="color:#e74c3c">${zle}</div><div class="stat-box-l">Niesprawnych</div></div>
-  `;
-}
-
-function panelRenderObiekty() {
-  const all = panelGetFiltered();
-  document.getElementById('panelProtoView').style.display = 'none';
-  const el = document.getElementById('panelObiektView');
-  el.style.display = '';
-
-  if (!all.length) {
-    el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak protokołów dla wybranych filtrów</div>';
-    return;
-  }
-
-  // Grupuj po obiekcie
-  const grupy = {};
-  all.forEach(p => {
-    const k = (p.obiekt || 'Brak nazwy').trim();
-    if (!grupy[k]) grupy[k] = [];
-    grupy[k].push(p);
+  var html = '';
+  Object.keys(grupy).sort(function(a,b){
+    return (grupy[b][0].data||'').localeCompare(grupy[a][0].data||'');
+  }).forEach(function(nazwa) {
+    var protos = grupy[nazwa];
+    var last = protos[0];
+    var kolor = (last.wynik||'').startsWith('Nie') ? '#e74c3c' : (last.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
+    var ico = (last.wynik||'').startsWith('Nie') ? '❌' : (last.wynik||'').includes('uwag') ? '⚠️' : '✅';
+    var typy = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');
+    html += '<div class="obj-card" onclick="panelShowObiekt('+JSON.stringify(nazwa)+')">';
+    html += '<div class="obj-name">'+nazwa+'</div>';
+    html += '<div class="obj-meta"><span>📁 '+protos.length+' protokół'+(protos.length===1?'':'ów')+'</span><span>🔧 '+typy+'</span></div>';
+    html += '<div class="obj-last"><div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">'+last.data+'</b> · '+(last.rodzaj||'')+'</div>';
+    html += '<div style="font-size:12px;font-weight:700;color:'+kolor+'">'+ico+' '+(last.wynik||'-')+'</div></div></div>';
   });
-
-  // Sortuj obiekty wg daty ostatniego protokołu
-  const sorted = Object.entries(grupy).sort((a,b) => {
-    const da = a[1][0]?.data || '';
-    const db = b[1][0]?.data || '';
-    return db.localeCompare(da);
-  });
-
-
+  document.getElementById('panelObiektView').innerHTML = html;
 }
 
-function panelOpenObiekt(nazwa) {
+function panelShowObiekt(nazwa) {
   _panelObiekt = nazwa;
   document.getElementById('panelObiektView').style.display = 'none';
-  document.getElementById('panelProtoView').style.display = '';
-  // Użyj zapisanych danych lub pobierz z allProtokoly
-  const protos = (window._panelObiektyData && window._panelObiektyData[nazwa])
-    || (allProtokoly.length ? allProtokoly : protokoly).filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
-  panelRenderProtos(nazwa, protos);
-}
-
-function panelRenderProtos(nazwa) {
-  document.getElementById('panelObiektView').style.display = 'none';
-  const el = document.getElementById('panelProtoView');
+  var el = document.getElementById('panelProtoView');
   el.style.display = '';
 
-  const protos = panelGetFiltered().filter(p => (p.obiekt||'Brak nazwy') === nazwa);
+  var src = allProtokoly.length ? allProtokoly : protokoly;
+  var protos = src.filter(function(p){ return p && (p.obiekt||'Brak nazwy').trim() === nazwa.trim(); });
 
-  // Statystyki obiektu
-  const sprawne = protos.filter(p => p.wynik?.startsWith('Sprawny') && !p.wynik?.includes('uwag')).length;
-  const uwagi   = protos.filter(p => p.wynik?.includes('uwag')).length;
-  const zle     = protos.filter(p => p.wynik?.startsWith('Nie') || p.wynik === 'Niesprawny').length;
-  const typy    = [...new Set(protos.map(p=>p.typ))].join(' · ');
+  var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
+  var uwagi = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
+  var zle = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
+  var typy = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(' / ');
 
-  el.innerHTML = `
-    <div class="panel-back" onclick="panelBackToList()">← Powrót do listy obiektów</div>
+  var html = '<div onclick="panelBackToList()" style="display:flex;align-items:center;gap:6px;padding-bottom:12px;color:var(--red2);font-size:14px;font-weight:700;cursor:pointer">&#8592; Powrót do listy</div>';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">';
+  html += '<div style="font-size:17px;font-weight:800;margin-bottom:6px">'+nazwa+'</div>';
+  html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Systemy: '+(typy||'-')+'</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+  html += '<div class="sbox"><div class="sbox-v" style="color:#4caf50">'+sprawne+'</div><div class="sbox-l">Sprawnych</div></div>';
+  html += '<div class="sbox"><div class="sbox-v" style="color:#ff9800">'+uwagi+'</div><div class="sbox-l">Z uwagami</div></div>';
+  html += '<div class="sbox"><div class="sbox-v" style="color:#e74c3c">'+zle+'</div><div class="sbox-l">Niesprawnych</div></div>';
+  html += '</div></div>';
+  html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Historia protokołów ('+protos.length+')</div>';
 
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
-      <div style="font-size:18px;font-weight:800;margin-bottom:8px">${nazwa}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Systemy: ${typy}</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <div class="stat-box"><div class="stat-box-v" style="color:#4caf50">${sprawne}</div><div class="stat-box-l">Sprawnych</div></div>
-        <div class="stat-box"><div class="stat-box-v" style="color:#ff9800">${uwagi}</div><div class="stat-box-l">Z uwagami</div></div>
-        <div class="stat-box"><div class="stat-box-v" style="color:#e74c3c">${zle}</div><div class="stat-box-l">Niesprawnych</div></div>
-      </div>
-    </div>
-
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
-      Historia protokołów (${protos.length})
-    </div>
-
-    ${protos.map(p => {
-      const wynikColor = p.wynik?.startsWith('Nie') ? '#e74c3c'
-                       : p.wynik?.includes('uwag') ? '#ff9800' : '#4caf50';
-      const wynikIco   = p.wynik?.startsWith('Nie') ? '❌'
-                       : p.wynik?.includes('uwag') ? '⚠️' : '✅';
-      const hasPhotos  = p.photos?.length > 0;
-      return `<div class="panel-proto-card" onclick="showDetail('${p.id}')">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span class="type-badge tb-${p.typ.toLowerCase()}">${p.typ}</span>
-          <span style="font-size:12px;color:var(--muted);flex:1">${p.rodzaj}</span>
-          <span style="font-size:12px;color:var(--muted)">${p.data}</span>
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">👤 ${p.serwisant||'-'}</div>
-        ${p.usterki ? `<div style="font-size:12px;color:#ff9800;margin-bottom:4px">⚠️ ${p.usterki.substring(0,80)}${p.usterki.length>80?'…':''}</div>` : ''}
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
-          <div style="font-size:13px;font-weight:700;color:${wynikColor}">${wynikIco} ${p.wynik||'-'}</div>
-          <div style="display:flex;gap:8px;font-size:11px;color:var(--muted)">
-            ${hasPhotos ? `<span>📷 ${p.photos.length}</span>` : ''}
-            <span style="color:var(--red2)">Szczegóły →</span>
-          </div>
-        </div>
-      </div>`;
-    }).join('')}
-  `;
+  protos.forEach(function(p) {
+    var kolor = (p.wynik||'').startsWith('Nie') ? '#e74c3c' : (p.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
+    var ico = (p.wynik||'').startsWith('Nie') ? '❌' : (p.wynik||'').includes('uwag') ? '⚠️' : '✅';
+    html += '<div class="pp-card" onclick="showDetail('+JSON.stringify(String(p.id))+')">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    html += '<span class="type-badge tb-'+(p.typ||'').toLowerCase()+'">'+p.typ+'</span>';
+    html += '<span style="font-size:12px;color:var(--muted);flex:1">'+(p.rodzaj||'')+'</span>';
+    html += '<span style="font-size:12px;color:var(--muted)">'+(p.data||'')+'</span></div>';
+    html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">&#128100; '+(p.serwisant||'-')+'</div>';
+    if(p.usterki) html += '<div style="font-size:12px;color:#ff9800;margin-bottom:6px">&#9888; '+p.usterki.substring(0,80)+(p.usterki.length>80?'…':'')+'</div>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between">';
+    html += '<div style="font-size:13px;font-weight:700;color:'+kolor+'">'+ico+' '+(p.wynik||'-')+'</div>';
+    html += '<span style="font-size:11px;color:var(--red2)">Szczegóły →</span></div></div>';
+  });
+  el.innerHTML = html;
 }
 
 function panelBackToList() {
   _panelObiekt = null;
-  const src = allProtokoly.length ? allProtokoly : protokoly;
-  panelRenderWithData(src);
+  panelShowLista();
 }
 
 // ===================== ZDJĘCIA =====================
