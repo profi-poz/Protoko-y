@@ -760,7 +760,8 @@ function panelRenderProtos(nazwa) {
   protos.forEach(function(p) {
     var kolor = (p.wynik||'').startsWith('Nie') ? '#e74c3c' : (p.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
     var ico   = (p.wynik||'').startsWith('Nie') ? '❌' : (p.wynik||'').includes('uwag') ? '⚠️' : '✅';
-    html += '<div class="pp-card" onclick="showDetail('+p.id+')">';
+    var pid = String(p.id);
+    html += '<div class="pp-card" onclick="showDetail(\"'+pid+'\")">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     html += '<span class="type-badge tb-'+(p.typ||'').toLowerCase()+'">'+p.typ+'</span>';
     html += '<span style="font-size:12px;color:var(--muted);flex:1">'+(p.rodzaj||'')+'</span>';
