@@ -745,11 +745,11 @@ function panelRenderProtos(nazwa, protos) {
   document.getElementById('panelObiektView').style.display = 'none';
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
-  // Jeśli protos nie przekazane - oblicz samodzielnie
   if (!protos) {
     const _s = allProtokoly.length ? allProtokoly : protokoly;
     protos = _s.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
   }
+  alert('panelRenderProtos: nazwa=['+nazwa+'] protos='+protos.length+' allP='+allProtokoly.length+' lok='+protokoly.length);
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
   var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
