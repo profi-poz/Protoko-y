@@ -2058,26 +2058,7 @@ function panelRenderObiekty() {
     return db.localeCompare(da);
   });
 
-  el.innerHTML = sorted.map(([nazwa, protos]) => {
-    const last = protos[0];
-    const wynikColor = last.wynik?.startsWith('Nie') ? '#e74c3c'
-                     : last.wynik?.includes('uwag') ? '#ff9800' : '#4caf50';
-    const wynikIco   = last.wynik?.startsWith('Nie') ? '❌'
-                     : last.wynik?.includes('uwag') ? '⚠️' : '✅';
-    const typy = [...new Set(protos.map(p=>p.typ))].join(', ');
 
-    return `<div class="obj-card" data-n="${encodeURIComponent(nazwa)}" onclick="panelOpenObiekt(decodeURIComponent(this.dataset.n))">
-      <div class="obj-name">${nazwa}</div>
-      <div class="obj-meta">
-        <span>📁 ${protos.length} protokół${protos.length===1?'':'ów'}</span>
-        <span>🔧 ${typy}</span>
-      </div>
-      <div class="obj-last">
-        <div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">${last.data}</b> · ${last.rodzaj}</div>
-        <div style="font-size:12px;font-weight:700;color:${wynikColor}">${wynikIco} ${last.wynik||'-'}</div>
-      </div>
-    </div>`;
-  }).join('');
 }
 
 function panelOpenObiekt(nazwa) {
