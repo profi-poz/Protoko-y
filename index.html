@@ -1445,13 +1445,22 @@ async function syncFromServer() {
   const url = localStorage.getItem('serverUrl');
   if (!url) return;
   try {
-    const r = await fetch(url + '?list=1', {method:'GET'});
-    const text = await r.text();
-    let json = {};
-    try { json = JSON.parse(text); } catch(e) {}
-    if (json.status === 'ok' && Array.isArray(json.protokoly)) {
-      serverProtokoly = json.protokoly;
-    }
+    await new Promise((resolve, reject) => {
+      const cbName = 'sync_' + Date.now();
+      const script = document.createElement('script');
+      window[cbName] = function(json) {
+        delete window[cbName];
+        document.head.removeChild(script);
+        if (json.status === 'ok' && Array.isArray(json.protokoly)) {
+          serverProtokoly = json.protokoly;
+        }
+        resolve();
+      };
+      script.onerror = () => { delete window[cbName]; resolve(); };
+      script.src = url + '?list=1&callback=' + cbName;
+      document.head.appendChild(script);
+      setTimeout(() => { delete window[cbName]; resolve(); }, 10000);
+    });
   } catch(e) {
     serverProtokoly = [];
   }
