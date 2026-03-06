@@ -735,9 +735,9 @@ function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
   document.getElementById('panelObiektView').style.display = 'none';
   document.getElementById('panelProtoView').style.display = '';
-  // Pobierz dane w tym momencie i przekaż bezpośrednio
-  const src = allProtokoly.length ? allProtokoly : protokoly;
-  const protos = src.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
+  // Użyj zapisanych danych lub pobierz z allProtokoly
+  const protos = (window._panelObiektyData && window._panelObiektyData[nazwa])
+    || (allProtokoly.length ? allProtokoly : protokoly).filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
   panelRenderProtos(nazwa, protos);
 }
 
@@ -1988,12 +1988,17 @@ function panelRenderWithData(src) {
 
   const sorted = Object.entries(grupy).sort((a,b) => (b[1][0]?.data||'').localeCompare(a[1][0]?.data||''));
 
+  // Zapisz dane obiektów globalnie żeby onclick miał dostęp
+  window._panelObiektyData = {};
+  sorted.forEach(([nazwa, protos]) => { window._panelObiektyData[nazwa] = protos; });
+
   el.innerHTML = sorted.map(([nazwa, protos]) => {
     const last = protos[0];
     const wynikColor = (last.wynik||'').startsWith('Nie') ? '#e74c3c' : (last.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
     const wynikIco   = (last.wynik||'').startsWith('Nie') ? '❌' : (last.wynik||'').includes('uwag') ? '⚠️' : '✅';
     const typy = [...new Set(protos.map(p=>p.typ))].join(', ');
-    return `<div class="obj-card" data-n="${encodeURIComponent(nazwa)}" onclick="panelOpenObiekt(decodeURIComponent(this.dataset.n))">
+    const n = nazwa.replace(/'/g,"\'");
+    return `<div class="obj-card" onclick="panelOpenObiekt('${n}')">
       <div class="obj-name">${nazwa}</div>
       <div class="obj-meta"><span>📁 ${protos.length} protokół${protos.length===1?'':'ów'}</span><span>🔧 ${typy}</span></div>
       <div class="obj-last">
@@ -2070,9 +2075,9 @@ function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
   document.getElementById('panelObiektView').style.display = 'none';
   document.getElementById('panelProtoView').style.display = '';
-  // Pobierz dane w tym momencie i przekaż bezpośrednio
-  const src = allProtokoly.length ? allProtokoly : protokoly;
-  const protos = src.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
+  // Użyj zapisanych danych lub pobierz z allProtokoly
+  const protos = (window._panelObiektyData && window._panelObiektyData[nazwa])
+    || (allProtokoly.length ? allProtokoly : protokoly).filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
   panelRenderProtos(nazwa, protos);
 }
 
