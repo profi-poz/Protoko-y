@@ -711,11 +711,14 @@ Content-Type: application/json
 const SK = 'profipoz_v1';
 const SK_DRAFT = 'profipoz_draft';
 let protokoly = JSON.parse(localStorage.getItem(SK) || '[]');
+let serverProtokoly = []; // protokoły z serwera (wszystkich użytkowników)
+let allProtokoly = []; // połączone lokalne + serwer (bez duplikatów)
 
 
 function panelGetFiltered() {
   var q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
-  return protokoly.slice().reverse().filter(function(p) {
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  return src.slice().reverse().filter(function(p) {
     if (_panelTyp && p.typ !== _panelTyp) return false;
     if (_panelWynik === 'uwagi' && !(p.wynik||'').toLowerCase().includes('uwag')) return false;
     if (_panelWynik && _panelWynik !== 'uwagi' && !(p.wynik||'').startsWith(_panelWynik)) return false;
@@ -1312,15 +1315,16 @@ function wynikIco(w) {
 function renderHistory() {
   const list = document.getElementById('protoList');
   const empty = document.getElementById('emptyList');
-  document.getElementById('stTotal').textContent = protokoly.length;
-  document.getElementById('stOk').textContent = protokoly.filter(p=>p.wynik==='Pozytywny').length;
-  document.getElementById('stWarn').textContent = protokoly.filter(p=>p.wynik==='Pozytywny z uwagami').length;
-  document.getElementById('stFail').textContent = protokoly.filter(p=>p.wynik==='Negatywny').length;
+  const all = allProtokoly.length ? allProtokoly : protokoly;
+  document.getElementById('stTotal').textContent = all.length;
+  document.getElementById('stOk').textContent = all.filter(p=>p.wynik==='Sprawny').length;
+  document.getElementById('stWarn').textContent = all.filter(p=>(p.wynik||'').includes('uwag')).length;
+  document.getElementById('stFail').textContent = all.filter(p=>p.wynik==='Niesprawny').length;
 
-  if (!protokoly.length) { list.innerHTML=''; empty.style.display=''; return; }
+  if (!all.length) { list.innerHTML=''; empty.style.display=''; return; }
   empty.style.display = 'none';
 
-  list.innerHTML = [...protokoly].reverse().map(p => `
+  list.innerHTML = [...all].map(p => `
     <div class="proto-card" onclick="showDetail(${p.id})">
       <div class="proto-top">
         <span class="proto-nr">${p.nr||'-'}</span>
@@ -1355,7 +1359,7 @@ function clearHistory() {
 
 // ===================== MODAL DETAIL =====================
 function showDetail(id) {
-  const p = protokoly.find(x => x.id === id);
+  const p = allProtokoly.find(x => x.id === id) || protokoly.find(x => x.id === id);
   if (!p) return;
   const typ = p.typ;
   const allItems = getCL()[typ] || getCL().Inne || CL[typ] || CL.Inne;
@@ -1434,10 +1438,46 @@ function showDetail(id) {
 function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
 document.getElementById('detailModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
+// ===== SYNC Z SERWERA =====
+async function syncFromServer() {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  try {
+    const r = await fetch(url + '?list=1', {method:'GET'});
+    const text = await r.text();
+    let json = {};
+    try { json = JSON.parse(text); } catch(e) {}
+    if (json.status === 'ok' && Array.isArray(json.protokoly)) {
+      serverProtokoly = json.protokoly;
+    }
+  } catch(e) {
+    serverProtokoly = [];
+  }
+  // Połącz: serwer + lokalne, bez duplikatów (po id)
+  const localIds = new Set(protokoly.map(p => String(p.id)));
+  const onlyServer = serverProtokoly.filter(p => !localIds.has(String(p.id)));
+  allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => {
+    const da = a.data || '', db = b.data || '';
+    return db.localeCompare(da);
+  });
+}
+
 function delProto(id) {
-  if (!confirm('Usunąć ten protokół?')) return;
+  // Sprawdź czy to protokół lokalny czy serwerowy
+  const isLocal = protokoly.some(p => p.id === id);
+  if (!isLocal) {
+    toast('⚠️ Można usuwać tylko własne protokoły');
+    return;
+  }
+  // Wymaga PIN admina
+  const pin = prompt('Podaj PIN administratora aby usunąć protokół:');
+  if (pin !== localStorage.getItem('adminPin')) {
+    toast('❌ Nieprawidłowy PIN');
+    return;
+  }
   protokoly = protokoly.filter(p => p.id !== id);
   localStorage.setItem(SK, JSON.stringify(protokoly));
+  allProtokoly = allProtokoly.filter(p => p.id !== id);
   closeModal(); renderHistory(); updateBadge();
   toast('🗑️ Protokół usunięty');
 }
