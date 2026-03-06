@@ -749,7 +749,7 @@ function panelRenderProtos(nazwa, protos) {
     const _s = allProtokoly.length ? allProtokoly : protokoly;
     protos = _s.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
   }
-  alert('panelRenderProtos: nazwa=['+nazwa+'] protos='+protos.length+' allP='+allProtokoly.length+' lok='+protokoly.length);
+
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
   var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
@@ -788,7 +788,8 @@ function panelRenderProtos(nazwa, protos) {
 
 function panelBackToList() {
   _panelObiekt = null;
-  panelRender();
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  panelRenderWithData(src);
 }
 
 
@@ -1072,8 +1073,10 @@ function showScreen(name) {
     document.getElementById('panelProtoView').style.display='none';
     document.getElementById('panelObiektView').style.display='';
     syncFromServer().then(function(){
-      const src = allProtokoly.length ? allProtokoly : protokoly;
-      panelRenderWithData(src);
+      if (!_panelObiekt) {
+        const src = allProtokoly.length ? allProtokoly : protokoly;
+        panelRenderWithData(src);
+      }
     });
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
@@ -2131,7 +2134,8 @@ function panelRenderProtos(nazwa) {
 
 function panelBackToList() {
   _panelObiekt = null;
-  panelRender();
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  panelRenderWithData(src);
 }
 
 // ===================== ZDJĘCIA =====================
