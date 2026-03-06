@@ -712,6 +712,7 @@ const SK = 'profipoz_v1';
 const DEFAULT_SERVER_URL = 'https://script.google.com/macros/s/AKfycbym0Yl3FwSXKMNabTPf6zzBK5QSZ8pb6Uv7uSe5BXY6Jnz_60gQmNggUQAkxkDCFu7G5g/exec';
 if (!localStorage.getItem('serverUrl')) localStorage.setItem('serverUrl', DEFAULT_SERVER_URL);
 const SK_DRAFT = 'profipoz_draft';
+const SK_DRAFTS = 'profipoz_drafts';
 let protokoly = JSON.parse(localStorage.getItem(SK) || '[]');
 let serverProtokoly = []; // protokoły z serwera (wszystkich użytkowników)
 let allProtokoly = []; // połączone lokalne + serwer (bez duplikatów)
@@ -739,8 +740,8 @@ function panelRenderProtos(nazwa) {
   document.getElementById('panelObiektView').style.display = 'none';
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
-  const _src = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
-  var protos = _src.filter(function(p){ return (p.obiekt||'Brak nazwy') === nazwa; });
+  const _allSrc = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
+  var protos = _allSrc.filter(function(p){ return p && (p.obiekt||'Brak nazwy') === nazwa; });
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
   var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
@@ -1194,15 +1195,65 @@ function zapiszProtokol() {
   const d = getForm();
   if (!d.obiekt && !d.typ) { toast('⚠️ Uzupełnij chociaż obiekt lub typ instalacji'); return; }
   d._draft = true;
-  localStorage.setItem(SK_DRAFT, JSON.stringify(d));
-  toast('💾 Szkic zapisany — możesz wrócić później!');
+  d._draftId = Date.now();
+  d._draftLabel = (d.obiekt || d.typ || 'Szkic') + ' · ' + (d.data || new Date().toLocaleDateString('pl'));
+  const drafts = JSON.parse(localStorage.getItem(SK_DRAFTS) || '[]');
+  drafts.push(d);
+  localStorage.setItem(SK_DRAFTS, JSON.stringify(drafts));
+  toast('💾 Szkic zapisany!');
 }
 
 function wczytajSzkic() {
-  const raw = localStorage.getItem(SK_DRAFT);
-  if (!raw) { toast('Brak zapisanego szkicu'); return; }
-  const d = JSON.parse(raw);
-  // Wypełnij formularz
+  const drafts = JSON.parse(localStorage.getItem(SK_DRAFTS) || '[]');
+  // Migracja starego formatu
+  const stary = localStorage.getItem(SK_DRAFT);
+  if (stary) {
+    try {
+      const d = JSON.parse(stary);
+      d._draftId = d._draftId || 1;
+      d._draftLabel = d._draftLabel || (d.obiekt || d.typ || 'Szkic');
+      drafts.unshift(d);
+      localStorage.setItem(SK_DRAFTS, JSON.stringify(drafts));
+      localStorage.removeItem(SK_DRAFT);
+    } catch(e) {}
+  }
+  if (!drafts.length) { toast('Brak zapisanych szkiców'); return; }
+  // Pokaż modal z listą szkiców
+  showDraftsModal(drafts);
+}
+
+function showDraftsModal(drafts) {
+  let modal = document.getElementById('draftsModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'draftsModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:flex-end';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:var(--surface);width:100%;border-radius:18px 18px 0 0;padding:20px;max-height:70vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">📂 Zapisane szkice (${drafts.length})</h3>
+        <button onclick="document.getElementById('draftsModal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      ${drafts.map((d,i) => `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <div onclick="loadDraft(${d._draftId})" style="flex:1;cursor:pointer">
+            <div style="font-weight:700;font-size:14px">${d.obiekt || d.typ || 'Szkic'}</div>
+            <div style="font-size:12px;color:var(--muted)">${d.typ || ''} · ${d.rodzaj || ''} · ${d.data || ''}</div>
+          </div>
+          <button onclick="deleteDraft(${d._draftId})" style="background:none;border:none;color:#e74c3c;font-size:18px;cursor:pointer;padding:4px 8px">🗑️</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function loadDraft(draftId) {
+  const drafts = JSON.parse(localStorage.getItem(SK_DRAFTS) || '[]');
+  const d = drafts.find(x => x._draftId === draftId);
+  if (!d) return;
   const set = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
   set('typInstalacji', d.typ);
   set('rodzajPrzegladu', d.rodzaj);
@@ -1219,20 +1270,23 @@ function wczytajSzkic() {
   set('adnotacjeBiuro', d.adnotacjeBiuro);
   set('infoKolejnySerwis', d.infoKolejnySerwis);
   set('wynikPrzegladu', d.wynik);
-  // Odśwież checklist i zaznacz zapisane wartości
   updateChecklist();
-  if (d.checklist) {
-    Object.entries(d.checklist).forEach(([id, val]) => {
-      if (val) setSt(id, val);
-    });
-  }
-  // Zdjęcia
-  if (d.photos && d.photos.length) {
-    photos = d.photos.map(src => ({data:src}));
-    renderPhotos();
-  }
+  if (d.checklist) Object.entries(d.checklist).forEach(([id, val]) => { if(val) setSt(id, val); });
+  if (d.photos && d.photos.length) { photos = d.photos.map(src => ({data:src})); renderPhotos(); }
+  // Usuń załadowany szkic z listy
+  const newDrafts = drafts.filter(x => x._draftId !== draftId);
+  localStorage.setItem(SK_DRAFTS, JSON.stringify(newDrafts));
+  document.getElementById('draftsModal').remove();
   toast('📂 Szkic wczytany!');
   showScreen('nowy');
+}
+
+function deleteDraft(draftId) {
+  const drafts = JSON.parse(localStorage.getItem(SK_DRAFTS) || '[]');
+  const newDrafts = drafts.filter(x => x._draftId !== draftId);
+  localStorage.setItem(SK_DRAFTS, JSON.stringify(newDrafts));
+  if (newDrafts.length) showDraftsModal(newDrafts);
+  else { document.getElementById('draftsModal').remove(); toast('🗑️ Szkic usunięty'); }
 }
 
 async function zapiszIPrzeslij() {
