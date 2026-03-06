@@ -719,8 +719,9 @@ let allProtokoly = []; // połączone lokalne + serwer (bez duplikatów)
 
 function panelGetFiltered() {
   var q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
-  const src = allProtokoly.length ? allProtokoly : protokoly;
-  return src.slice().reverse().filter(function(p) {
+  const src = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
+  return src.filter(function(p) {
+    if (!p || !p.obiekt) return false;
     if (_panelTyp && p.typ !== _panelTyp) return false;
     if (_panelWynik === 'uwagi' && !(p.wynik||'').toLowerCase().includes('uwag')) return false;
     if (_panelWynik && _panelWynik !== 'uwagi' && !(p.wynik||'').startsWith(_panelWynik)) return false;
@@ -1057,7 +1058,7 @@ function showScreen(name) {
   if(name==='panel'){
     _panelTyp='';_panelWynik='';_panelObiekt=null;
     document.getElementById('panelObiektView').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
-    syncFromServer().then(() => { console.log('allProtokoly po sync:', allProtokoly.length); panelRenderStats(); panelRenderObiekty(); });
+    syncFromServer().then(() => { panelRenderStats(); panelRenderObiekty(); });
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
 }
@@ -1901,7 +1902,6 @@ function panelRenderStats() {
 }
 
 function panelRenderObiekty() {
-  console.log('panelRenderObiekty - all:', panelGetFiltered().length, 'allProtokoly:', allProtokoly.length);
   const all = panelGetFiltered();
   document.getElementById('panelProtoView').style.display = 'none';
   const el = document.getElementById('panelObiektView');
