@@ -1902,7 +1902,7 @@ function panelRenderStats() {
 }
 
 function panelRenderObiekty() {
-  const all = panelGetFiltered();
+  const all = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
   document.getElementById('panelProtoView').style.display = 'none';
   const el = document.getElementById('panelObiektView');
   el.style.display = '';
