@@ -1050,8 +1050,14 @@ function showScreen(name) {
   var btn = document.getElementById('nb-'+name);
   if(scr) scr.classList.add('active');
   if(btn) btn.classList.add('active');
-  if(name==='historia') renderHistory();
-  if(name==='panel'){_panelTyp='';_panelWynik='';_panelObiekt=null;panelRender();}
+  if(name==='historia') {
+    renderHistory();
+    syncFromServer().then(() => renderHistory());
+  }
+  if(name==='panel'){
+    _panelTyp='';_panelWynik='';_panelObiekt=null;panelRender();
+    syncFromServer().then(() => panelRender());
+  }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
 }
 
