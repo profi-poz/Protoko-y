@@ -1229,29 +1229,15 @@ async function zapiszIPrzeslij() {
 
   toast('📤 Wysyłanie na Google Drive...');
   try {
-    const url = localStorage.getItem('serverUrl');
-    const dataStr = encodeURIComponent(JSON.stringify(d));
-    // Ukryty iframe + form - omija CORS całkowicie
-    const iframe = document.createElement('iframe');
-    iframe.name = 'hidden_frame_' + Date.now();
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = url;
-    form.target = iframe.name;
-    form.style.display = 'none';
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'data';
-    input.value = JSON.stringify(d);
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(() => {
-      document.body.removeChild(form);
-      document.body.removeChild(iframe);
-    }, 5000);
+    // Usuń zdjęcia przed wysłaniem - za duże dla URL
+    const dSend = {...d, photos:[]};
+    const dataStr = encodeURIComponent(JSON.stringify(dSend));
+    const sendUrl = url + '?data=' + dataStr;
+    const r = await fetch(sendUrl, {method:'GET', mode:'cors'});
+    const text = await r.text();
+    let json = {};
+    try { json = JSON.parse(text); } catch(ex) {}
+    d.viewUrl = json.viewUrl || null;
     protokoly.push(d);
     localStorage.setItem(SK, JSON.stringify(protokoly));
     localStorage.removeItem(SK_DRAFT);
