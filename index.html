@@ -733,7 +733,14 @@ function panelGetFiltered() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
-  panelRenderProtos(nazwa);
+  if (allProtokoly.length) {
+    panelRenderProtos(nazwa);
+  } else {
+    document.getElementById('panelProtoView').style.display = '';
+    document.getElementById('panelObiektView').style.display = 'none';
+    document.getElementById('panelProtoView').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
+    syncFromServer().then(() => panelRenderProtos(nazwa));
+  }
 }
 
 function panelRenderProtos(nazwa) {
@@ -741,7 +748,6 @@ function panelRenderProtos(nazwa) {
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
   const _allSrc = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
-  alert('szukam: ['+nazwa+'] w '+_allSrc.length+' proto. Pierwszy obiekt: ['+ (_allSrc[0]&&_allSrc[0].obiekt||'brak') +']');
   var protos = _allSrc.filter(function(p){ return p && (p.obiekt||'Brak nazwy').trim() === nazwa.trim(); });
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
@@ -2011,7 +2017,14 @@ function panelRenderObiekty() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
-  panelRenderProtos(nazwa);
+  if (allProtokoly.length) {
+    panelRenderProtos(nazwa);
+  } else {
+    document.getElementById('panelProtoView').style.display = '';
+    document.getElementById('panelObiektView').style.display = 'none';
+    document.getElementById('panelProtoView').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
+    syncFromServer().then(() => panelRenderProtos(nazwa));
+  }
 }
 
 function panelRenderProtos(nazwa) {
