@@ -741,6 +741,7 @@ function panelRenderProtos(nazwa) {
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
   const _allSrc = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
+  alert('szukam: ['+nazwa+'] w '+_allSrc.length+' proto. Pierwszy obiekt: ['+ (_allSrc[0]&&_allSrc[0].obiekt||'brak') +']');
   var protos = _allSrc.filter(function(p){ return p && (p.obiekt||'Brak nazwy').trim() === nazwa.trim(); });
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
