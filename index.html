@@ -741,7 +741,7 @@ function panelRenderProtos(nazwa) {
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
   const _allSrc = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
-  var protos = _allSrc.filter(function(p){ return p && (p.obiekt||'Brak nazwy') === nazwa; });
+  var protos = _allSrc.filter(function(p){ return p && (p.obiekt||'Brak nazwy').trim() === nazwa.trim(); });
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
   var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
@@ -1062,7 +1062,6 @@ function showScreen(name) {
     _panelTyp='';_panelWynik='';_panelObiekt=null;
     document.getElementById('panelObiektView').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
     syncFromServer().then(() => {
-      alert('sync done. allProtokoly:' + allProtokoly.length + ' protokoly:' + protokoly.length);
       panelRenderStats();
       panelRenderObiekty();
     });
@@ -1975,7 +1974,7 @@ function panelRenderObiekty() {
   // Grupuj po obiekcie
   const grupy = {};
   all.forEach(p => {
-    const k = p.obiekt || 'Brak nazwy';
+    const k = (p.obiekt || 'Brak nazwy').trim();
     if (!grupy[k]) grupy[k] = [];
     grupy[k].push(p);
   });
