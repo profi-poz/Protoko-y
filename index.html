@@ -1061,7 +1061,11 @@ function showScreen(name) {
   if(name==='panel'){
     _panelTyp='';_panelWynik='';_panelObiekt=null;
     document.getElementById('panelObiektView').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
-    syncFromServer().then(() => { panelRenderStats(); panelRenderObiekty(); });
+    syncFromServer().then(() => {
+      alert('sync done. allProtokoly:' + allProtokoly.length + ' protokoly:' + protokoly.length);
+      panelRenderStats();
+      panelRenderObiekty();
+    });
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
 }
