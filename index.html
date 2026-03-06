@@ -733,18 +733,23 @@ function panelGetFiltered() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
-  // Wyraźnie pokaż ProtoView i schowaj ObiektView
   document.getElementById('panelObiektView').style.display = 'none';
   document.getElementById('panelProtoView').style.display = '';
-  panelRenderProtos(nazwa);
+  // Pobierz dane w tym momencie i przekaż bezpośrednio
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  const protos = src.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
+  panelRenderProtos(nazwa, protos);
 }
 
-function panelRenderProtos(nazwa) {
+function panelRenderProtos(nazwa, protos) {
   document.getElementById('panelObiektView').style.display = 'none';
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
-  const _s = allProtokoly.length ? allProtokoly : protokoly;
-  var protos = _s.filter(function(p){ return p && (p.obiekt||'Brak nazwy').trim() === nazwa.trim(); });
+  // Jeśli protos nie przekazane - oblicz samodzielnie
+  if (!protos) {
+    const _s = allProtokoly.length ? allProtokoly : protokoly;
+    protos = _s.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
+  }
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
   var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
@@ -2060,10 +2065,12 @@ function panelRenderObiekty() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
-  // Wyraźnie pokaż ProtoView i schowaj ObiektView
   document.getElementById('panelObiektView').style.display = 'none';
   document.getElementById('panelProtoView').style.display = '';
-  panelRenderProtos(nazwa);
+  // Pobierz dane w tym momencie i przekaż bezpośrednio
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  const protos = src.filter(function(p){ return p && (p.obiekt||'').trim() === nazwa.trim(); });
+  panelRenderProtos(nazwa, protos);
 }
 
 function panelRenderProtos(nazwa) {
