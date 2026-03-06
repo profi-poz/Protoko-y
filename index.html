@@ -739,7 +739,8 @@ function panelRenderProtos(nazwa) {
   document.getElementById('panelObiektView').style.display = 'none';
   var el = document.getElementById('panelProtoView');
   el.style.display = '';
-  var protos = panelGetFiltered().filter(function(p){ return (p.obiekt||'Brak nazwy') === nazwa; });
+  const _src = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
+  var protos = _src.filter(function(p){ return (p.obiekt||'Brak nazwy') === nazwa; });
   var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
   var uwagi   = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
   var zle     = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
@@ -1888,7 +1889,7 @@ function panelRender() {
 }
 
 function panelRenderStats() {
-  const all = panelGetFiltered();
+  const all = (allProtokoly && allProtokoly.length) ? allProtokoly : protokoly;
   const sprawne   = all.filter(p => p.wynik?.startsWith('Sprawny') && !p.wynik?.includes('uwag')).length;
   const uwagi     = all.filter(p => p.wynik?.includes('uwag')).length;
   const zle       = all.filter(p => p.wynik?.startsWith('Nie') || p.wynik === 'Niesprawny').length;
