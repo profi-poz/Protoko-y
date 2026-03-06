@@ -709,6 +709,8 @@ Content-Type: application/json
 <script>
 // ===================== DATA =====================
 const SK = 'profipoz_v1';
+const DEFAULT_SERVER_URL = 'https://script.google.com/macros/s/AKfycbym0Yl3FwSXKMNabTPf6zzBK5QSZ8pb6Uv7uSe5BXY6Jnz_60gQmNggUQAkxkDCFu7G5g/exec';
+if (!localStorage.getItem('serverUrl')) localStorage.setItem('serverUrl', DEFAULT_SERVER_URL);
 const SK_DRAFT = 'profipoz_draft';
 let protokoly = JSON.parse(localStorage.getItem(SK) || '[]');
 let serverProtokoly = []; // protokoły z serwera (wszystkich użytkowników)
