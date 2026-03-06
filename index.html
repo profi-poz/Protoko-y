@@ -1901,7 +1901,7 @@ function panelShowLista() {
     var kolor = (last.wynik||'').startsWith('Nie') ? '#e74c3c' : (last.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
     var ico = (last.wynik||'').startsWith('Nie') ? '❌' : (last.wynik||'').includes('uwag') ? '⚠️' : '✅';
     var typy = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');
-    html += '<div class="obj-card" onclick="panelShowObiekt('+JSON.stringify(nazwa)+')">';
+    html += '<div class="obj-card" data-nazwa="'+encodeURIComponent(nazwa)+'" onclick="panelShowObiekt(decodeURIComponent(this.getAttribute(\"data-nazwa\")))">'; 
     html += '<div class="obj-name">'+nazwa+'</div>';
     html += '<div class="obj-meta"><span>📁 '+protos.length+' protokół'+(protos.length===1?'':'ów')+'</span><span>🔧 '+typy+'</span></div>';
     html += '<div class="obj-last"><div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">'+last.data+'</b> · '+(last.rodzaj||'')+'</div>';
@@ -1938,7 +1938,7 @@ function panelShowObiekt(nazwa) {
   protos.forEach(function(p) {
     var kolor = (p.wynik||'').startsWith('Nie') ? '#e74c3c' : (p.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
     var ico = (p.wynik||'').startsWith('Nie') ? '❌' : (p.wynik||'').includes('uwag') ? '⚠️' : '✅';
-    html += '<div class="pp-card" onclick="showDetail('+JSON.stringify(String(p.id))+')">';
+    html += '<div class="pp-card" data-pid="'+encodeURIComponent(String(p.id))+'" onclick="showDetail(decodeURIComponent(this.getAttribute(\"data-pid\")))">'; 
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     html += '<span class="type-badge tb-'+(p.typ||'').toLowerCase()+'">'+p.typ+'</span>';
     html += '<span style="font-size:12px;color:var(--muted);flex:1">'+(p.rodzaj||'')+'</span>';
