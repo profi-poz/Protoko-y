@@ -733,6 +733,9 @@ function panelGetFiltered() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
+  const _s = allProtokoly.length ? allProtokoly : protokoly;
+  const wszystkieObiekty = _s.map(p => JSON.stringify({o:p.obiekt,t:p.typ})).join(' | ');
+  alert('Szukam: ['+nazwa+'] | Dane ('+_s.length+'): '+wszystkieObiekty.substring(0,200));
   panelRenderProtos(nazwa);
 }
 
@@ -2057,6 +2060,9 @@ function panelRenderObiekty() {
 
 function panelOpenObiekt(nazwa) {
   _panelObiekt = nazwa;
+  const _s = allProtokoly.length ? allProtokoly : protokoly;
+  const wszystkieObiekty = _s.map(p => JSON.stringify({o:p.obiekt,t:p.typ})).join(' | ');
+  alert('Szukam: ['+nazwa+'] | Dane ('+_s.length+'): '+wszystkieObiekty.substring(0,200));
   panelRenderProtos(nazwa);
 }
 
