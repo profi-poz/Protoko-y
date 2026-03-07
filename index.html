@@ -935,7 +935,38 @@ window.onload = () => {
   }
 
   // PWA install
-  window.addEventListener('beforeinstallprompt', e => {
+  
+// Auto-szkic przy wyjściu/przejściu z formularza
+function autoSaveDraft() {
+  const d = getForm();
+  // Zapisz tylko jeśli coś jest wpisane
+  if (!d.obiekt && !d.typ && !d.serwisant) return;
+  d._draft = true;
+  d._draftId = d._draftId || Date.now();
+  d._draftLabel = (d.obiekt || d.typ || 'Auto-szkic') + ' · ' + (d.data || new Date().toLocaleDateString('pl'));
+  d._auto = true;
+  const drafts = JSON.parse(localStorage.getItem(SK_DRAFTS) || '[]');
+  // Zastąp istniejący auto-szkic lub dodaj nowy
+  const idx = drafts.findIndex(x => x._auto && x._draftId === d._draftId);
+  if (idx >= 0) drafts[idx] = d;
+  else drafts.push(d);
+  localStorage.setItem(SK_DRAFTS, JSON.stringify(drafts));
+}
+
+// Zapisz szkic gdy użytkownik opuszcza formularz
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') {
+    const activeScreen = document.querySelector('.screen.active');
+    if (activeScreen && activeScreen.id === 's-nowy') autoSaveDraft();
+  }
+});
+
+window.addEventListener('beforeunload', function() {
+  const activeScreen = document.querySelector('.screen.active');
+  if (activeScreen && activeScreen.id === 's-nowy') autoSaveDraft();
+});
+
+window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     window._installEvt = e;
     document.getElementById('installBanner').style.display = 'block';
@@ -1224,6 +1255,8 @@ async function zapiszIPrzeslij() {
     protokoly.push(d);
     localStorage.setItem(SK, JSON.stringify(protokoly));
     localStorage.removeItem(SK_DRAFT);
+    // Usuń auto-szkic tego formularza
+    const _ad = getForm(); const _drafts2 = JSON.parse(localStorage.getItem(SK_DRAFTS)||'[]').filter(x=>!x._auto); localStorage.setItem(SK_DRAFTS,JSON.stringify(_drafts2));
     toast('✅ Wysłano na Google Drive!');
     updateBadge(); resetForm();
   } catch(e) {
@@ -1393,7 +1426,7 @@ function showDetail(id) {
     <div style="margin-top:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Nieprawidłowości</div><div style="font-size:13px;line-height:1.6">${p.nieprawidlowosci||'-'}</div></div>
     <div style="margin-top:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Zalecenia do nieprawidłowości</div><div style="font-size:13px;line-height:1.6">${p.zalecenieNieprawidl||'-'}</div></div>
     ${p.adnotacjeBiuro ? `<div style="margin-top:14px;background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🏢 Adnotacje do biura</div><div style="font-size:13px;line-height:1.6">${p.adnotacjeBiuro}</div></div>` : ''}
-    ${p.infoKolejnySerwis ? `<div style="margin-top:10px;background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.2);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--accent2,#ff6b35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🔧 Info do kolejnego serwisu</div><div style="font-size:13px;line-height:1.6">${p.infoKolejnySerwis}</div></div>` : ''}
+    <div style="margin-top:10px;background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.2);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--accent2,#ff6b35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🔧 Info do kolejnego serwisu</div><div style="font-size:13px">${p.infoKolejnySerwis||'-'}</div></div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)" class="${wynikClass(p.wynik)}">
       ${wynikIco(p.wynik)} ${p.wynik||'Brak'}
     </div>
@@ -1945,6 +1978,8 @@ function panelShowObiekt(nazwa) {
     html += '<span style="font-size:12px;color:var(--muted)">'+(p.data||'')+'</span></div>';
     html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">&#128100; '+(p.serwisant||'-')+'</div>';
     if(p.usterki) html += '<div style="font-size:12px;color:#ff9800;margin-bottom:6px">&#9888; '+p.usterki.substring(0,80)+(p.usterki.length>80?'…':'')+'</div>';
+    if(p.zalecenieNieprawidl && p.zalecenieNieprawidl!=='-') html += '<div style="font-size:12px;color:#e74c3c;margin-bottom:6px">&#9888; Zal.niepr.: '+p.zalecenieNieprawidl.substring(0,60)+(p.zalecenieNieprawidl.length>60?'…':'')+'</div>';
+    if(p.infoKolejnySerwis && p.infoKolejnySerwis!=='-') html += '<div style="font-size:12px;color:var(--red2);margin-bottom:6px">🔧 '+p.infoKolejnySerwis.substring(0,60)+(p.infoKolejnySerwis.length>60?'…':'')+'</div>';
     html += '<div style="display:flex;align-items:center;justify-content:space-between">';
     html += '<div style="font-size:13px;font-weight:700;color:'+kolor+'">'+ico+' '+(p.wynik||'-')+'</div>';
     html += '<span style="font-size:11px;color:var(--red2)">Szczegóły →</span></div></div>';
