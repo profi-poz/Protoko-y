@@ -2151,9 +2151,13 @@ function autocompleteObiekt(val) {
   const q = val.trim().toLowerCase();
   if (!q || _obiektyCache.length === 0) { list.style.display='none'; return; }
 
-  const matches = _obiektyCache.filter(o =>
-    o.obiekt.toLowerCase().includes(q)
-  ).slice(0, 12);
+  // Filtruj po typie aktualnego protokołu
+  const typAkt = (document.getElementById('typInstalacji')?.value || '').toUpperCase();
+  const matches = _obiektyCache.filter(o => {
+    if (!o.obiekt.toLowerCase().includes(q)) return false;
+    if (!o.typ || !typAkt) return true; // brak typu = pokaż zawsze
+    return o.typ.toUpperCase() === typAkt;
+  }).slice(0, 12);
 
   if (!matches.length) { list.style.display='none'; return; }
 
@@ -2164,7 +2168,7 @@ function autocompleteObiekt(val) {
       onmousedown="selectObiekt(${i})"
       onmouseover="hoverAC(${i})">
       <div style="font-weight:700;color:#1a1a2e">${o.obiekt}</div>
-      <div style="font-size:12px;color:#888;margin-top:2px">${o.modelCentrali}${o.iloscCentral?' · '+o.iloscCentral+' szt.':''}${o.lokalizacja?' · '+o.lokalizacja:''}</div>
+      <div style="font-size:12px;color:#888;margin-top:2px">${o.typ?'<span style="background:#e8360a;color:#fff;border-radius:3px;padding:1px 5px;font-size:10px;margin-right:4px">'+o.typ+'</span>':''}${o.modelCentrali}${o.iloscCentral?' · '+o.iloscCentral+' szt.':''}${o.lokalizacja?' · '+o.lokalizacja:''}</div>
     </div>`).join('');
 
   list._matches = matches;
@@ -2233,6 +2237,7 @@ function maybeSaveObiektToServer(d) {
   // Zawsze aktualizuj model/lokalizację na serwerze po każdym protokole
   const obj = {
     obiekt: d.obiekt,
+    typ: d.typ || '',
     modelCentrali: d.modelCentrali || '',
     iloscCentral: d.iloscCentral || '',
     lokalizacja: d.lokalizacjaCentral || '',
@@ -2244,7 +2249,7 @@ function maybeSaveObiektToServer(d) {
     if (d.iloscCentral) _obiektyCache[idx].iloscCentral = d.iloscCentral;
     if (d.lokalizacjaCentral) _obiektyCache[idx].lokalizacja = d.lokalizacjaCentral;
   } else {
-    _obiektyCache.push({ obiekt: d.obiekt, modelCentrali: d.modelCentrali||'', iloscCentral: d.iloscCentral||'', lokalizacja: d.lokalizacjaCentral||'' });
+    _obiektyCache.push({ obiekt: d.obiekt, typ: d.typ||'', modelCentrali: d.modelCentrali||'', iloscCentral: d.iloscCentral||'', lokalizacja: d.lokalizacjaCentral||'' });
   }
   localStorage.setItem('profipoz_obiekty', JSON.stringify(_obiektyCache));
 
