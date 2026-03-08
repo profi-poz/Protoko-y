@@ -424,10 +424,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
 
       </div>
 
-      <div class="card">
-        <!-- 📷 Zdjęcia - ukryte, do wdrożenia w przyszłości -->
-        <div id="photoPreview" style="display:none"></div>
-        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
+      <!-- 📷 Zdjęcia - ukryte, do wdrożenia w przyszłości -->
+      <div id="photoPreview" style="display:none"></div>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
 
       <div style="padding:0 0 8px">
         <button class="btn btn-red" onclick="zapiszProtokol()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">💾 Zapisz szkic</button>
