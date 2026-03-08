@@ -1976,11 +1976,29 @@ function panelShowLista(lista) {
     return;
   }
 
-  // Grupuj po nazwie obiektu (może być wiele typów)
+  // Normalizuj nazwę do grupowania (lowercase, trim, collapse spaces)
+  function normNazwa(n) {
+    return (n||'').trim().toLowerCase().replace(/\s+/g,' ');
+  }
+
+  // Grupuj po znormalizowanej nazwie, zachowaj najładniejszą wersję (najdłuższa / Title Case)
   const grupy = {};
+  const nazwyDisplay = {}; // normKey → najlepsza wersja display
   src.forEach(function(o) {
-    const k = (o.obiekt||'Brak nazwy').trim();
-    if (!grupy[k]) grupy[k] = { typy: [], count: 0, ostatnia: '', wynik: '' };
+    const raw = (o.obiekt||'Brak nazwy').trim().replace(/\s+/g,' ');
+    const k = normNazwa(raw);
+    if (!grupy[k]) {
+      grupy[k] = { typy: [], count: 0, ostatnia: '', wynik: '' };
+      nazwyDisplay[k] = raw;
+    } else {
+      // Preferuj wersję z właściwą wielkością liter (nie CAPS i nie lowercase)
+      const prev = nazwyDisplay[k];
+      const prevScore = (prev === prev.toUpperCase() || prev === prev.toLowerCase()) ? 0 : 1;
+      const rawScore = (raw === raw.toUpperCase() || raw === raw.toLowerCase()) ? 0 : 1;
+      if (rawScore > prevScore || (rawScore === prevScore && raw.length > prev.length)) {
+        nazwyDisplay[k] = raw;
+      }
+    }
     grupy[k].typy.push(o.typ);
     grupy[k].count += (o.count || 1);
     if (!grupy[k].ostatnia || (o.ostatnia||'') > grupy[k].ostatnia) {
@@ -1990,8 +2008,9 @@ function panelShowLista(lista) {
   });
 
   let htmlStr = '';
-  Object.keys(grupy).sort((a,b) => a.localeCompare(b,'pl')).forEach(function(nazwa) {
-    const g = grupy[nazwa];
+  Object.keys(grupy).sort((a,b) => a.localeCompare(b,'pl')).forEach(function(k) {
+    const g = grupy[k];
+    const nazwa = nazwyDisplay[k];
     const kolor = (g.wynik||'').startsWith('Nie') ? '#e74c3c' : (g.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
     const ico = (g.wynik||'').startsWith('Nie') ? '❌' : (g.wynik||'').includes('uwag') ? '⚠️' : '✅';
     const typy = g.typy.filter((v,i,a)=>a.indexOf(v)===i).join(', ');
