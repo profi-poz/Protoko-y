@@ -425,23 +425,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
       </div>
 
       <div class="card">
-        <div class="card-hd">📷 Zdjęcia</div>
-        <div class="field">
-          <label>Dodaj zdjęcia z wizyty</label>
-          <div id="photoPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
-          <label for="photoInput" style="display:flex;align-items:center;justify-content:center;gap:8px;
-            background:var(--surface2);border:2px dashed var(--border);border-radius:10px;
-            padding:18px;cursor:pointer;color:var(--muted);font-size:14px;transition:border-color .2s"
-            id="photoLabel">
-            <span style="font-size:24px">📷</span> Kliknij aby dodać zdjęcia
-          </label>
-          <input type="file" id="photoInput" accept="image/*" multiple
-            style="display:none" onchange="handlePhotos(this)">
-          <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">
-            Możesz dodać wiele zdjęć naraz
-          </div>
-        </div>
-      </div>
+        <!-- 📷 Zdjęcia - ukryte, do wdrożenia w przyszłości -->
+        <div id="photoPreview" style="display:none"></div>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
 
       <div style="padding:0 0 8px">
         <button class="btn btn-red" onclick="zapiszProtokol()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">💾 Zapisz szkic</button>
@@ -1019,10 +1005,9 @@ function showScreen(name) {
   }
   if(name==='panel'){
     _panelTyp='';_panelWynik='';_panelObiekt=null;
-    document.getElementById('panelObiektView').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie...</div>';
-    document.getElementById('panelProtoView').style.display='none';
     document.getElementById('panelObiektView').style.display='';
-    syncFromServer().then(function(){ if(!_panelObiekt) panelShowLista(); });
+    document.getElementById('panelProtoView').style.display='none';
+    panelLoadLista();
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
 }
@@ -1869,112 +1854,211 @@ function initAdmin() {
 // ===================== PANEL PRZEGLĄDÓW =====================
 let _panelTyp   = '';
 let _panelWynik = '';
-let _panelObiekt = null; // null = widok listy obiektów
+let _panelObiekt = null;
+let _panelListaCache = null; // cache listy obiektów
 
+// ===================== PANEL (LAZY LOAD) =====================
 
-// ===================== PANEL =====================
+function panelLoadLista(force) {
+  const view = document.getElementById('panelObiektView');
+  view.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Ładowanie listy...</div>';
+  
+  // Jeśli mamy cache i nie wymuszono - użyj cache
+  if (_panelListaCache && !force) {
+    panelShowLista(_panelListaCache);
+    return;
+  }
+  
+  const url = localStorage.getItem('serverUrl');
+  if (!url) {
+    // Fallback: użyj lokalnych protokołów
+    const lista = buildListaFromLocal();
+    _panelListaCache = lista;
+    panelShowLista(lista);
+    return;
+  }
+  
+  const cb = 'cb_lista_' + Date.now();
+  const timeout = setTimeout(() => {
+    delete window[cb];
+    const lista = buildListaFromLocal();
+    _panelListaCache = lista;
+    panelShowLista(lista);
+  }, 8000);
+  
+  window[cb] = function(res) {
+    clearTimeout(timeout);
+    delete window[cb];
+    const s = document.getElementById('pl-script');
+    if (s) s.remove();
+    if (res && res.lista && res.lista.length) {
+      _panelListaCache = res.lista;
+      panelShowLista(res.lista);
+    } else {
+      const lista = buildListaFromLocal();
+      _panelListaCache = lista;
+      panelShowLista(lista);
+    }
+  };
+  const script = document.createElement('script');
+  script.id = 'pl-script';
+  script.src = url + '?listaObiektow=1&callback=' + cb;
+  document.body.appendChild(script);
+}
 
-function panelGetSrc() {
-  var src = allProtokoly.length ? allProtokoly : protokoly;
-  var q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
-  return src.filter(function(p) {
-    if (!p) return false;
-    if (_panelTyp && p.typ !== _panelTyp) return false;
-    if (_panelWynik === 'uwagi' && !(p.wynik||'').toLowerCase().includes('uwag')) return false;
-    if (_panelWynik && _panelWynik !== 'uwagi' && !(p.wynik||'').startsWith(_panelWynik)) return false;
-    if (q && !(p.obiekt||'').toLowerCase().includes(q)) return false;
-    return true;
+function buildListaFromLocal() {
+  // Zbuduj listę z lokalnych protokołów jako fallback
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  const map = {};
+  src.forEach(function(p) {
+    const k = (p.obiekt||'').trim() + '|' + (p.typ||'');
+    if (!map[k]) map[k] = { obiekt: p.obiekt, typ: p.typ, count: 0, ostatnia: '', wynik: '' };
+    map[k].count++;
+    if (!map[k].ostatnia || (p.data||'') > map[k].ostatnia) {
+      map[k].ostatnia = p.data || '';
+      map[k].wynik = p.wynik || '';
+    }
   });
+  return Object.values(map).sort((a,b) => a.obiekt.localeCompare(b.obiekt, 'pl'));
 }
 
 function panelRender() {
-  if (_panelObiekt) {
-    panelShowObiekt(_panelObiekt);
-  } else {
-    panelShowLista();
-  }
+  if (_panelObiekt) return; // nic - obiekt już załadowany
+  panelLoadLista();
 }
 
 function panelSetTyp(typ) {
   _panelTyp = typ;
   _panelObiekt = null;
-  document.querySelectorAll('[id^="pf-"]').forEach(function(b){b.classList.remove('active');});
-  var el = document.getElementById('pf-'+(typ||'all'));
-  if(el) el.classList.add('active');
-  panelRender();
+  document.querySelectorAll('[id^="pf-"]').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('pf-'+(typ||'all'));
+  if (el) el.classList.add('active');
+  panelShowLista(_panelListaCache);
 }
 
 function panelSetWynik(w) {
   _panelWynik = w;
   _panelObiekt = null;
-  document.querySelectorAll('[id^="pw-"]').forEach(function(b){b.classList.remove('active');});
-  var map = {'':'all','Sprawny':'ok','uwagi':'uwagi','Niesprawny':'zly'};
-  var el = document.getElementById('pw-'+(map[w]||'all'));
-  if(el) el.classList.add('active');
-  panelRender();
+  document.querySelectorAll('[id^="pw-"]').forEach(b => b.classList.remove('active'));
+  const map = {'':'all','Sprawny':'ok','uwagi':'uwagi','Niesprawny':'zly'};
+  const el = document.getElementById('pw-'+(map[w]||'all'));
+  if (el) el.classList.add('active');
+  panelShowLista(_panelListaCache);
 }
 
-function panelShowLista() {
-  var src = panelGetSrc();
+function panelShowLista(lista) {
+  if (!lista) lista = _panelListaCache || [];
   document.getElementById('panelProtoView').style.display = 'none';
   document.getElementById('panelObiektView').style.display = '';
 
+  // Filtruj
+  const q = ((document.getElementById('panelSearch')||{}).value||'').toLowerCase().trim();
+  let src = lista.filter(function(o) {
+    if (_panelTyp && o.typ !== _panelTyp) return false;
+    if (_panelWynik === 'uwagi' && !(o.wynik||'').toLowerCase().includes('uwag')) return false;
+    if (_panelWynik && _panelWynik !== 'uwagi' && !(o.wynik||'').startsWith(_panelWynik)) return false;
+    if (q && !(o.obiekt||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
   // Statystyki
-  var sprawne = src.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
-  var uwagi = src.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
-  var zle = src.filter(function(p){return (p.wynik||'').startsWith('Nie')||(p.wynik||'')==='Niesprawny';}).length;
+  const sprawne = src.filter(o => (o.wynik||'').startsWith('Sprawny') && !(o.wynik||'').includes('uwag')).length;
+  const uwagi = src.filter(o => (o.wynik||'').includes('uwag')).length;
+  const zle = src.filter(o => { const w=o.wynik||''; return w.startsWith('Nie')||w==='Niesprawny'; }).length;
+  const total = src.reduce((s, o) => s + (o.count||1), 0);
   document.getElementById('panelStats').innerHTML =
-    '<div class="stat-box"><div class="stat-box-v" style="color:var(--red2)">'+src.length+'</div><div class="stat-box-l">Protokołów</div></div>'+
+    '<div class="stat-box"><div class="stat-box-v" style="color:var(--red2)">'+total+'</div><div class="stat-box-l">Protokołów</div></div>'+
     '<div class="stat-box"><div class="stat-box-v" style="color:#4caf50">'+sprawne+'</div><div class="stat-box-l">Sprawnych</div></div>'+
     '<div class="stat-box"><div class="stat-box-v" style="color:#ff9800">'+uwagi+'</div><div class="stat-box-l">Z uwagami</div></div>'+
     '<div class="stat-box"><div class="stat-box-v" style="color:#e74c3c">'+zle+'</div><div class="stat-box-l">Niesprawnych</div></div>';
 
   if (!src.length) {
-    document.getElementById('panelObiektView').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak protokołów</div>';
+    document.getElementById('panelObiektView').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak obiektów</div>';
     return;
   }
 
-  // Grupuj po obiekcie
-  var grupy = {};
-  src.forEach(function(p) {
-    var k = (p.obiekt||'Brak nazwy').trim();
-    if (!grupy[k]) grupy[k] = [];
-    grupy[k].push(p);
+  // Grupuj po nazwie obiektu (może być wiele typów)
+  const grupy = {};
+  src.forEach(function(o) {
+    const k = (o.obiekt||'Brak nazwy').trim();
+    if (!grupy[k]) grupy[k] = { typy: [], count: 0, ostatnia: '', wynik: '' };
+    grupy[k].typy.push(o.typ);
+    grupy[k].count += (o.count || 1);
+    if (!grupy[k].ostatnia || (o.ostatnia||'') > grupy[k].ostatnia) {
+      grupy[k].ostatnia = o.ostatnia || '';
+      grupy[k].wynik = o.wynik || '';
+    }
   });
 
-  var html = '';
-  Object.keys(grupy).sort(function(a,b){
-    return (grupy[b][0].data||'').localeCompare(grupy[a][0].data||'');
-  }).forEach(function(nazwa) {
-    var protos = grupy[nazwa];
-    var last = protos[0];
-    var kolor = (last.wynik||'').startsWith('Nie') ? '#e74c3c' : (last.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
-    var ico = (last.wynik||'').startsWith('Nie') ? '❌' : (last.wynik||'').includes('uwag') ? '⚠️' : '✅';
-    var typy = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');
-    html += '<div class="obj-card" data-nazwa="'+encodeURIComponent(nazwa)+'" onclick="panelShowObiekt(decodeURIComponent(event.currentTarget.dataset.nazwa))">'; 
-    html += '<div class="obj-name">'+nazwa+'</div>';
-    html += '<div class="obj-meta"><span>📁 '+protos.length+' protokół'+(protos.length===1?'':'ów')+'</span><span>🔧 '+typy+'</span></div>';
-    html += '<div class="obj-last"><div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">'+last.data+'</b> · '+(last.rodzaj||'')+'</div>';
-    html += '<div style="font-size:12px;font-weight:700;color:'+kolor+'">'+ico+' '+(last.wynik||'-')+'</div></div></div>';
+  let htmlStr = '';
+  Object.keys(grupy).sort((a,b) => a.localeCompare(b,'pl')).forEach(function(nazwa) {
+    const g = grupy[nazwa];
+    const kolor = (g.wynik||'').startsWith('Nie') ? '#e74c3c' : (g.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
+    const ico = (g.wynik||'').startsWith('Nie') ? '❌' : (g.wynik||'').includes('uwag') ? '⚠️' : '✅';
+    const typy = g.typy.filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+    htmlStr += '<div class="obj-card" data-nazwa="'+encodeURIComponent(nazwa)+'" onclick="panelShowObiekt(decodeURIComponent(event.currentTarget.dataset.nazwa))">';
+    htmlStr += '<div class="obj-name">'+nazwa+'</div>';
+    htmlStr += '<div class="obj-meta"><span>📁 '+g.count+' protokół'+(g.count===1?'':'ów')+'</span><span>🔧 '+typy+'</span></div>';
+    htmlStr += '<div class="obj-last"><div style="font-size:12px;color:var(--muted)">Ostatni: <b style="color:var(--text)">'+g.ostatnia+'</b></div>';
+    htmlStr += '<div style="font-size:12px;font-weight:700;color:'+kolor+'">'+ico+' '+(g.wynik||'-')+'</div></div></div>';
   });
-  document.getElementById('panelObiektView').innerHTML = html;
+  document.getElementById('panelObiektView').innerHTML = htmlStr;
 }
 
 function panelShowObiekt(nazwa) {
   _panelObiekt = nazwa;
   document.getElementById('panelObiektView').style.display = 'none';
-  var el = document.getElementById('panelProtoView');
+  const el = document.getElementById('panelProtoView');
   el.style.display = '';
+  el.innerHTML = '<div onclick="panelBackToList()" style="display:flex;align-items:center;gap:6px;padding-bottom:12px;color:var(--red2);font-size:14px;font-weight:700;cursor:pointer">&#8592; Powrót do listy</div>' +
+    '<div style="text-align:center;padding:30px;color:var(--muted)">⏳ Ładowanie protokołów...</div>';
 
-  var src = allProtokoly.length ? allProtokoly : protokoly;
-  var protos = src.filter(function(p){ return p && (p.obiekt||'Brak nazwy').trim() === nazwa.trim(); });
+  // Najpierw sprawdź cache lokalny
+  const local = (allProtokoly.length ? allProtokoly : protokoly)
+    .filter(p => p && (p.obiekt||'').trim().toLowerCase() === nazwa.trim().toLowerCase());
 
-  var sprawne = protos.filter(function(p){return (p.wynik||'').startsWith('Sprawny')&&!(p.wynik||'').includes('uwag');}).length;
-  var uwagi = protos.filter(function(p){return (p.wynik||'').includes('uwag');}).length;
-  var zle = protos.filter(function(p){var w=p.wynik||'';return w.startsWith('Nie')||w==='Niesprawny';}).length;
-  var typy = protos.map(function(p){return p.typ;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(' / ');
+  const url = localStorage.getItem('serverUrl');
+  if (!url) {
+    renderObiektProtos(nazwa, local);
+    return;
+  }
 
-  var html = '<div onclick="panelBackToList()" style="display:flex;align-items:center;gap:6px;padding-bottom:12px;color:var(--red2);font-size:14px;font-weight:700;cursor:pointer">&#8592; Powrót do listy</div>';
+  // Lazy load z serwera
+  const cb = 'cb_po_' + Date.now();
+  const timeout = setTimeout(() => {
+    delete window[cb];
+    renderObiektProtos(nazwa, local);
+  }, 8000);
+
+  window[cb] = function(res) {
+    clearTimeout(timeout);
+    delete window[cb];
+    const s = document.getElementById('po-script');
+    if (s) s.remove();
+    if (res && res.protokoly) {
+      // Połącz z lokalnymi (bez duplikatów po id)
+      const serverIds = new Set(res.protokoly.map(p => p.id));
+      const merged = [...res.protokoly, ...local.filter(p => !serverIds.has(p.id))];
+      merged.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+      renderObiektProtos(nazwa, merged);
+    } else {
+      renderObiektProtos(nazwa, local);
+    }
+  };
+  const script = document.createElement('script');
+  script.id = 'po-script';
+  script.src = url + '?protokolyObiektu=' + encodeURIComponent(nazwa) + '&callback=' + cb;
+  document.body.appendChild(script);
+}
+
+function renderObiektProtos(nazwa, protos) {
+  const el = document.getElementById('panelProtoView');
+  const sprawne = protos.filter(p => (p.wynik||'').startsWith('Sprawny') && !(p.wynik||'').includes('uwag')).length;
+  const uwagi = protos.filter(p => (p.wynik||'').includes('uwag')).length;
+  const zle = protos.filter(p => { const w=p.wynik||''; return w.startsWith('Nie')||w==='Niesprawny'; }).length;
+  const typy = [...new Set(protos.map(p => p.typ))].join(' / ');
+
+  let html = '<div onclick="panelBackToList()" style="display:flex;align-items:center;gap:6px;padding-bottom:12px;color:var(--red2);font-size:14px;font-weight:700;cursor:pointer">&#8592; Powrót do listy</div>';
   html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">';
   html += '<div style="font-size:17px;font-weight:800;margin-bottom:6px">'+nazwa+'</div>';
   html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Systemy: '+(typy||'-')+'</div>';
@@ -1983,20 +2067,26 @@ function panelShowObiekt(nazwa) {
   html += '<div class="sbox"><div class="sbox-v" style="color:#ff9800">'+uwagi+'</div><div class="sbox-l">Z uwagami</div></div>';
   html += '<div class="sbox"><div class="sbox-v" style="color:#e74c3c">'+zle+'</div><div class="sbox-l">Niesprawnych</div></div>';
   html += '</div></div>';
-  html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Historia protokołów ('+protos.length+')</div>';
 
+  if (!protos.length) {
+    html += '<div style="text-align:center;padding:30px;color:var(--muted)">Brak protokołów dla tego obiektu</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Historia protokołów ('+protos.length+')</div>';
   protos.forEach(function(p) {
-    var kolor = (p.wynik||'').startsWith('Nie') ? '#e74c3c' : (p.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
-    var ico = (p.wynik||'').startsWith('Nie') ? '❌' : (p.wynik||'').includes('uwag') ? '⚠️' : '✅';
-    html += '<div class="pp-card" data-pid="'+encodeURIComponent(String(p.id))+'" onclick="showDetail(decodeURIComponent(event.currentTarget.dataset.pid))">'; 
+    const kolor = (p.wynik||'').startsWith('Nie') ? '#e74c3c' : (p.wynik||'').includes('uwag') ? '#ff9800' : '#4caf50';
+    const ico = (p.wynik||'').startsWith('Nie') ? '❌' : (p.wynik||'').includes('uwag') ? '⚠️' : '✅';
+    html += '<div class="pp-card" data-pid="'+encodeURIComponent(String(p.id))+'" onclick="showDetail(decodeURIComponent(event.currentTarget.dataset.pid))">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     html += '<span class="type-badge tb-'+(p.typ||'').toLowerCase()+'">'+p.typ+'</span>';
     html += '<span style="font-size:12px;color:var(--muted);flex:1">'+(p.rodzaj||'')+'</span>';
     html += '<span style="font-size:12px;color:var(--muted)">'+(p.data||'')+'</span></div>';
     html += '<div style="font-size:13px;color:var(--muted);margin-bottom:6px">&#128100; '+(p.serwisant||'-')+'</div>';
-    if(p.usterki) html += '<div style="font-size:12px;color:#ff9800;margin-bottom:6px">&#9888; '+p.usterki.substring(0,80)+(p.usterki.length>80?'…':'')+'</div>';
-    if(p.zalecenieNieprawidl && p.zalecenieNieprawidl!=='-') html += '<div style="font-size:12px;color:#e74c3c;margin-bottom:6px">&#9888; Zal.niepr.: '+p.zalecenieNieprawidl.substring(0,60)+(p.zalecenieNieprawidl.length>60?'…':'')+'</div>';
-    if(p.infoKolejnySerwis && p.infoKolejnySerwis!=='-') html += '<div style="font-size:12px;color:var(--red2);margin-bottom:6px">🔧 '+p.infoKolejnySerwis.substring(0,60)+(p.infoKolejnySerwis.length>60?'…':'')+'</div>';
+    if (p.usterki && p.usterki !== '-') html += '<div style="font-size:12px;color:#ff9800;margin-bottom:6px">&#9888; '+p.usterki.substring(0,80)+(p.usterki.length>80?'…':'')+'</div>';
+    if (p.zalecenieNieprawidl && p.zalecenieNieprawidl!=='-') html += '<div style="font-size:12px;color:#e74c3c;margin-bottom:6px">&#9888; '+p.zalecenieNieprawidl.substring(0,60)+(p.zalecenieNieprawidl.length>60?'…':'')+'</div>';
+    if (p.infoKolejnySerwis && p.infoKolejnySerwis!=='-') html += '<div style="font-size:12px;color:var(--red2);margin-bottom:6px">🔧 '+p.infoKolejnySerwis.substring(0,60)+(p.infoKolejnySerwis.length>60?'…':'')+'</div>';
     html += '<div style="display:flex;align-items:center;justify-content:space-between">';
     html += '<div style="font-size:13px;font-weight:700;color:'+kolor+'">'+ico+' '+(p.wynik||'-')+'</div>';
     html += '<span style="font-size:11px;color:var(--red2)">Szczegóły →</span></div></div>';
@@ -2006,7 +2096,7 @@ function panelShowObiekt(nazwa) {
 
 function panelBackToList() {
   _panelObiekt = null;
-  panelShowLista();
+  panelShowLista(_panelListaCache);
 }
 
 // ===================== ZDJĘCIA =====================
