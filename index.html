@@ -1494,7 +1494,7 @@ function delProto(id) {
   }
   // Wymaga PIN admina
   const pin = prompt('Podaj PIN administratora aby usunąć protokół:');
-  if (pin !== localStorage.getItem('adminPin')) {
+  if (pin !== ADMIN_PIN) {
     toast('❌ Nieprawidłowy PIN');
     return;
   }
