@@ -1373,7 +1373,9 @@ function clearHistory() {
 
 // ===================== MODAL DETAIL =====================
 function showDetail(id) {
-  const p = allProtokoly.find(x => String(x.id) === String(id)) || protokoly.find(x => String(x.id) === String(id));
+  const p = allProtokoly.find(x => String(x.id) === String(id))
+         || protokoly.find(x => String(x.id) === String(id))
+         || _panelProtosCache.find(x => String(x.id) === String(id));
   if (!p) return;
   const typ = p.typ;
   const allItems = getCL()[typ] || getCL().Inne || CL[typ] || CL.Inne;
@@ -1855,6 +1857,7 @@ let _panelTyp   = '';
 let _panelWynik = '';
 let _panelObiekt = null;
 let _panelListaCache = null; // cache listy obiektów
+let _panelProtosCache = []; // cache protokołów aktualnie otwartego obiektu
 
 // ===================== PANEL (LAZY LOAD) =====================
 
@@ -2070,6 +2073,7 @@ function panelShowObiekt(nazwa) {
 }
 
 function renderObiektProtos(nazwa, protos) {
+  _panelProtosCache = protos; // zapisz do cache żeby showDetail mogło znaleźć
   const el = document.getElementById('panelProtoView');
   const sprawne = protos.filter(p => (p.wynik||'').startsWith('Sprawny') && !(p.wynik||'').includes('uwag')).length;
   const uwagi = protos.filter(p => (p.wynik||'').includes('uwag')).length;
