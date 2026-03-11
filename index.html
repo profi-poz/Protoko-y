@@ -2603,15 +2603,12 @@ function _doGeneratePDF(p) {
     doc.rect(0, 0, 5, 297, 'F');
   }
   function checkmark(cx, cy) {
-    // Kwadrat obramowanie
-    doc.setDrawColor(60, 60, 60);
-    doc.setLineWidth(0.4);
-    doc.setFillColor(255, 255, 255);
-    doc.rect(cx, cy - 3.2, 3.8, 3.8, 'FD');
-    // Haczyk w srodku
-    doc.setDrawColor(30, 130, 30);
-    doc.setLineWidth(0.6);
-    doc.lines([[1.0, 1.2],[1.6,-1.8]], cx + 0.5, cy - 0.5);
+    // Zielone kółko z ptaszkiem
+    doc.setFillColor(46, 204, 113);
+    doc.circle(cx + 2, cy - 1.5, 2.5, 'F');
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.7);
+    doc.lines([[1.0, 1.1],[1.5,-1.6]], cx + 0.9, cy - 0.4);
   }
   function hline(yy, r, g, b, lw) {
     doc.setDrawColor(r||200, g||200, b||200);
@@ -2839,7 +2836,7 @@ function _doGeneratePDF(p) {
   modele.forEach(function(model) {
     checkY(8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('\u2714', colX[0]+1, y); // ✔
+    checkmark(colX[0]+1, y);
     doc.text('Centrala', colX[1]+1, y);
     var mL = doc.splitTextToSize(pl(model), colW[2]-3);
     doc.text(mL, colX[2]+1, y);
@@ -2871,8 +2868,7 @@ function _doGeneratePDF(p) {
   } else {
     okItems.forEach(function(item) {
       checkY(8);
-      doc.setFont('helvetica','normal'); doc.setFontSize(10);
-      doc.text('\u2705', ML, y); // ✅
+      checkmark(ML, y);
       var lines2 = doc.splitTextToSize(pl(item.l), TW - 8);
       doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
       doc.text(lines2, ML + 5.5, y);
