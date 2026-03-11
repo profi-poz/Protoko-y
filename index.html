@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-title" content="Profi-Poż">
 <meta name="theme-color" content="#e8360a">
 <link rel="manifest" href="manifest.json">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="apple-touch-icon" href="data:image/png;base64,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">
 <title>Profi-Poż | Protokoły</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1454,365 +1453,6 @@ function showDetail(id) {
 }
 
 
-// ===================== GENERUJ PDF =====================
-
-function generatePDF(id) {
-  const p = allProtokoly.find(x => String(x.id) === String(id))
-         || protokoly.find(x => String(x.id) === String(id))
-         || _panelProtosCache.find(x => String(x.id) === String(id));
-  if (!p) { toast('❌ Nie znaleziono protokołu'); return; }
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-  // Czcionki i kolory
-  const RED = [180, 30, 30];
-  const BLACK = [20, 20, 20];
-  const GRAY = [100, 100, 100];
-  const LGRAY = [240, 240, 240];
-  const W = 210; // szerokość A4
-  const ML = 20; // margin left
-  const MR = 20; // margin right
-  const TW = W - ML - MR; // text width
-  let y = 20;
-
-  function addPage() {
-    doc.addPage();
-    y = 20;
-  }
-
-  function checkY(need) {
-    if (y + need > 275) addPage();
-  }
-
-  function hline(yy, r, g, b) {
-    doc.setDrawColor(r||200, g||200, b||200);
-    doc.setLineWidth(0.3);
-    doc.line(ML, yy, W - MR, yy);
-  }
-
-  // ── NAGŁÓWEK ──────────────────────────────────────────
-  // Czerwony pasek z lewej
-  doc.setFillColor(...RED);
-  doc.rect(0, 0, 6, 297, 'F');
-
-  // Logo/firma - lewa kolumna
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...RED);
-  doc.text('PROFI-POŻ Sp. z o.o.', ML, y);
-  y += 5.5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...GRAY);
-  doc.text('42-600 Tarnowskie Góry, ul. Nakielska 59', ML, y);
-  y += 4;
-  doc.text('tel. +48 32 285 40 00', ML, y);
-
-  // Tytuł - wyśrodkowany
-  const TYP_NAMES = {
-    SSP: 'SYSTEMU SYGNALIZACJI POŻARU',
-    DSO: 'DŹWIĘKOWEGO SYSTEMU OSTRZEGAWCZEGO',
-    SO_EL: 'SYSTEMU ODDYMIANIA ELEKTRYCZNEGO',
-    SO_PN: 'SYSTEMU ODDYMIANIA PNEUMATYCZNEGO',
-    PSP: 'SYSTEMU SYGNALIZACJI POŻARU',
-  };
-  const typName = TYP_NAMES[p.typ] || p.typ;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...BLACK);
-  doc.text('PROTOKÓŁ PRZEGLĄDU I KONSERWACJI', W/2, 18, { align: 'center' });
-  doc.setFontSize(13);
-  doc.text(typName, W/2, 25, { align: 'center' });
-
-  // Linia pod nagłówkiem
-  y = 32;
-  doc.setDrawColor(...RED);
-  doc.setLineWidth(0.8);
-  doc.line(ML, y, W - MR, y);
-  y += 8;
-
-  // ── DANE PODSTAWOWE (tabela 2-kolumnowa) ─────────────
-  function row2(label, value, yy) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...GRAY);
-    doc.text(label + ':', ML, yy);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...BLACK);
-    // Zawijaj długie wartości
-    const lines = doc.splitTextToSize(String(value || '-'), TW - 45);
-    doc.text(lines, ML + 45, yy);
-    return yy + (lines.length * 5) + 1;
-  }
-
-  doc.setFillColor(...LGRAY);
-  doc.rect(ML, y - 4, TW, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...RED);
-  doc.text('I. INFORMACJE OGÓLNE', ML + 2, y);
-  y += 5;
-
-  y = row2('Obiekt', p.obiekt, y);
-  if (p.lokalizacjaCentral) y = row2('Adres / Lokalizacja', p.lokalizacjaCentral, y);
-  y = row2('Rodzaj przeglądu', (p.rodzaj||'').charAt(0).toUpperCase() + (p.rodzaj||'').slice(1), y);
-  y = row2('Data przeglądu', p.data, y);
-  if (p.dataNastepna) y = row2('Data następnego przeglądu', p.dataNastepna, y);
-  y = row2('Serwisant', p.serwisant, y);
-  if (p.uprawnienia) y = row2('Nr uprawnień', p.uprawnienia, y);
-  y += 4;
-
-  // ── SPECYFIKACJA SYSTEMU ──────────────────────────────
-  checkY(30);
-  doc.setFillColor(...LGRAY);
-  doc.rect(ML, y - 4, TW, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...RED);
-  doc.text('Specyfikacja systemu:', ML + 2, y);
-  y += 5;
-
-  if (p.modelCentrali) y = row2('Model centrali', p.modelCentrali, y);
-  if (p.iloscCentral) y = row2('Ilość central', p.iloscCentral, y);
-  if (p.steruje) y = row2('Steruje urządzeniami', p.steruje, y);
-  if (p.nadzoruje) y = row2('Nadzoruje urządzenia', p.nadzoruje, y);
-  if (p.ksiazka) y = row2('Książka eksploatacji', p.ksiazka, y);
-  y += 4;
-
-  // ── KLAUZULE PRAWNE ───────────────────────────────────
-  checkY(40);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...GRAY);
-  const klauzule = [
-    'Instalację wykonano oraz sprawdzono zgodnie z wymaganiami:',
-    '• PKN-CEN/TS 54-14 Systemy sygnalizacji pożarowej. Część 14: Wytyczne planowania, projektowania, odbioru, eksploatacji i konserwacji',
-    '• Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 7 czerwca 2010 r. w sprawie ochrony',
-    '  przeciwpożarowej budynków, innych obiektów budowlanych i terenów - DZ. U. 2023 poz. 822 ze zmianami',
-    '• Rozporządzenie Ministra Infrastruktury z dnia 15 kwietnia 2022r w sprawie warunków technicznych jakim',
-    '  powinny odpowiadać budynki i ich usytuowanie (Tj. Dz.U.2022r. poz. 1225)',
-  ];
-  klauzule.forEach(line => {
-    doc.text(line, ML, y);
-    y += 3.8;
-  });
-  y += 4;
-
-  // ── WYKAZ ELEMENTÓW SYSTEMU ───────────────────────────
-  checkY(30);
-  doc.setFillColor(...LGRAY);
-  doc.rect(ML, y - 4, TW, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...RED);
-  doc.text('II. WYKAZ ELEMENTÓW SYSTEMU', ML + 2, y);
-  y += 6;
-
-  // Nagłówek tabeli
-  const cols = [10, 55, 40, 35, 30]; // szerokości kolumn
-  const colX = [ML];
-  cols.forEach((c, i) => colX.push(colX[i] + c));
-  const headers = ['✓', 'Rodzaj urządzenia', 'Producent', 'Typ', 'Lokalizacja'];
-
-  doc.setFillColor(220, 220, 220);
-  doc.rect(ML, y - 4, TW, 5.5, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(...BLACK);
-  headers.forEach((h, i) => doc.text(h, colX[i] + 1, y));
-  y += 3;
-  hline(y, ...RED);
-  y += 3;
-
-  // Wiersze - centrala
-  const modele = (p.modelCentrali || '-').split(/[,;/
-]/).map(m => m.trim()).filter(Boolean);
-  modele.forEach(model => {
-    checkY(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...BLACK);
-    doc.text('☑', colX[0] + 1, y);
-    doc.text('Centrala', colX[1] + 1, y);
-    doc.text('POLON-ALFA', colX[2] + 1, y);
-    const modelLines = doc.splitTextToSize(model, cols[3] - 2);
-    doc.text(modelLines, colX[3] + 1, y);
-    const lokLines = doc.splitTextToSize(p.lokalizacjaCentral || '-', cols[4] - 2);
-    doc.text(lokLines, colX[4] + 1, y);
-    hline(y + 2);
-    y += Math.max(modelLines.length, lokLines.length) * 4.5 + 2;
-  });
-  y += 4;
-
-  // ── ZAKRES PRZEGLĄDU (lista kontrolna) ───────────────
-  checkY(20);
-  doc.setFillColor(...LGRAY);
-  doc.rect(ML, y - 4, TW, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...RED);
-  doc.text('III. ZAKRES PRZEGLĄDU', ML + 2, y);
-  y += 6;
-
-  // Tylko zaznaczone OK z listy kontrolnej
-  const allItems = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne;
-  const scopeMap = { kwartalny:['all','k'], polroczny:['all','k','p'], roczny:['all','k','p','r'], awaryjny:[], odbiorowy:['all','serwis'], konserwacja:['all','serwis'] };
-  const rodzajKey = (p.rodzaj||'roczny').toLowerCase().replace(/ó/g,'o').replace(/ę/g,'e').replace(/ą/g,'a').replace('półroczny','polroczny');
-  const allowedScopes = scopeMap[rodzajKey] || ['all','k','p','r'];
-  const items = (allItems||[]).filter(item => allowedScopes.includes(item.scope||'all'));
-  const okItems = items.filter(item => p.checklist?.[item.id] === 'ok');
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...BLACK);
-
-  if (okItems.length === 0) {
-    doc.setTextColor(...GRAY);
-    doc.text('Brak zaznaczonych pozycji w liście kontrolnej', ML, y);
-    y += 6;
-  } else {
-    okItems.forEach(item => {
-      checkY(7);
-      const lines = doc.splitTextToSize('☑  ' + item.l, TW - 4);
-      doc.text(lines, ML, y);
-      y += lines.length * 4.5 + 1;
-    });
-  }
-  y += 4;
-
-  // ── ANALIZA PRZEGLĄDU ─────────────────────────────────
-  checkY(20);
-  doc.setFillColor(...LGRAY);
-  doc.rect(ML, y - 4, TW, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...RED);
-  doc.text('IV. ANALIZA PRZEGLĄDU', ML + 2, y);
-  y += 6;
-
-  function sekcja(label, value) {
-    checkY(15);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...GRAY);
-    doc.text(label + ':', ML, y);
-    y += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...BLACK);
-    const txt = value && value.trim() && value.trim() !== '-' ? value.trim() : 'brak';
-    const lines = doc.splitTextToSize(txt, TW);
-    checkY(lines.length * 4.5 + 4);
-    doc.text(lines, ML + 4, y);
-    y += lines.length * 4.5 + 5;
-  }
-
-  sekcja('Wykaz stwierdzonych uszkodzeń', p.usterki);
-  sekcja('Zalecenia do uszkodzeń', p.zalecenia || p.zalecenieUsterek);
-  sekcja('Wykaz stwierdzonych nieprawidłowości', p.nieprawidlowosci);
-  sekcja('Zalecenia do nieprawidłowości', p.zalecenieNieprawidl);
-  sekcja('Wykaz użytych części zamiennych', p.czesciZamienne || '');
-  y += 2;
-
-  // ── WNIOSKI ───────────────────────────────────────────
-  checkY(30);
-  doc.setFillColor(...LGRAY);
-  doc.rect(ML, y - 4, TW, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...RED);
-  doc.text('V. WNIOSKI', ML + 2, y);
-  y += 8;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...BLACK);
-  doc.text('System Sygnalizacji Pożaru jest:', ML, y);
-  y += 6;
-
-  // Wynik - pogrubiony
-  const wynikText = p.wynik || 'Sprawny / spełnia wymogi';
-  const isSprawny = wynikText.toLowerCase().includes('sprawny') && !wynikText.toLowerCase().includes('nie');
-  const isUwagi = wynikText.toLowerCase().includes('uwag');
-  const isNie = wynikText.toLowerCase().startsWith('nie');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  if (isNie) doc.setTextColor(200, 40, 40);
-  else if (isUwagi) doc.setTextColor(180, 100, 0);
-  else doc.setTextColor(40, 140, 40);
-
-  // Wyciągnij pierwszą część (Sprawny/Nie sprawny)
-  const wynikParts = wynikText.split('/');
-  doc.text('• ' + wynikParts[0].trim(), ML + 4, y);
-  if (wynikParts[1]) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...BLACK);
-    y += 5;
-    doc.text('  oraz ' + wynikParts[1].trim(), ML + 4, y);
-  }
-  y += 8;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...BLACK);
-  const zmianTekst = (isNie || isUwagi)
-    ? 'W obiekcie stwierdzono usterki/nieprawidłowości wpływające na pracę systemu.'
-    : 'W obiekcie nie stwierdzono zmian konstrukcyjnych wpływających na pracę systemu.';
-  doc.text(zmianTekst, ML, y);
-  y += 10;
-
-  // Uwagi do inwestora
-  if (p.uwagi && p.uwagi.trim() && p.uwagi.trim() !== '-') {
-    checkY(15);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...GRAY);
-    doc.text('Uwagi do inwestora:', ML, y);
-    y += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...BLACK);
-    const uLines = doc.splitTextToSize(p.uwagi.trim(), TW);
-    doc.text(uLines, ML + 4, y);
-    y += uLines.length * 4.5 + 4;
-  }
-
-  // Info kolejny serwis
-  if (p.infoKolejnySerwis && p.infoKolejnySerwis.trim() && p.infoKolejnySerwis.trim() !== '-') {
-    checkY(15);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...GRAY);
-    doc.text('Informacje dla kolejnego serwisanta:', ML, y);
-    y += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...BLACK);
-    const iLines = doc.splitTextToSize(p.infoKolejnySerwis.trim(), TW);
-    doc.text(iLines, ML + 4, y);
-    y += iLines.length * 4.5 + 4;
-  }
-
-  // ── STOPKA ────────────────────────────────────────────
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...GRAY);
-    doc.text('Wydrukowano z aplikacji Profi-Poż', ML, 290);
-    doc.text('Strona ' + i + ' z ' + pageCount, W - MR, 290, { align: 'right' });
-    hline(286);
-  }
-
-  // Zapisz PDF
-  const nazwa = (p.obiekt || 'protokol').replace(/[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ ]/g, '_').substring(0, 40);
-  const data = (p.data || '').replace(/-/g, '');
-  doc.save('Protokol_' + nazwa + '_' + data + '.pdf');
-  toast('✅ PDF wygenerowany!');
-}
-
 function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
 document.getElementById('detailModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
@@ -2772,7 +2412,247 @@ function loadObiektyManual() {
       <button class="pin-btn" onclick="pinKey('0')">0</button>
       <button class="pin-btn pin-del" onclick="pinDel()">⌫</button>
     </div>
-  </div>
 </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function generatePDF(id) {
+  const p = allProtokoly.find(x => String(x.id) === String(id))
+         || protokoly.find(x => String(x.id) === String(id))
+         || _panelProtosCache.find(x => String(x.id) === String(id));
+  if (!p) { toast('Nie znaleziono protokolu'); return; }
+  if (!window.jspdf) { toast('Ladowanie biblioteki PDF, sprobuj za chwile...'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const RED = [180, 30, 30];
+  const BLACK = [20, 20, 20];
+  const GRAY = [110, 110, 110];
+  const LGRAY = [238, 238, 238];
+  const W = 210, ML = 20, MR = 20, TW = 170;
+  let y = 20;
+
+  function newPage() { doc.addPage(); y = 20; }
+  function checkY(need) { if (y + need > 275) newPage(); }
+  function hline(yy, col) {
+    col = col || GRAY;
+    doc.setDrawColor(col[0], col[1], col[2]);
+    doc.setLineWidth(0.3);
+    doc.line(ML, yy, W - MR, yy);
+  }
+
+  // Pasek boczny czerwony
+  doc.setFillColor(RED[0], RED[1], RED[2]);
+  doc.rect(0, 0, 5, 297, 'F');
+
+  // Naglowek
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(RED[0], RED[1], RED[2]);
+  doc.text('PROFI-POZ Sp. z o.o.', ML, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
+  doc.text('42-600 Tarnowskie Gory, ul. Nakielska 59', ML, y + 5);
+
+  var TYP_NAMES = {
+    SSP: 'SYSTEMU SYGNALIZACJI POZARU',
+    DSO: 'DZWIEKOWEGO SYSTEMU OSTRZEGAWCZEGO',
+    SO_EL: 'SYSTEMU ODDYMIANIA ELEKTRYCZNEGO',
+    SO_PN: 'SYSTEMU ODDYMIANIA PNEUMATYCZNEGO'
+  };
+  var typName = TYP_NAMES[p.typ] || p.typ;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+  doc.text('PROTOKOL PRZEGLADU I KONSERWACJI', W/2, 16, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text(typName, W/2, 23, { align: 'center' });
+
+  y = 30;
+  doc.setDrawColor(RED[0], RED[1], RED[2]);
+  doc.setLineWidth(0.8);
+  doc.line(ML, y, W - MR, y);
+  y += 8;
+
+  // Sekcja header
+  function sectionHead(title) {
+    checkY(14);
+    doc.setFillColor(LGRAY[0], LGRAY[1], LGRAY[2]);
+    doc.rect(ML, y - 4, TW, 6.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(RED[0], RED[1], RED[2]);
+    doc.text(title, ML + 2, y);
+    y += 6;
+  }
+
+  // Wiersz label: value
+  function row(label, value) {
+    if (!value || value === '-') return;
+    checkY(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
+    doc.text(label + ':', ML, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+    var lines = doc.splitTextToSize(String(value), TW - 48);
+    doc.text(lines, ML + 48, y);
+    y += lines.length * 4.8 + 0.5;
+  }
+
+  // I. Informacje ogolne
+  sectionHead('I. INFORMACJE OGOLNE');
+  row('Obiekt', p.obiekt);
+  if (p.lokalizacjaCentral) row('Adres / Lokalizacja', p.lokalizacjaCentral);
+  row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
+  row('Data przegladu', p.data);
+  if (p.dataNastepna) row('Data nastepnego przegladu', p.dataNastepna);
+  row('Serwisant', p.serwisant);
+  if (p.uprawnienia) row('Nr uprawnien', p.uprawnienia);
+  y += 3;
+
+  // Specyfikacja
+  sectionHead('Specyfikacja systemu:');
+  if (p.modelCentrali) row('Model centrali', p.modelCentrali);
+  if (p.iloscCentral) row('Ilosc central', p.iloscCentral);
+  if (p.steruje) row('Steruje urzadzeniami', p.steruje);
+  if (p.nadzoruje) row('Nadzoruje urzadzenia', p.nadzoruje);
+  if (p.ksiazka) row('Ksiazka eksploatacji', p.ksiazka);
+  y += 3;
+
+  // Klauzule prawne
+  checkY(28);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
+  var klauzule = [
+    'Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:',
+    '- PKN-CEN/TS 54-14 Systemy sygnalizacji pozarowej. Czesc 14: Wytyczne planowania, projektowania,',
+    '  odbioru, eksploatacji i konserwacji',
+    '- Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji z dnia 7 czerwca 2010 r.',
+    '  w sprawie ochrony przeciwpozarowej budynkow - DZ.U. 2023 poz. 822 ze zmianami',
+    '- Rozporzadzenie Ministra Infrastruktury z dnia 15 kwietnia 2022r (Tj. Dz.U.2022r. poz. 1225)',
+  ];
+  klauzule.forEach(function(line) { doc.text(line, ML, y); y += 3.8; });
+  y += 5;
+
+  // II. Wykaz elementow
+  sectionHead('II. WYKAZ ELEMENTOW SYSTEMU');
+  var colX = [ML, ML+10, ML+65, ML+105, ML+140];
+  var colW = [10, 55, 40, 35, 30];
+  var headers2 = ['', 'Rodzaj urzadzenia', 'Producent', 'Typ', 'Lokalizacja'];
+  doc.setFillColor(220,220,220);
+  doc.rect(ML, y-4, TW, 5.5, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  headers2.forEach(function(h,i){ doc.text(h, colX[i]+1, y); });
+  y += 2; hline(y); y += 3;
+
+  var modele = (p.modelCentrali || '-').split(/[;\/\n]/).map(function(m){ return m.trim(); }).filter(Boolean);
+  modele.forEach(function(model) {
+    checkY(7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('[x]', colX[0]+1, y);
+    doc.text('Centrala', colX[1]+1, y);
+    var mLines = doc.splitTextToSize(model, colW[3]-2);
+    doc.text(mLines, colX[3]+1, y);
+    var lLines = doc.splitTextToSize(p.lokalizacjaCentral||'', colW[4]-2);
+    doc.text(lLines, colX[4]+1, y);
+    y += Math.max(mLines.length, lLines.length, 1) * 4.5 + 1;
+    hline(y-1);
+  });
+  y += 5;
+
+  // III. Zakres przegladu
+  sectionHead('III. ZAKRES PRZEGLADU');
+  var allItems2 = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
+  var scopeMap2 = {
+    kwartalny:['all','k'], polroczny:['all','k','p'], roczny:['all','k','p','r'],
+    awaryjny:[], odbiorowy:['all','serwis'], konserwacja:['all','serwis']
+  };
+  var rk = (p.rodzaj||'roczny').toLowerCase()
+    .replace(/o\u0301/g,'o').replace(/e\u0328/g,'e').replace(/a\u0328/g,'a')
+    .replace('p\u00f3\u0142roczny','polroczny').replace('\u00f3','o').replace('\u0119','e').replace('\u0105','a');
+  var allowed = scopeMap2[rk] || ['all','k','p','r'];
+  var okItems = allItems2.filter(function(item) {
+    return allowed.includes(item.scope||'all') && p.checklist && p.checklist[item.id] === 'ok';
+  });
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  if (okItems.length === 0) {
+    doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
+    doc.text('Brak zaznaczonych pozycji listy kontrolnej', ML, y); y += 6;
+  } else {
+    okItems.forEach(function(item) {
+      checkY(7);
+      var lines2 = doc.splitTextToSize('[x]  ' + item.l, TW - 4);
+      doc.text(lines2, ML, y);
+      y += lines2.length * 4.5 + 1;
+    });
+  }
+  y += 5;
+
+  // IV. Analiza przegladu
+  sectionHead('IV. ANALIZA PRZEGLADU');
+  function sekcja2(label, value) {
+    checkY(14);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
+    doc.text(label + ':', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    var txt = (value && value.trim() && value.trim() !== '-') ? value.trim() : 'brak';
+    var lines3 = doc.splitTextToSize(txt, TW - 4);
+    checkY(lines3.length * 4.5 + 4);
+    doc.text(lines3, ML + 4, y);
+    y += lines3.length * 4.5 + 5;
+  }
+  sekcja2('Wykaz stwierdzonych uszkodzen', p.usterki);
+  sekcja2('Zalecenia do uszkodzen', p.zalecenia || p.zalecenieUsterek);
+  sekcja2('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
+  sekcja2('Zalecenia do nieprawidlowosci', p.zalecenieNieprawidl);
+  sekcja2('Wykaz uzytych czesci zamiennych', p.czesciZamienne || '');
+
+  // V. Wnioski
+  sectionHead('V. WNIOSKI');
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  doc.text('System jest:', ML, y); y += 6;
+  var wynikText = p.wynik || 'Sprawny';
+  var isNie = wynikText.toLowerCase().startsWith('nie');
+  var isUwagi = wynikText.toLowerCase().indexOf('uwag') > -1;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  if (isNie) doc.setTextColor(200,40,40);
+  else if (isUwagi) doc.setTextColor(180,100,0);
+  else doc.setTextColor(40,140,40);
+  doc.text('• ' + wynikText, ML + 4, y); y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  doc.text(isNie || isUwagi
+    ? 'W obiekcie stwierdzono usterki/nieprawidlowosci wplywajace na prace systemu.'
+    : 'W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y);
+  y += 8;
+
+  if (p.uwagi && p.uwagi.trim() && p.uwagi.trim() !== '-') {
+    sekcja2('Uwagi do inwestora', p.uwagi);
+  }
+  if (p.infoKolejnySerwis && p.infoKolejnySerwis.trim() && p.infoKolejnySerwis.trim() !== '-') {
+    sekcja2('Informacje dla kolejnego serwisanta', p.infoKolejnySerwis);
+  }
+
+  // Stopka
+  var pageCount = doc.internal.getNumberOfPages();
+  for (var i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
+    doc.text('Wydrukowano z aplikacji Profi-Poz', ML, 290);
+    doc.text('Strona ' + i + ' z ' + pageCount, W - MR, 290, { align: 'right' });
+    hline(286);
+  }
+
+  var nazwa2 = (p.obiekt || 'protokol').replace(/[^a-zA-Z0-9 ]/g, '_').substring(0, 40);
+  var data2 = (p.data || '').replace(/-/g, '');
+  doc.save('Protokol_' + nazwa2 + '_' + data2 + '.pdf');
+  toast('PDF wygenerowany!');
+}
+</script>
 </body>
 </html>
