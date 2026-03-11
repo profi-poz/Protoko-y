@@ -698,6 +698,8 @@ window.addEventListener('DOMContentLoaded', function() {
 const SK_DRAFT = 'profipoz_draft';
 const SK_DRAFTS = 'profipoz_drafts';
 let protokoly = JSON.parse(localStorage.getItem(SK) || '[]');
+let _biuroUnlocked = false; // raz na sesję dla profilu Biuro
+let _biuroPendingAction = null; // co wykonać po odblokowaniu
 let serverProtokoly = []; // protokoły z serwera (wszystkich użytkowników)
 let allProtokoly = []; // połączone lokalne + serwer (bez duplikatów)
 let _obiektyCache = JSON.parse(localStorage.getItem('profipoz_obiekty') || '[]'); // cache obiektów
@@ -1448,14 +1450,14 @@ function showDetail(id) {
       (p.uprawnieniaPrzedst ? 'Nr uprawnień: <b style="color:var(--text)">' + p.uprawnieniaPrzedst + '</b>' : '') +
       '</div>' : ''}
     <div style="margin-top:16px;display:flex;gap:10px;">
-      <button class="btn btn-red" style="flex:1;margin:0" onclick="exportOne(${p.id})">📊 Excel</button>
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="generatePDF(${p.id})">🖨️ PDF</button>
+      <button class="btn btn-red" style="flex:1;margin:0" onclick="biuroPinCheck(()=>exportOne(${p.id}))">📊 Excel</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="biuroPinCheck(()=>generatePDF(${p.id}))">🖨️ PDF</button>
       ${p.photos && p.photos.length ? `<div style="margin-top:14px">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📷 Zdjęcia (${p.photos.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${p.photos.map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${src}','_blank')">`).join('')}</div>
     </div>` : ''}
     ${p.viewUrl ? `<button class="btn btn-ghost" style="flex:1;margin:0;color:var(--accent)" onclick="showLinkModal('${p.viewUrl}','${p.nr||''}')">🔗 Link</button>` : ''}
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="delProto('${p.id}')">🗑️ Usuń</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="biuroPinCheck(()=>delProto('${p.id}'))">🗑️ Usuń</button>
     </div>
   `;
   document.getElementById('detailModal').classList.add('open');
@@ -1499,18 +1501,7 @@ async function syncFromServer() {
 }
 
 function delProto(id) {
-  // Sprawdź czy to protokół lokalny czy serwerowy
-  const isLocal = protokoly.some(p => String(p.id) === String(id));
-  if (!isLocal) {
-    toast('⚠️ Można usuwać tylko własne protokoły');
-    return;
-  }
-  // Wymaga PIN admina
-  const pin = prompt('Podaj PIN administratora aby usunąć protokół:');
-  if (pin !== ADMIN_PIN) {
-    toast('❌ Nieprawidłowy PIN');
-    return;
-  }
+  if (!confirm('Usunąć ten protokół?')) return;
   protokoly = protokoly.filter(p => String(p.id) !== String(id));
   localStorage.setItem(SK, JSON.stringify(protokoly));
   allProtokoly = allProtokoly.filter(p => String(p.id) !== String(id));
@@ -1555,7 +1546,7 @@ function buildWS(p) {
 }
 
 function exportOne(id) {
-  const p = protokoly.find(x=>x.id===id);
+  const p = allProtokoly.find(x=>String(x.id)===String(id)) || protokoly.find(x=>String(x.id)===String(id));
   if (!p) return;
   const ws = XLSX.utils.aoa_to_sheet(buildWS(p));
   ws['!cols'] = [{wch:24},{wch:34},{wch:34},{wch:14}];
@@ -2181,6 +2172,8 @@ function resetPhotos() {
 function serwerPinCheck() {
   if (adminUnlocked) { showScreen("serwer"); document.getElementById("nb-serwer").classList.add("active"); return; }
   _pinTarget = "serwer";
+  document.getElementById('pinModalTitle').textContent = 'Panel Admin';
+  document.getElementById('pinModalSubtitle').textContent = 'Wprowadź kod PIN';
   document.getElementById("pinDots").innerHTML = "";
   document.getElementById("pinError").style.display = "none";
   window._pinVal = "";
@@ -2190,9 +2183,27 @@ function serwerPinCheck() {
 
 // ===================== PIN ADMIN =====================
 const ADMIN_PIN = '0705';
+const BIURO_PIN = '8105';
 let adminUnlocked = false;
 
-let _pinTarget = 'admin'; // 'admin' lub 'serwer'
+let _pinTarget = 'admin'; // 'admin', 'serwer', 'biuro'
+
+// ===================== PIN BIURO =====================
+function biuroPinCheck(actionCallback) {
+  if (_biuroUnlocked) {
+    actionCallback();
+    return;
+  }
+  _biuroPendingAction = actionCallback;
+  _pinTarget = 'biuro';
+  document.getElementById('pinModalTitle').textContent = 'Profil Biuro';
+  document.getElementById('pinModalSubtitle').textContent = 'Funkcja dostępna dla profilu Biuro';
+  document.getElementById('pinDots').innerHTML = '';
+  document.getElementById('pinError').style.display = 'none';
+  window._pinVal = '';
+  renderPinDots();
+  document.getElementById('pinModal').classList.add('open');
+}
 
 function adminPinCheck() {
   if (adminUnlocked) {
@@ -2201,6 +2212,8 @@ function adminPinCheck() {
     return;
   }
   _pinTarget = 'admin';
+  document.getElementById('pinModalTitle').textContent = 'Panel Admin';
+  document.getElementById('pinModalSubtitle').textContent = 'Wprowadź kod PIN';
   document.getElementById('pinDots').innerHTML = '';
   document.getElementById('pinError').style.display = 'none';
   window._pinVal = '';
@@ -2231,6 +2244,27 @@ function renderPinDots() {
 }
 
 function checkPin() {
+  if (_pinTarget === 'biuro') {
+    if (window._pinVal === BIURO_PIN) {
+      _biuroUnlocked = true;
+      document.getElementById('pinModal').classList.remove('open');
+      document.getElementById('pinModalTitle').textContent = 'Panel Admin';
+      document.getElementById('pinModalSubtitle').textContent = 'Wprowadź kod PIN';
+      toast('🔓 Profil Biuro odblokowany na tę sesję');
+      if (_biuroPendingAction) { _biuroPendingAction(); _biuroPendingAction = null; }
+    } else {
+      document.getElementById('pinError').style.display = 'block';
+      document.getElementById('pinDots').innerHTML = [0,1,2,3].map(() =>
+        `<div style="width:18px;height:18px;border-radius:50%;border:2px solid #e74c3c;background:#e74c3c;"></div>`
+      ).join('');
+      setTimeout(() => {
+        window._pinVal = '';
+        renderPinDots();
+        document.getElementById('pinError').style.display = 'none';
+      }, 900);
+    }
+    return;
+  }
   if (window._pinVal === ADMIN_PIN) {
     adminUnlocked = true;
     document.getElementById('pinModal').classList.remove('open');
@@ -2492,11 +2526,49 @@ function generatePDF(id) {
          || protokoly.find(x => String(x.id) === String(id))
          || _panelProtosCache.find(x => String(x.id) === String(id));
   if (!p) { toast('Nie znaleziono protokolu'); return; }
-  toast('Przygotowywanie PDF...');
-  loadJsPDF(function(err) {
-    if (err) { toast('Blad PDF: ' + err.message); return; }
-    _doGeneratePDF(p);
+
+  // Pokaż dialog wyboru następnego przeglądu
+  showNextReviewPicker(p, function(months) {
+    if (months > 0 && p.data) {
+      const d = new Date(p.data);
+      d.setMonth(d.getMonth() + months);
+      const miesiac = String(d.getMonth() + 1).padStart(2, '0');
+      const rok = d.getFullYear();
+      p._dataNastepnaPDF = rok + '-' + miesiac; // tylko rok-miesiąc
+    } else {
+      p._dataNastepnaPDF = null;
+    }
+    toast('Przygotowywanie PDF...');
+    loadJsPDF(function(err) {
+      if (err) { toast('Blad PDF: ' + err.message); return; }
+      _doGeneratePDF(p);
+    });
   });
+}
+
+function showNextReviewPicker(p, callback) {
+  const existing = document.getElementById('nextReviewModal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'nextReviewModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:28px 24px;max-width:320px;width:100%;text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">📅</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px">Następny przegląd</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Kiedy zaplanować kolejny przegląd?</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="document.getElementById('nextReviewModal')._cb(3)" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;cursor:pointer">Za 3 miesiące</button>
+        <button onclick="document.getElementById('nextReviewModal')._cb(6)" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;cursor:pointer">Za 6 miesięcy</button>
+        <button onclick="document.getElementById('nextReviewModal')._cb(12)" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;cursor:pointer">Za 12 miesięcy</button>
+        <button onclick="document.getElementById('nextReviewModal')._cb(0)" style="padding:10px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer">Pomiń</button>
+      </div>
+    </div>`;
+  modal._cb = function(months) {
+    modal.remove();
+    callback(months);
+  };
+  document.body.appendChild(modal);
 }
 
 function _doGeneratePDF(p) {
@@ -2604,7 +2676,7 @@ function _doGeneratePDF(p) {
   doc.text('42-600 Tarnowskie Gory, ul. Nakielska 59', ML, 26);
 
   // Logo firmy
-  try { doc.addImage(LOGO_B64, 'PNG', W - MR - 28, 10, 26, 26); } catch(e) {}
+  try { doc.addImage(LOGO_B64, 'PNG', W - MR - 28, 6, 24, 24); } catch(e) {}
 
   // Linia pod naglowkiem
   doc.setDrawColor(RED[0], RED[1], RED[2]);
@@ -2642,11 +2714,13 @@ function _doGeneratePDF(p) {
     return yy + 13;
   }
 
+  var dataNastepna = p._dataNastepnaPDF || p.dataNastepna || '-';
+
   var ty = by + 10;
   ty = titleRow('Obiekt', p.obiekt, ty);
   ty = titleRow('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '', ty);
   ty = titleRow('Data przegladu', p.data, ty);
-  titleRow('Data nastepnego przegladu', p.dataNastepna || '-', ty);
+  titleRow('Data nastepnego przegladu', dataNastepna, ty);
 
   // Stopka strony tytulowej
   doc.setFont('helvetica', 'normal');
@@ -2677,7 +2751,7 @@ function _doGeneratePDF(p) {
   if (p.lokalizacjaCentral) row('Adres / Lokalizacja', p.lokalizacjaCentral);
   row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
   row('Data przegladu', p.data);
-  if (p.dataNastepna) row('Data nastepnego przegladu', p.dataNastepna);
+  if (dataNastepna && dataNastepna !== '-') row('Data nastepnego przegladu', dataNastepna);
   row('Serwisant', p.serwisant);
   if (p.uprawnienia) row('Nr uprawnien', p.uprawnienia);
   y += 4;
@@ -2720,7 +2794,7 @@ function _doGeneratePDF(p) {
   modele.forEach(function(model) {
     checkY(8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    checkmark(colX[0]+1, y);
+    doc.text('\u2714', colX[0]+1, y); // ✔
     doc.text('Centrala', colX[1]+1, y);
     var mL = doc.splitTextToSize(pl(model), colW[2]-3);
     doc.text(mL, colX[2]+1, y);
@@ -2752,7 +2826,8 @@ function _doGeneratePDF(p) {
   } else {
     okItems.forEach(function(item) {
       checkY(8);
-      checkmark(ML, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.text('\u2705', ML, y); // ✅
       var lines2 = doc.splitTextToSize(pl(item.l), TW - 8);
       doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
       doc.text(lines2, ML + 5.5, y);
@@ -2776,16 +2851,30 @@ function _doGeneratePDF(p) {
   var wynikText = p.wynik || 'Sprawny';
   var isNie   = wynikText.toLowerCase().startsWith('nie');
   var isUwagi = wynikText.toLowerCase().indexOf('uwag') > -1;
-  doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  if (isNie)       doc.setTextColor(200, 40, 40);
-  else if (isUwagi) doc.setTextColor(180, 110, 0);
-  else              doc.setTextColor(30, 140, 30);
-  doc.text('• ' + pl(wynikText), ML + 4, y); y += 8;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  doc.text(isNie || isUwagi
-    ? 'W obiekcie stwierdzono usterki/nieprawidlowosci wplywajace na prace systemu.'
-    : 'W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y);
-  y += 8;
+  // Wynik bold, czarny tekst
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  if (isNie) {
+    doc.text('• ' + pl(wynikText), ML + 4, y); y += 6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('Niesprawny', ML + 4, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text('nie spelnia wymagan dla ktorych zostal wykonany.', ML + 4, y); y += 8;
+  } else if (isUwagi) {
+    doc.text('• ' + pl(wynikText), ML + 4, y); y += 6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('Sprawny z uwagami', ML + 4, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text('spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
+  } else {
+    doc.text('• ' + pl(wynikText), ML + 4, y); y += 6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('Sprawny oraz spelnia wszelkie wymogi', ML + 4, y); y += 5;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('dla ktorych zostal wykonany.', ML + 4, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y);
+    y += 8;
+  }
 
   // Uwagi do inwestora (TAK - widoczne dla klienta)
   if (p.uwagi && p.uwagi.trim() && p.uwagi.trim() !== '-') {
@@ -2814,8 +2903,8 @@ function _doGeneratePDF(p) {
 <div class="modal-overlay" id="pinModal">
   <div class="modal" style="max-width:320px;padding:32px 24px 28px;text-align:center">
     <div style="font-size:36px;margin-bottom:6px">🔒</div>
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Panel Admin</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:28px">Wprowadź kod PIN</div>
+    <div id="pinModalTitle" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Panel Admin</div>
+    <div id="pinModalSubtitle" style="font-size:13px;color:var(--muted);margin-bottom:28px">Wprowadź kod PIN</div>
 
     <div style="display:flex;justify-content:center;gap:14px;margin-bottom:24px" id="pinDots"></div>
 
