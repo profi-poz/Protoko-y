@@ -617,7 +617,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 30</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 32</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1129,7 +1129,7 @@ function updateChecklist() {
   }
 
   const allowed = scopeMap[rodzaj] || ['all','k','p','r','serwis'];
-  const items = allItems.filter(i => allowed.includes(i.scope || 'all'));
+  const items = allItems.filter(i => allowed.includes(i.scope || 'all') && !i.hidden);
 
   cs = {};
   items.forEach(i => cs[i.id] = null);
@@ -1787,10 +1787,16 @@ function adminRenderTypes() {
   if (!types.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Brak typów – dodaj pierwszy</div>'; return; }
 
   el.innerHTML = types.map((t, i) => `
-    <div class="adm-typ-item">
-      <span class="adm-typ-key">${t.key}</span>
-      <span class="adm-typ-label">${t.label}</span>
-      ${t.key !== 'Inne' ? `<button class="adm-btn" onclick="adminUsunTyp('${t.key}')" title="Usuń">🗑️</button>` : ''}
+    <div class="adm-typ-item" style="opacity:${t.hidden ? '0.45' : '1'}">
+      <span class="adm-typ-key" style="text-decoration:${t.hidden ? 'line-through' : 'none'}">${t.key}</span>
+      <span class="adm-typ-label" style="color:${t.hidden ? 'var(--muted)' : 'var(--text)'}">${t.label}</span>
+      ${t.key !== 'Inne' ? `
+        <button class="adm-btn" onclick="adminToggleHideTyp('${t.key}')" title="${t.hidden ? 'Odkryj' : 'Ukryj'}"
+          style="color:${t.hidden ? 'var(--green)' : 'var(--muted)'}">
+          ${t.hidden ? '👁️' : '🚫'}
+        </button>
+        <button class="adm-btn" onclick="adminUsunTyp('${t.key}')" title="Usuń" style="color:#e74c3c">🗑️</button>
+      ` : ''}
     </div>
   `).join('');
 
@@ -1821,14 +1827,21 @@ function adminRenderChecklist() {
   }
 
   el.innerHTML = items.map((item, i) => `
-    <div class="adm-item" id="adm-${typ}-${i}">
+    <div class="adm-item" id="adm-${typ}-${i}" style="opacity:${item.hidden ? '0.45' : '1'}">
       <div style="flex:1">
-        <div class="adm-item-text" contenteditable="true" onblur="adminEdytujLabel('${typ}',${i},this.innerText)">${item.l}</div>
+        <div class="adm-item-text" contenteditable="true" onblur="adminEdytujLabel('${typ}',${i},this.innerText)"
+          style="text-decoration:${item.hidden ? 'line-through' : 'none'};color:${item.hidden ? 'var(--muted)' : 'var(--text)'}">
+          ${item.l}
+        </div>
         <div class="adm-item-sub" contenteditable="true" onblur="adminEdytujNote('${typ}',${i},this.innerText)">${item.n || ''}</div>
       </div>
       <div style="display:flex;gap:2px;flex-shrink:0">
         ${i > 0 ? `<button class="adm-btn" onclick="adminPrzesuń('${typ}',${i},-1)" title="W górę">↑</button>` : '<span style="width:28px"></span>'}
         ${i < items.length-1 ? `<button class="adm-btn" onclick="adminPrzesuń('${typ}',${i},1)" title="W dół">↓</button>` : '<span style="width:28px"></span>'}
+        <button class="adm-btn" onclick="adminToggleHide('${typ}',${i})" title="${item.hidden ? 'Odkryj' : 'Ukryj'}"
+          style="color:${item.hidden ? 'var(--green)' : 'var(--muted)'}">
+          ${item.hidden ? '👁️' : '🚫'}
+        </button>
         <button class="adm-btn" onclick="adminUsunPunkt('${typ}',${i})" title="Usuń" style="color:#e74c3c">🗑️</button>
       </div>
     </div>
@@ -1871,6 +1884,16 @@ function adminUsunPunkt(typ, idx) {
   adminRenderChecklist();
   updateChecklistSelect();
   toast('🗑️ Punkt usunięty');
+}
+
+// ── Ukryj / odkryj punkt ──
+function adminToggleHide(typ, idx) {
+  const cl = getCL();
+  if (!cl[typ] || !cl[typ][idx]) return;
+  cl[typ][idx].hidden = !cl[typ][idx].hidden;
+  saveCL(cl);
+  adminRenderChecklist();
+  toast(cl[typ][idx].hidden ? '🚫 Punkt ukryty' : '👁️ Punkt widoczny');
 }
 
 // ── Dodaj nowy punkt ──
@@ -1930,6 +1953,18 @@ function adminUsunTyp(key) {
   toast('🗑️ Typ usunięty');
 }
 
+// ── Ukryj / odkryj typ instalacji ──
+function adminToggleHideTyp(key) {
+  const types = getTypes();
+  const t = types.find(x => x.key === key);
+  if (!t) return;
+  t.hidden = !t.hidden;
+  saveTypes(types);
+  adminRenderTypes();
+  rebuildTypSelect();
+  toast(t.hidden ? '🚫 Typ ukryty' : '👁️ Typ widoczny');
+}
+
 // ── Reset do domyślnych ──
 function adminReset() {
   if (!confirm('Przywrócić domyślne listy kontrolne i typy? Twoje protokoły NIE zostaną usunięte.')) return;
@@ -1941,7 +1976,7 @@ function adminReset() {
 
 // ── Odśwież select typów w formularzu Nowy ──
 function rebuildTypSelect() {
-  const types = getTypes();
+  const types = getTypes().filter(t => !t.hidden);
   const sel = document.getElementById('typInstalacji');
   const cur = sel.value;
   sel.innerHTML = types.map(t => `<option value="${t.key}">${t.label}</option>`).join('');
@@ -2889,58 +2924,32 @@ function _doGeneratePDF(p) {
   if (p.ksiazka)       row('Ksiazka eksploatacji', p.ksiazka);
   y += 4;
 
-  // Klauzule prawne - rozroznienie SSP vs Oddymianie
+  // Klauzule prawne - rozroznienie SSP / DSO / Oddymianie
   var isOddymianie = ['SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME'].indexOf(p.typ) > -1;
+  var isDSO = p.typ === 'DSO';
 
-  if (isOddymianie) {
-    // === ODDYMIANIE ===
-    checkY(80);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    [
+  var legalLines = [];
+  if (isDSO) {
+    legalLines = [
+      '\u2022 PN-EN 60849 Dzwiekowe Systemy Ostrzegawcze',
       '\u2022 Dz. U. Nr 109 poz. 193, Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji',
       '  z dnia 7 czerwca 2010 r. w sprawie ochrony przeciwpozarowej budynkow, innych obiektow',
       '  budowlanych i terenow.',
       '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 12 kwietnia 2002r w sprawie warunkow',
       '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie',
       '  (Dz.U. Nr 75 poz.690: zm.: z pozniejszymi zmianami)',
-    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-    y += 4;
-
-    checkY(30);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Kwalifikacje:', ML, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    [
-      '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
-      '  obslugi technicznej i napraw instalacji.',
-      '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
-      '  wymagane przez producenta systemu.',
-    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-    y += 4;
-
-    checkY(36);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Odpowiedzialnosc:', ML, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    [
-      '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
-      '  nieprawidlowo wykonanego przegladu.',
-      '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
-      '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
-      '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
-      '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
-    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-    y += 6;
-
+    ];
+  } else if (isOddymianie) {
+    legalLines = [
+      '\u2022 Dz. U. Nr 109 poz. 193, Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji',
+      '  z dnia 7 czerwca 2010 r. w sprawie ochrony przeciwpozarowej budynkow, innych obiektow',
+      '  budowlanych i terenow.',
+      '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 12 kwietnia 2002r w sprawie warunkow',
+      '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie',
+      '  (Dz.U. Nr 75 poz.690: zm.: z pozniejszymi zmianami)',
+    ];
   } else {
-    // === SSP / DSO / PSP / SUG / INNE ===
-    checkY(80);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    [
+    legalLines = [
       '\u2022 PKN-CEN/TS 54-14 Systemy sygnalizacji pozarowej. Czesc 14: Wytyczne planowania,',
       '  projektowania, odbioru, eksploatacji i konserwacji',
       '\u2022 Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji z dnia 7 czerwca 2010 r.',
@@ -2948,35 +2957,41 @@ function _doGeneratePDF(p) {
       '  - DZ. U. 2023 poz. 822 ze zmianami',
       '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 15 kwietnia 2022r w sprawie warunkow',
       '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie (Tj. Dz.U.2022r. poz. 1225)',
-    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-    y += 4;
-
-    checkY(30);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Kwalifikacje:', ML, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    [
-      '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
-      '  obslugi technicznej i napraw instalacji.',
-      '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
-      '  wymagane przez producenta systemu.',
-    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-    y += 4;
-
-    checkY(36);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Odpowiedzialnosc:', ML, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8);
-    [
-      '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
-      '  nieprawidlowo wykonanego przegladu.',
-      '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
-      '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
-      '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
-      '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
-    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-    y += 6;
+    ];
   }
+
+  checkY(80);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  legalLines.forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+  y += 4;
+
+  checkY(30);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  doc.text('Kwalifikacje:', ML, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  [
+    '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
+    '  obslugi technicznej i napraw instalacji.',
+    '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
+    '  wymagane przez producenta systemu.',
+  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+  y += 4;
+
+  checkY(36);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+  doc.text('Odpowiedzialnosc:', ML, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  [
+    '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
+    '  nieprawidlowo wykonanego przegladu.',
+    '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
+    '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
+    '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
+    '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
+  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+  y += 6;
 
   // II. Wykaz elementow systemu
   sectionHead('II. WYKAZ ELEMENTOW SYSTEMU');
