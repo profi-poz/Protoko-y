@@ -2603,12 +2603,12 @@ function _doGeneratePDF(p) {
     doc.rect(0, 0, 5, 297, 'F');
   }
   function checkmark(cx, cy) {
-    // Zielone kółko z ptaszkiem
+    // Małe zielone kółko z ptaszkiem - nie nachodzi na tekst
     doc.setFillColor(46, 204, 113);
-    doc.circle(cx + 2, cy - 1.5, 2.5, 'F');
+    doc.circle(cx + 1.8, cy - 1.2, 1.8, 'F');
     doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(0.7);
-    doc.lines([[1.0, 1.1],[1.5,-1.6]], cx + 0.9, cy - 0.4);
+    doc.setLineWidth(0.55);
+    doc.lines([[0.7, 0.8],[1.1,-1.2]], cx + 0.85, cy - 0.3);
   }
   function hline(yy, r, g, b, lw) {
     doc.setDrawColor(r||200, g||200, b||200);
@@ -2895,18 +2895,13 @@ function _doGeneratePDF(p) {
 
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
   if (isNie) {
-    doc.text('Niesprawny', ML + 4, y); y += 6;
+    doc.text('Niesprawny - nie spelnia wymagan dla ktorych zostal wykonany.', ML + 4, y); y += 6;
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('nie spelnia wymagan dla ktorych zostal wykonany.', ML + 4, y); y += 8;
     doc.text('W obiekcie stwierdzono usterki/nieprawidlowosci wplywajace na prace systemu.', ML, y); y += 8;
   } else if (isUwagi) {
-    doc.text('Sprawny z uwagami', ML + 4, y); y += 6;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
+    doc.text('Sprawny z uwagami - spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
   } else {
-    doc.text('Sprawny', ML + 4, y); y += 6;
-    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('oraz spelnia wszelkie wymogi dla ktorych zostal wykonany.', ML + 4, y); y += 6;
+    doc.text('Sprawny oraz spelnia wszelkie wymogi dla ktorych zostal wykonany.', ML + 4, y); y += 6;
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
     doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y); y += 8;
   }
