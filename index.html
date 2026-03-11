@@ -649,7 +649,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 36</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 37</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -688,6 +688,27 @@ Content-Type: application/json
           <input type="text" id="newChkNote" placeholder="Opis / uwaga (opcjonalnie)"
             style="width:100%;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 13px;outline:none;margin-bottom:8px;">
           <button class="btn btn-red" onclick="adminDodajPunkt()">➕ Dodaj punkt</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">🔐 Zarządzanie PINami</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">Zmień kody PIN dostępu.</p>
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">🛠️ PIN Admin / Serwer</div>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="pinAdminNowy" placeholder="Nowy PIN (min. 4 cyfry)" inputmode="numeric"
+              style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;padding:10px 12px;outline:none">
+            <button class="btn btn-red" style="margin:0;white-space:nowrap" onclick="zmienPin('admin')">Zmień</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">🏢 PIN Biuro</div>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="pinBiuroNowy" placeholder="Nowy PIN (min. 4 cyfry)" inputmode="numeric"
+              style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;padding:10px 12px;outline:none">
+            <button class="btn btn-red" style="margin:0;white-space:nowrap" onclick="zmienPin('biuro')">Zmień</button>
+          </div>
         </div>
       </div>
 
@@ -1107,6 +1128,9 @@ let cs = {};
 window.onload = () => {
   // Wczytaj zapisany motyw
   applyTheme(localStorage.getItem('profipoz_theme') || 'dark');
+
+  // Wczytaj PINy z serwera (w tle)
+  loadPinsFromServer();
 
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('dataPrzegladu').value = today;
@@ -2126,8 +2150,17 @@ function adminReset() {
   if (!confirm('Przywrócić domyślne listy kontrolne i typy? Twoje protokoły NIE zostaną usunięte.')) return;
   localStorage.removeItem(CL_DEFAULT_KEY);
   localStorage.removeItem(TYP_DEFAULT_KEY);
-  // Przywróć globalny CL
   location.reload();
+}
+
+function zmienPin(typ) {
+  const inputId = typ === 'admin' ? 'pinAdminNowy' : 'pinBiuroNowy';
+  const nowy = (document.getElementById(inputId)||{}).value || '';
+  if (nowy.length < 4) { toast('⚠️ PIN musi mieć minimum 4 cyfry!', 1); return; }
+  if (!/^\d+$/.test(nowy)) { toast('⚠️ PIN może zawierać tylko cyfry!', 1); return; }
+  savePinToServer(typ, nowy);
+  document.getElementById(inputId).value = '';
+  toast('✅ PIN ' + (typ==='admin'?'Admin':'Biuro') + ' zmieniony i zapisany na serwerze');
 }
 
 // ── Odśwież select typów w formularzu Nowy ──
@@ -2492,8 +2525,49 @@ function serwerPinCheck() {
 }
 
 // ===================== PIN ADMIN =====================
-const ADMIN_PIN = '0705';
-const BIURO_PIN = '8105';
+const ADMIN_PIN_DEFAULT = '19980203';
+const BIURO_PIN_DEFAULT = '8105';
+function getAdminPin() { return window._cachedAdminPin || localStorage.getItem('profipoz_pin_admin') || ADMIN_PIN_DEFAULT; }
+function getBiuroPin() { return window._cachedBiuroPin || localStorage.getItem('profipoz_pin_biuro') || BIURO_PIN_DEFAULT; }
+
+function loadPinsFromServer(callback) {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) { if(callback) callback(); return; }
+  const cbName = 'cb_pins_' + Date.now();
+  const timer = setTimeout(function() {
+    delete window[cbName];
+    if (callback) callback();
+  }, 3000);
+  window[cbName] = function(r) {
+    clearTimeout(timer); delete window[cbName];
+    if (r && r.pinAdmin) {
+      window._cachedAdminPin = r.pinAdmin;
+      localStorage.setItem('profipoz_pin_admin', r.pinAdmin);
+    }
+    if (r && r.pinBiuro) {
+      window._cachedBiuroPin = r.pinBiuro;
+      localStorage.setItem('profipoz_pin_biuro', r.pinBiuro);
+    }
+    if (callback) callback();
+  };
+  const s = document.createElement('script');
+  s.src = url + '?getPiny=1&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
+function savePinToServer(typ, val) {
+  localStorage.setItem('profipoz_pin_' + typ, val);
+  if (typ === 'admin') window._cachedAdminPin = val;
+  if (typ === 'biuro') window._cachedBiuroPin = val;
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  const cbName = 'cb_savepin_' + Date.now();
+  window[cbName] = function() { delete window[cbName]; };
+  const s = document.createElement('script');
+  s.src = url + '?savePin=' + encodeURIComponent(JSON.stringify({typ, val})) + '&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
 let adminUnlocked = false;
 
 let _pinTarget = 'admin'; // 'admin', 'serwer', 'biuro'
@@ -2529,21 +2603,25 @@ function adminPinCheck() {
     document.getElementById('nb-admin').classList.add('active');
     return;
   }
-  _pinTarget = 'admin';
-  document.getElementById('pinModalTitle').textContent = 'Panel Admin';
-  document.getElementById('pinModalSubtitle').textContent = 'Wprowadź kod PIN';
-  document.getElementById('pinDots').innerHTML = '';
-  document.getElementById('pinError').style.display = 'none';
-  window._pinVal = '';
-  renderPinDots();
-  document.getElementById('pinModal').classList.add('open');
+  loadPinsFromServer(function() {
+    _pinTarget = 'admin';
+    document.getElementById('pinModalTitle').textContent = 'Panel Admin';
+    document.getElementById('pinModalSubtitle').textContent = 'Wprowadź kod PIN';
+    document.getElementById('pinDots').innerHTML = '';
+    document.getElementById('pinError').style.display = 'none';
+    window._pinVal = '';
+    renderPinDots();
+    document.getElementById('pinModal').classList.add('open');
+  });
 }
 
 function pinKey(val) {
-  if (window._pinVal.length >= 4) return;
+  if (window._pinVal.length >= 8) return;
   window._pinVal += val;
   renderPinDots();
-  if (window._pinVal.length === 4) {
+  if (window._pinVal.length === getAdminPin().length && _pinTarget !== 'biuro') {
+    setTimeout(checkPin, 120);
+  } else if (window._pinVal.length === getBiuroPin().length && _pinTarget === 'biuro') {
     setTimeout(checkPin, 120);
   }
 }
@@ -2555,15 +2633,16 @@ function pinDel() {
 
 function renderPinDots() {
   const len = (window._pinVal || '').length;
-  document.getElementById('pinDots').innerHTML = [0,1,2,3].map(i =>
-    `<div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--red);
+  const slots = _pinTarget === 'biuro' ? getBiuroPin().length : getAdminPin().length;
+  document.getElementById('pinDots').innerHTML = Array.from({length:slots}, (_,i) =>
+    `<div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--red);
       background:${i < len ? 'var(--red)' : 'transparent'};transition:background .15s;"></div>`
   ).join('');
 }
 
 function checkPin() {
   if (_pinTarget === 'biuro') {
-    if (window._pinVal === BIURO_PIN) {
+    if (window._pinVal === getBiuroPin()) {
       _biuroUnlocked = true;
       document.getElementById('pinModal').classList.remove('open');
       document.getElementById('pinModalTitle').textContent = 'Panel Admin';
@@ -2572,8 +2651,8 @@ function checkPin() {
       if (_biuroPendingAction) { _biuroPendingAction(); _biuroPendingAction = null; }
     } else {
       document.getElementById('pinError').style.display = 'block';
-      document.getElementById('pinDots').innerHTML = [0,1,2,3].map(() =>
-        `<div style="width:18px;height:18px;border-radius:50%;border:2px solid #e74c3c;background:#e74c3c;"></div>`
+      document.getElementById('pinDots').innerHTML = Array.from({length:getBiuroPin().length}, () =>
+        `<div style="width:16px;height:16px;border-radius:50%;border:2px solid #e74c3c;background:#e74c3c;"></div>`
       ).join('');
       setTimeout(() => {
         window._pinVal = '';
@@ -2583,7 +2662,7 @@ function checkPin() {
     }
     return;
   }
-  if (window._pinVal === ADMIN_PIN) {
+  if (window._pinVal === getAdminPin()) {
     adminUnlocked = true;
     document.getElementById('pinModal').classList.remove('open');
     if (_pinTarget === 'serwer') {
@@ -2597,8 +2676,8 @@ function checkPin() {
     }
   } else {
     document.getElementById('pinError').style.display = 'block';
-    document.getElementById('pinDots').innerHTML = [0,1,2,3].map(() =>
-      `<div style="width:18px;height:18px;border-radius:50%;border:2px solid #e74c3c;background:#e74c3c;"></div>`
+    document.getElementById('pinDots').innerHTML = Array.from({length:getAdminPin().length}, () =>
+      `<div style="width:16px;height:16px;border-radius:50%;border:2px solid #e74c3c;background:#e74c3c;"></div>`
     ).join('');
     setTimeout(() => {
       window._pinVal = '';
@@ -3049,12 +3128,12 @@ function openSerwisModal(kEnc) {
         </div>
       </div>`;
 
-    document.getElementById('serwisModal').classList.add('active');
+    document.getElementById('serwisModal').classList.add('open');
   });
 }
 
 function closeSerwisModal() {
-  document.getElementById('serwisModal').classList.remove('active');
+  document.getElementById('serwisModal').classList.remove('open');
 }
 
 function zapiszSerwis(kEnc, obiektEnc, typEnc) {
@@ -3284,7 +3363,7 @@ function _planerRenderWpisModal(w) {
     if (rf) rf.style.display = '';
   }
 
-  document.getElementById('planerWpisModal').classList.add('active');
+  document.getElementById('planerWpisModal').classList.add('open');
 }
 
 function planerAutoSelChange(sel) {
@@ -3340,7 +3419,7 @@ function planerUsunWpis(key, idx) {
 }
 
 function closePlanerWpis() {
-  document.getElementById('planerWpisModal').classList.remove('active');
+  document.getElementById('planerWpisModal').classList.remove('open');
 }
 
 // --- USTAWIENIA ---
