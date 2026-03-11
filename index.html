@@ -482,15 +482,6 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
         </div>
       </div>
       <div class="card">
-        <div class="card-hd">🔄 Aktualizacja aplikacji</div>
-        <p style="color:#666;font-size:13px;margin-bottom:10px">Jeśli po aktualizacji coś nie działa — wymuś pełne odświeżenie aplikacji.</p>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost" style="margin:0;flex:1" onclick="forceAppUpdate()">🔄 Wymuś aktualizację</button>
-          <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:6px">v4.9 build 23</div>
-          <button class="btn btn-ghost" style="margin:0;flex:1" onclick="clearAndReload()">🗑️ Wyczyść cache</button>
-        </div>
-      </div>
-      <div class="card">
         <div class="card-hd">📋 Format danych JSON</div>
         <div class="info-box">
           <code>POST {endpoint}
@@ -547,6 +538,31 @@ Content-Type: application/json
           <b style="color:var(--text);">Offline:</b><br>
           Po zainstalowaniu działa bez internetu ✓
         </div>
+      </div>
+      <div class="card">
+        <div class="card-hd">🔄 Aktualizacja aplikacji</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+          Jeśli aplikacja nie działa poprawnie lub chcesz zainstalować nową wersję — wykonaj poniższe kroki <b style="color:var(--text)">po kolei</b>:
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:12px;background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px">Wyczyść cache</div>
+              <div style="font-size:11px;color:var(--muted)">Usuwa stare pliki z pamięci przeglądarki</div>
+            </div>
+            <button onclick="clearAndReload()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🗑️ Wyczyść</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;background:var(--dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px">Aktualizuj aplikację</div>
+              <div style="font-size:11px;color:var(--muted)">Pobiera i instaluje najnowszą wersję</div>
+            </div>
+            <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 24</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
