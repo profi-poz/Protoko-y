@@ -1450,14 +1450,14 @@ function showDetail(id) {
       (p.uprawnieniaPrzedst ? 'Nr uprawnień: <b style="color:var(--text)">' + p.uprawnieniaPrzedst + '</b>' : '') +
       '</div>' : ''}
     <div style="margin-top:16px;display:flex;gap:10px;">
-      <button class="btn btn-red" style="flex:1;margin:0" onclick="biuroPinCheck(()=>exportOne(${p.id}))">📊 Excel</button>
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="biuroPinCheck(()=>generatePDF(${p.id}))">🖨️ PDF</button>
+      <button class="btn btn-red" style="flex:1;margin:0" onclick="biuroAction('excel','${p.id}')">📊 Excel</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="biuroAction('pdf','${p.id}')">🖨️ PDF</button>
       ${p.photos && p.photos.length ? `<div style="margin-top:14px">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📷 Zdjęcia (${p.photos.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${p.photos.map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${src}','_blank')">`).join('')}</div>
     </div>` : ''}
     ${p.viewUrl ? `<button class="btn btn-ghost" style="flex:1;margin:0;color:var(--accent)" onclick="showLinkModal('${p.viewUrl}','${p.nr||''}')">🔗 Link</button>` : ''}
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="biuroPinCheck(()=>delProto('${p.id}'))">🗑️ Usuń</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="biuroAction('del','${p.id}')">🗑️ Usuń</button>
     </div>
   `;
   document.getElementById('detailModal').classList.add('open');
@@ -2189,6 +2189,14 @@ let adminUnlocked = false;
 let _pinTarget = 'admin'; // 'admin', 'serwer', 'biuro'
 
 // ===================== PIN BIURO =====================
+function biuroAction(action, id) {
+  biuroPinCheck(function() {
+    if (action === 'excel') exportOne(id);
+    else if (action === 'pdf') generatePDF(id);
+    else if (action === 'del') delProto(id);
+  });
+}
+
 function biuroPinCheck(actionCallback) {
   if (_biuroUnlocked) {
     actionCallback();
