@@ -246,6 +246,23 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
 .adm-typ-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
 .adm-typ-key{font-family:"JetBrains Mono",monospace;font-size:11px;background:rgba(232,54,10,.15);color:var(--red2);padding:3px 8px;border-radius:4px;flex-shrink:0;}
 .adm-typ-label{flex:1;font-size:13px;font-weight:600;}
+/* BIURO */
+.biuro-card{border-radius:12px;padding:14px 16px;margin-bottom:10px;border:2px solid transparent;transition:all .2s;}
+.biuro-card.green{background:rgba(46,204,113,.08);border-color:rgba(46,204,113,.35);}
+.biuro-card.red{background:rgba(231,76,60,.08);border-color:rgba(231,76,60,.35);}
+.biuro-card.yellow{background:rgba(241,196,15,.08);border-color:rgba(241,196,15,.35);}
+.biuro-obj{font-size:15px;font-weight:700;margin-bottom:4px;}
+.biuro-meta{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.biuro-status{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(255,255,255,.07);}
+.biuro-days{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;}
+.toggle-label{font-size:12px;font-weight:600;color:var(--muted);}
+.toggle-sw{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle-sw input{opacity:0;width:0;height:0;}
+.toggle-sw .sl{position:absolute;inset:0;border-radius:24px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:.25s;}
+.toggle-sw .sl:before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:var(--muted);transition:.25s;}
+.toggle-sw input:checked+.sl{background:#2ecc71;border-color:#2ecc71;}
+.toggle-sw input:checked+.sl:before{transform:translateX(20px);background:#fff;}
 
 /* INSTALL BANNER */
 #installBanner{
@@ -617,7 +634,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 32</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 34</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -670,7 +687,10 @@ Content-Type: application/json
     <!-- PANEL PRZEGLĄDÓW -->
     <div class="screen" id="s-panel">
   <div style="padding:16px 16px 0">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;margin-bottom:12px">📊 Panel przeglądów</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800">📊 Panel przeglądów</div>
+      <button onclick="biuroPinCheck(function(){showScreen('biuro')})" style="background:var(--red);border:none;border-radius:8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;padding:8px 14px;cursor:pointer;letter-spacing:.5px">🏢 BIURO</button>
+    </div>
     <input type="text" id="panelSearch" placeholder="🔍 Szukaj obiektu..." oninput="panelRender()"
       style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:11px 12px;outline:none;box-sizing:border-box;margin-bottom:10px">
     <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none">
@@ -690,6 +710,24 @@ Content-Type: application/json
   </div>
   <div id="panelObiektView" style="padding:0 16px 100px"></div>
   <div id="panelProtoView"  style="padding:0 16px 100px;display:none"></div>  </div>
+    <!-- BIURO -->
+    <div class="screen" id="s-biuro">
+      <div style="padding:16px 16px 0">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <button onclick="showScreen('panel')" style="background:none;border:none;color:var(--red2);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800">🏢 Biuro</div>
+        </div>
+        <input type="text" id="biuroSearch" placeholder="🔍 Szukaj obiektu..." oninput="biuroRender()"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:11px 12px;outline:none;box-sizing:border-box;margin-bottom:10px">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="biuroFilter-all"   onclick="biuroSetFilter('all')"   style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--red);background:var(--red);color:#fff;font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer">Wszystkie</button>
+          <button id="biuroFilter-red"   onclick="biuroSetFilter('red')"   style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer">🔴 Przeterminowane</button>
+          <button id="biuroFilter-green" onclick="biuroSetFilter('green')" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer">🟢 OK</button>
+        </div>
+      </div>
+      <div id="biuroList" style="padding:0 16px 100px"></div>
+    </div>
+
   </div><!-- /content -->
 
   <!-- BOTTOM NAV -->
@@ -1094,6 +1132,7 @@ function showScreen(name) {
     panelLoadLista();
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
+  if(name==='biuro'){ biuroRender(); }
 }
 
 // ===================== CHECKLIST =====================
@@ -2609,6 +2648,204 @@ function pl(s) {
 }
 
 // Laduje jsPDF dynamicznie on-demand jesli nie jest jeszcze dostepny
+// ===================== BIURO =====================
+const BIURO_SK = 'profipoz_biuro_status_local'; // fallback lokalny gdy brak serwera
+let _biuroFilter = 'all';
+let _biuroStatusCache = {}; // in-memory cache po wczytaniu z serwera
+
+function biuroGetStatus() {
+  return _biuroStatusCache;
+}
+
+function biuroSaveStatus(obj) {
+  _biuroStatusCache = obj;
+  // Zapisz lokalnie jako fallback
+  try { localStorage.setItem(BIURO_SK, JSON.stringify(obj)); } catch(e) {}
+  // Zapisz na serwer
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  const cbName = 'cb_biurost_' + Date.now();
+  window[cbName] = function(r) { delete window[cbName]; };
+  const script = document.createElement('script');
+  script.src = url + '?saveBiuroStatus=' + encodeURIComponent(JSON.stringify(obj)) + '&callback=' + cbName;
+  document.body.appendChild(script);
+}
+
+function biuroLoadStatus(callback) {
+  // Wczytaj z serwera, fallback do localStorage
+  const url = localStorage.getItem('serverUrl');
+  if (!url) {
+    try { _biuroStatusCache = JSON.parse(localStorage.getItem(BIURO_SK) || '{}'); } catch(e) { _biuroStatusCache = {}; }
+    callback();
+    return;
+  }
+  const cbName = 'cb_biuroload_' + Date.now();
+  const timer = setTimeout(function() {
+    // timeout — użyj lokalnego
+    delete window[cbName];
+    try { _biuroStatusCache = JSON.parse(localStorage.getItem(BIURO_SK) || '{}'); } catch(e) { _biuroStatusCache = {}; }
+    callback();
+  }, 4000);
+  window[cbName] = function(r) {
+    clearTimeout(timer);
+    delete window[cbName];
+    _biuroStatusCache = (r && typeof r === 'object') ? r : {};
+    // Zsynchronizuj lokalny fallback
+    try { localStorage.setItem(BIURO_SK, JSON.stringify(_biuroStatusCache)); } catch(e) {}
+    callback();
+  };
+  const script = document.createElement('script');
+  script.src = url + '?getBiuroStatus=1&callback=' + cbName;
+  document.body.appendChild(script);
+}
+
+function biuroSetFilter(f) {
+  _biuroFilter = f;
+  ['all','red','green'].forEach(function(k) {
+    const btn = document.getElementById('biuroFilter-' + k);
+    if (!btn) return;
+    if (k === f) {
+      btn.style.background = 'var(--red)'; btn.style.color = '#fff'; btn.style.borderColor = 'var(--red)';
+    } else {
+      btn.style.background = 'var(--surface2)'; btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)';
+    }
+  });
+  biuroRender();
+}
+
+function biuroRender() {
+  // Najpierw pokaż spinner, potem załaduj status z serwera i rerenderuj
+  const el = document.getElementById('biuroList');
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">⏳ Ładowanie statusów...</div>';
+  biuroLoadStatus(function() { _biuroRenderInner(); });
+}
+
+function _biuroRenderInner() {
+  const src = allProtokoly.length ? allProtokoly : protokoly;
+  const q = ((document.getElementById('biuroSearch')||{}).value||'').toLowerCase().trim();
+  const status = biuroGetStatus();
+
+  // Zbuduj mapę: najnowszy protokół per obiekt+typ
+  const map = {};
+  src.forEach(function(p) {
+    if (!p.obiekt) return;
+    const k = (p.obiekt||'').trim() + '|' + (p.typ||'');
+    if (!map[k] || (p.data||'') > (map[k].data||'')) {
+      map[k] = p;
+    }
+  });
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const rodzajDni = {
+    kwartalny: 90, polroczny: 180, roczny: 365,
+    odbiorowy: 365, konserwacja: 365, awaryjny: 0
+  };
+
+  let cards = Object.keys(map).map(function(k) {
+    const p = map[k];
+    const st = status[k] || { protokol: false, fv: false };
+    const dataOst = p.data ? new Date(p.data) : null;
+    const dataNast = p._dataNastepnaPDF
+      ? new Date(p._dataNastepnaPDF + '-01')
+      : (dataOst ? new Date(dataOst.getTime() + (rodzajDni[p.rodzaj]||365)*24*3600*1000) : null);
+
+    let colorClass = 'yellow';
+    let daysLabel = '—';
+
+    if (dataNast) {
+      const daysLeft = Math.round((dataNast - today) / (24*3600*1000));
+      if (daysLeft < 0) {
+        colorClass = 'red';
+        daysLabel = 'Przekroczono o ' + Math.abs(daysLeft) + ' dni';
+      } else if (daysLeft <= 30) {
+        colorClass = 'yellow';
+        daysLabel = 'Za ' + daysLeft + ' dni';
+      } else {
+        colorClass = 'green';
+        daysLabel = 'Za ' + daysLeft + ' dni';
+      }
+    }
+
+    return { k, p, st, colorClass, daysLabel, dataNast };
+  });
+
+  if (_biuroFilter === 'red')   cards = cards.filter(c => c.colorClass === 'red');
+  if (_biuroFilter === 'green') cards = cards.filter(c => c.colorClass === 'green');
+  if (q) cards = cards.filter(c => (c.p.obiekt||'').toLowerCase().includes(q));
+
+  const order = {red:0,yellow:1,green:2};
+  cards.sort(function(a,b) {
+    if (order[a.colorClass] !== order[b.colorClass]) return order[a.colorClass] - order[b.colorClass];
+    return (a.p.obiekt||'').localeCompare(b.p.obiekt||'','pl');
+  });
+
+  const el = document.getElementById('biuroList');
+  if (!cards.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak obiektów</div>';
+    return;
+  }
+
+  const ico = {red:'🔴',yellow:'🟡',green:'🟢'};
+
+  el.innerHTML = cards.map(function(c) {
+    const {k, p, st, colorClass, daysLabel} = c;
+    const kEnc = encodeURIComponent(k);
+    const nastStr = c.dataNast ? c.dataNast.toLocaleDateString('pl-PL', {year:'numeric',month:'long'}) : '—';
+
+    let togglesHtml = '';
+    if (colorClass === 'green' || colorClass === 'yellow') {
+      togglesHtml = `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+        <div class="toggle-row">
+          <span class="toggle-label">📤 Wysłano protokół</span>
+          <label class="toggle-sw">
+            <input type="checkbox" ${st.protokol?'checked':''} onchange="biuroToggle(event,'${kEnc}','protokol')">
+            <span class="sl"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">🧾 Wystawiono FV</span>
+          <label class="toggle-sw">
+            <input type="checkbox" ${st.fv?'checked':''} onchange="biuroToggle(event,'${kEnc}','fv')">
+            <span class="sl"></span>
+          </label>
+        </div>
+      </div>`;
+    }
+
+    return `<div class="biuro-card ${colorClass}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <div class="biuro-obj">${p.obiekt||'—'}</div>
+          <div class="biuro-meta">🔧 ${p.typ||'—'} · 📅 Ostatni: ${p.data||'—'} · Następny: ${nastStr}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px">${ico[colorClass]}</div>
+          <div class="biuro-days" style="color:${colorClass==='red'?'#e74c3c':colorClass==='yellow'?'#f1c40f':'#2ecc71'}">${daysLabel}</div>
+        </div>
+      </div>
+      ${togglesHtml}
+    </div>`;
+  }).join('');
+}
+
+function biuroToggle(event, kEnc, field) {
+  event.preventDefault();
+  const k = decodeURIComponent(kEnc);
+  const newVal = !( (biuroGetStatus()[k]||{})[field] );
+
+  biuroPinCheck(function() {
+    const status = biuroGetStatus();
+    if (!status[k]) status[k] = { protokol: false, fv: false };
+    status[k][field] = newVal;
+    biuroSaveStatus(status);
+    _biuroRenderInner(); // re-render bez ponownego ładowania z serwera
+    toast(field === 'protokol' ? (newVal ? '✅ Protokół wysłany' : '↩️ Cofnięto') : (newVal ? '✅ FV wystawiona' : '↩️ Cofnięto FV'));
+  });
+}
+
 function forceAppUpdate() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistration().then(function(reg) {
