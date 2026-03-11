@@ -482,6 +482,14 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
         </div>
       </div>
       <div class="card">
+        <div class="card-hd">🔄 Aktualizacja aplikacji</div>
+        <p style="color:#666;font-size:13px;margin-bottom:10px">Jeśli po aktualizacji coś nie działa — wymuś pełne odświeżenie aplikacji.</p>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" style="margin:0;flex:1" onclick="forceAppUpdate()">🔄 Wymuś aktualizację</button>
+          <button class="btn btn-ghost" style="margin:0;flex:1" onclick="clearAndReload()">🗑️ Wyczyść cache</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-hd">📋 Format danych JSON</div>
         <div class="info-box">
           <code>POST {endpoint}
@@ -920,15 +928,15 @@ window.onload = () => {
         newSW.addEventListener('statechange', () => {
           if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
             if (confirm('🔄 Dostępna nowa wersja aplikacji! Zaktualizować teraz?')) {
+              // Czekamy na controllerchange — nie reload() od razu
               newSW.postMessage({ type: 'SKIP_WAITING' });
-              window.location.reload();
             }
           }
         });
       });
     }).catch(()=>{});
 
-    // Przeładuj gdy SW przejmuje kontrolę
+    // Przeładuj DOPIERO gdy nowy SW faktycznie przejął kontrolę
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!refreshing) { refreshing = true; window.location.reload(); }
@@ -2435,6 +2443,44 @@ function pl(s) {
 }
 
 // Laduje jsPDF dynamicznie on-demand jesli nie jest jeszcze dostepny
+function forceAppUpdate() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      if (reg) {
+        reg.update().then(function() {
+          toast('Sprawdzam aktualizacje...');
+          setTimeout(function() {
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+              window.location.reload(true);
+            }
+          }, 1500);
+        });
+      } else {
+        window.location.reload(true);
+      }
+    });
+  } else {
+    window.location.reload(true);
+  }
+}
+
+function clearAndReload() {
+  if (confirm('Wyczyścić cache przeglądarki i przeładować aplikację?')) {
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        return Promise.all(names.map(function(name) { return caches.delete(name); }));
+      }).then(function() {
+        toast('Cache wyczyszczony, przeładowuję...');
+        setTimeout(function() { window.location.reload(true); }, 800);
+      });
+    } else {
+      window.location.reload(true);
+    }
+  }
+}
+
 function loadJsPDF(callback) {
   if (window.jspdf && window.jspdf.jsPDF) { callback(null); return; }
   if (document.querySelector('script[data-jspdf]')) {
