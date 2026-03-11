@@ -617,7 +617,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 29</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 30</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2889,57 +2889,94 @@ function _doGeneratePDF(p) {
   if (p.ksiazka)       row('Ksiazka eksploatacji', p.ksiazka);
   y += 4;
 
-  // Klauzule prawne - pelna tresc
-  checkY(80);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-  doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-  [
-    '\u2022 PKN-CEN/TS 54-14 Systemy sygnalizacji pozarowej. Czesc 14: Wytyczne planowania,',
-    '  projektowania, odbioru, eksploatacji i konserwacji',
-    '\u2022 Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji z dnia 7 czerwca 2010 r.',
-    '  w sprawie ochrony przeciwpozarowej budynkow, innych obiektow budowlanych i terenow',
-    '  - DZ. U. 2023 poz. 822 ze zmianami',
-    '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 15 kwietnia 2022r w sprawie warunkow',
-    '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie (Tj. Dz.U.2022r. poz. 1225)',
-  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-  y += 4;
+  // Klauzule prawne - rozroznienie SSP vs Oddymianie
+  var isOddymianie = ['SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME'].indexOf(p.typ) > -1;
 
-  checkY(30);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-  doc.text('Kwalifikacje:', ML, y); y += 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  [
-    '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
-    '  obslugi technicznej i napraw instalacji.',
-    '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
-    '  wymagane przez producenta systemu.',
-  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-  y += 4;
+  if (isOddymianie) {
+    // === ODDYMIANIE ===
+    checkY(80);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    [
+      '\u2022 Dz. U. Nr 109 poz. 193, Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji',
+      '  z dnia 7 czerwca 2010 r. w sprawie ochrony przeciwpozarowej budynkow, innych obiektow',
+      '  budowlanych i terenow.',
+      '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 12 kwietnia 2002r w sprawie warunkow',
+      '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie',
+      '  (Dz.U. Nr 75 poz.690: zm.: z pozniejszymi zmianami)',
+    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    y += 4;
 
-  checkY(36);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-  doc.text('Odpowiedzialnosc:', ML, y); y += 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  [
-    '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
-    '  nieprawidlowo wykonanego przegladu.',
-    '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
-    '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
-    '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
-    '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
-  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
-  y += 6;
+    checkY(30);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Kwalifikacje:', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    [
+      '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
+      '  obslugi technicznej i napraw instalacji.',
+      '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
+      '  wymagane przez producenta systemu.',
+    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    y += 4;
+
+    checkY(36);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Odpowiedzialnosc:', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    [
+      '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
+      '  nieprawidlowo wykonanego przegladu.',
+      '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
+      '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
+      '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
+      '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
+    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    y += 6;
+
+  } else {
+    // === SSP / DSO / PSP / SUG / INNE ===
+    checkY(80);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    [
+      '\u2022 PKN-CEN/TS 54-14 Systemy sygnalizacji pozarowej. Czesc 14: Wytyczne planowania,',
+      '  projektowania, odbioru, eksploatacji i konserwacji',
+      '\u2022 Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji z dnia 7 czerwca 2010 r.',
+      '  w sprawie ochrony przeciwpozarowej budynkow, innych obiektow budowlanych i terenow',
+      '  - DZ. U. 2023 poz. 822 ze zmianami',
+      '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 15 kwietnia 2022r w sprawie warunkow',
+      '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie (Tj. Dz.U.2022r. poz. 1225)',
+    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    y += 4;
+
+    checkY(30);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Kwalifikacje:', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    [
+      '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
+      '  obslugi technicznej i napraw instalacji.',
+      '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
+      '  wymagane przez producenta systemu.',
+    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    y += 4;
+
+    checkY(36);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Odpowiedzialnosc:', ML, y); y += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    [
+      '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
+      '  nieprawidlowo wykonanego przegladu.',
+      '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
+      '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
+      '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
+      '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
+    ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    y += 6;
+  }
 
   // II. Wykaz elementow systemu
   sectionHead('II. WYKAZ ELEMENTOW SYSTEMU');
