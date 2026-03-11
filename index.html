@@ -2434,13 +2434,39 @@ function pl(s) {
     .replace(/\u017B/g,'Z').replace(/\u017C/g,'z');
 }
 
+// Laduje jsPDF dynamicznie on-demand jesli nie jest jeszcze dostepny
+function loadJsPDF(callback) {
+  if (window.jspdf && window.jspdf.jsPDF) { callback(null); return; }
+  if (document.querySelector('script[data-jspdf]')) {
+    var waited = 0;
+    var iv = setInterval(function() {
+      waited += 100;
+      if (window.jspdf && window.jspdf.jsPDF) { clearInterval(iv); callback(null); }
+      else if (waited > 12000) { clearInterval(iv); callback(new Error('Timeout')); }
+    }, 100);
+    return;
+  }
+  var s = document.createElement('script');
+  s.setAttribute('data-jspdf','1');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  s.onload = function() { callback(null); };
+  s.onerror = function() { callback(new Error('Brak internetu - nie mozna pobrac biblioteki PDF')); };
+  document.head.appendChild(s);
+}
+
 function generatePDF(id) {
   const p = allProtokoly.find(x => String(x.id) === String(id))
          || protokoly.find(x => String(x.id) === String(id))
          || _panelProtosCache.find(x => String(x.id) === String(id));
   if (!p) { toast('Nie znaleziono protokolu'); return; }
-  if (!window.jspdf) { toast('Ladowanie biblioteki PDF, sprobuj za chwile...'); return; }
+  toast('Przygotowywanie PDF...');
+  loadJsPDF(function(err) {
+    if (err) { toast('Blad PDF: ' + err.message); return; }
+    _doGeneratePDF(p);
+  });
+}
 
+function _doGeneratePDF(p) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
