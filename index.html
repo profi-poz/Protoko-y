@@ -263,6 +263,21 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
 .toggle-sw .sl:before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:var(--muted);transition:.25s;}
 .toggle-sw input:checked+.sl{background:#2ecc71;border-color:#2ecc71;}
 .toggle-sw input:checked+.sl:before{transform:translateX(20px);background:#fff;}
+/* PLANER */
+.pl-row{display:flex;min-height:60px;border-bottom:1px solid var(--border);}
+.pl-kat{width:110px;min-width:110px;display:flex;align-items:center;justify-content:center;padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-align:center;letter-spacing:.5px;text-transform:uppercase;line-height:1.2;color:#fff;}
+.pl-cell{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+.pl-wpis{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;align-items:flex-start;gap:8px;}
+.pl-wpis-txt{flex:1;font-size:13px;line-height:1.5;}
+.pl-wpis-osoby{font-weight:700;color:var(--text);}
+.pl-wpis-auto{font-size:11px;color:var(--muted);margin-top:2px;}
+.pl-wpis-obiekt{font-size:11px;color:#6495ed;margin-top:2px;}
+.pl-add-btn{background:none;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px;padding:7px;cursor:pointer;text-align:center;width:100%;font-family:'Barlow',sans-serif;}
+.pl-add-btn:active{background:var(--surface2);}
+.pl-ust-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
+.pl-ust-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.pl-ust-label{flex:1;font-size:13px;font-weight:600;}
+.pl-ust-del{background:none;border:none;color:#e74c3c;font-size:16px;cursor:pointer;padding:2px 6px;}
 
 /* INSTALL BANNER */
 #installBanner{
@@ -634,7 +649,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 35</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 36</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -715,7 +730,8 @@ Content-Type: application/json
       <div style="padding:16px 16px 0">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
           <button onclick="showScreen('panel')" style="background:none;border:none;color:var(--red2);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800">🏢 Biuro</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;flex:1">🏢 Biuro</div>
+          <button onclick="biuroPinCheck(function(){showScreen('planer')})" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:5px">📅 Harmonogram</button>
         </div>
         <input type="text" id="biuroSearch" placeholder="🔍 Szukaj obiektu..." oninput="biuroRender()"
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:11px 12px;outline:none;box-sizing:border-box;margin-bottom:10px">
@@ -726,6 +742,74 @@ Content-Type: application/json
         </div>
       </div>
       <div id="biuroList" style="padding:0 16px 100px"></div>
+    </div>
+
+    <!-- PLANER DZIENNY -->
+    <div class="screen" id="s-planer">
+      <!-- HEADER PLANERA -->
+      <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;position:sticky;top:0;z-index:10">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <button onclick="showScreen('biuro')" style="background:none;border:none;color:var(--red2);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;flex:1">📅 Harmonogram</div>
+          <button onclick="planerShowUstawienia()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:700;padding:7px 11px;cursor:pointer;font-family:'Barlow',sans-serif">⚙️ Ustaw.</button>
+        </div>
+        <!-- Nawigacja daty -->
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="planerPrevDay()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:18px;padding:6px 12px;cursor:pointer;line-height:1">◀</button>
+          <div style="flex:1;text-align:center">
+            <div id="planerDateLabel" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;line-height:1.1"></div>
+            <div id="planerDayLabel" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px"></div>
+          </div>
+          <button onclick="planerNextDay()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:18px;padding:6px 12px;cursor:pointer;line-height:1">▶</button>
+        </div>
+        <button onclick="planerGoToday()" id="planerTodayBtn" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:700;padding:5px;cursor:pointer;font-family:'Barlow',sans-serif;display:none">↩ Wróć do dziś</button>
+      </div>
+      <div id="planerBody" style="padding:0 0 100px;overflow-y:auto"></div>
+    </div>
+
+    <!-- PLANER USTAWIENIA -->
+    <div class="screen" id="s-planer-ustaw">
+      <div style="padding:16px 16px 0">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <button onclick="showScreen('planer')" style="background:none;border:none;color:var(--red2);font-size:22px;cursor:pointer;padding:0">←</button>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800">⚙️ Ustawienia planera</div>
+        </div>
+
+        <!-- KATEGORIE -->
+        <div class="card">
+          <div class="card-hd">🗂️ Kategorie wierszy</div>
+          <div id="planerKatList" style="margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="newKatNazwa" placeholder="Np. Prace montażowe"
+              style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+            <input type="color" id="newKatKolor" value="#4a90d9"
+              style="width:44px;height:44px;border:1px solid var(--border);border-radius:8px;background:var(--dark);cursor:pointer;padding:2px">
+          </div>
+          <button class="btn btn-red" style="margin-top:8px" onclick="planerDodajKat()">➕ Dodaj kategorię</button>
+        </div>
+
+        <!-- OSOBY -->
+        <div class="card">
+          <div class="card-hd">👷 Lista osób</div>
+          <div id="planerOsobyList" style="margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="newOsobaImie" placeholder="Imię i nazwisko"
+              style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+          </div>
+          <button class="btn btn-red" style="margin-top:8px" onclick="planerDodajOsobe()">➕ Dodaj osobę</button>
+        </div>
+
+        <!-- AUTA -->
+        <div class="card">
+          <div class="card-hd">🚗 Lista samochodów</div>
+          <div id="planerAutaList" style="margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="newAutoNazwa" placeholder="Np. Jumper, Trafic S"
+              style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+          </div>
+          <button class="btn btn-red" style="margin-top:8px" onclick="planerDodajAuto()">➕ Dodaj auto</button>
+        </div>
+      </div>
     </div>
 
   </div><!-- /content -->
@@ -1133,6 +1217,8 @@ function showScreen(name) {
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
   if(name==='biuro'){ biuroRender(); }
+  if(name==='planer'){ planerRender(); }
+  if(name==='planer-ustaw'){ planerRenderUstaw(); }
 }
 
 // ===================== CHECKLIST =====================
@@ -3010,6 +3096,350 @@ function usunSerwis(kEnc) {
   });
 }
 
+// ===================== PLANER DZIENNY =====================
+const PL_SK_KAT   = 'profipoz_pl_kategorie';
+const PL_SK_OSOBY = 'profipoz_pl_osoby';
+const PL_SK_AUTA  = 'profipoz_pl_auta';
+const PL_SK_WPISY = 'profipoz_pl_wpisy'; // {YYYY-MM-DD: [{katId, osoby:[], auto, obiekt, uwagi}]}
+
+let _plDate = new Date(); // aktywna data
+_plDate.setHours(0,0,0,0);
+
+// --- domyślne kategorie jeśli brak ---
+const PL_KAT_DEFAULT = [
+  {id:'wolne',       nazwa:'Wolne',            kolor:'#c0392b'},
+  {id:'niewpisani',  nazwa:'Niewpisani',        kolor:'#d35400'},
+  {id:'przeglady',   nazwa:'Przeglądy / Serwis',kolor:'#27ae60'},
+  {id:'montaz',      nazwa:'Prace montażowe',   kolor:'#8e44ad'},
+  {id:'inne',        nazwa:'Inne',              kolor:'#2c3e50'},
+];
+
+function plGetKat()   { try{return JSON.parse(localStorage.getItem(PL_SK_KAT))||PL_KAT_DEFAULT;}catch(e){return PL_KAT_DEFAULT;} }
+function plGetOsoby() { try{return JSON.parse(localStorage.getItem(PL_SK_OSOBY))||[];}catch(e){return [];} }
+function plGetAuta()  { try{return JSON.parse(localStorage.getItem(PL_SK_AUTA))||[];}catch(e){return [];} }
+function plGetWpisy() { try{return JSON.parse(localStorage.getItem(PL_SK_WPISY))||{};}catch(e){return {};} }
+
+function plSaveKat(v)   { localStorage.setItem(PL_SK_KAT, JSON.stringify(v)); }
+function plSaveOsoby(v) { localStorage.setItem(PL_SK_OSOBY, JSON.stringify(v)); }
+function plSaveAuta(v)  { localStorage.setItem(PL_SK_AUTA, JSON.stringify(v)); }
+function plSaveWpisy(v) {
+  localStorage.setItem(PL_SK_WPISY, JSON.stringify(v));
+  // sync serwer
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  const cbName = 'cb_plwpisy_' + Date.now();
+  window[cbName] = function() { delete window[cbName]; };
+  const s = document.createElement('script');
+  s.src = url + '?savePlanerWpisy=' + encodeURIComponent(JSON.stringify(v)) + '&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
+function plDateKey(d) {
+  return d.toISOString().split('T')[0];
+}
+
+const DN = ['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'];
+const MN = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
+
+function planerRender() {
+  const key = plDateKey(_plDate);
+  const today = plDateKey(new Date());
+  const isToday = key === today;
+
+  document.getElementById('planerDateLabel').textContent =
+    _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
+  document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
+  document.getElementById('planerTodayBtn').style.display = isToday ? 'none' : '';
+
+  const kats = plGetKat();
+  const wpisy = plGetWpisy();
+  const dzienWpisy = wpisy[key] || [];
+
+  let html = '';
+  kats.forEach(function(kat) {
+    const wpisyKat = dzienWpisy.filter(w => w.katId === kat.id);
+    html += `<div class="pl-row">
+      <div class="pl-kat" style="background:${kat.kolor}">${kat.nazwa}</div>
+      <div class="pl-cell">`;
+
+    wpisyKat.forEach(function(w, wi) {
+      const wIdx = dzienWpisy.indexOf(w);
+      html += `<div class="pl-wpis">
+        <div style="flex:1">
+          <div class="pl-wpis-osoby">${(w.osoby||[]).join(', ') || '—'}</div>
+          ${w.auto ? `<div class="pl-wpis-auto">🚗 ${w.auto}</div>` : ''}
+          ${w.obiekt ? `<div class="pl-wpis-obiekt">📍 ${w.obiekt}</div>` : ''}
+          ${w.uwagi ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">📝 ${w.uwagi}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          <button onclick="planerEdytujWpis('${key}',${wIdx})"
+            style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;cursor:pointer">✏️</button>
+          <button onclick="planerUsunWpis('${key}',${wIdx})"
+            style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:11px;padding:3px 7px;cursor:pointer">🗑️</button>
+        </div>
+      </div>`;
+    });
+
+    html += `<button class="pl-add-btn" onclick="planerDodajWpis('${key}','${kat.id}')">＋ Dodaj</button>
+      </div></div>`;
+  });
+
+  document.getElementById('planerBody').innerHTML = html;
+}
+
+function planerPrevDay() {
+  _plDate.setDate(_plDate.getDate() - 1);
+  planerRender();
+}
+function planerNextDay() {
+  _plDate.setDate(_plDate.getDate() + 1);
+  planerRender();
+}
+function planerGoToday() {
+  _plDate = new Date();
+  _plDate.setHours(0,0,0,0);
+  planerRender();
+}
+
+// --- WPIS MODAL ---
+let _planerEditKey = null;
+let _planerEditIdx = null;
+let _planerEditKatId = null;
+
+function planerDodajWpis(key, katId) {
+  _planerEditKey = key;
+  _planerEditIdx = null;
+  _planerEditKatId = katId;
+  _planerRenderWpisModal(null);
+}
+
+function planerEdytujWpis(key, idx) {
+  _planerEditKey = key;
+  _planerEditIdx = idx;
+  const wpisy = plGetWpisy();
+  const w = (wpisy[key]||[])[idx] || null;
+  _planerEditKatId = w ? w.katId : null;
+  _planerRenderWpisModal(w);
+}
+
+function _planerRenderWpisModal(w) {
+  const osoby = plGetOsoby();
+  const auta  = plGetAuta();
+  const kat   = (plGetKat().find(k => k.id === _planerEditKatId)||{}).nazwa || '';
+  const sel   = (w && w.osoby) ? w.osoby : [];
+  const selAuto = (w && w.auto) ? w.auto : '';
+
+  document.getElementById('planerWpisTitle').textContent = (w ? 'Edytuj wpis' : 'Dodaj wpis') + ' — ' + kat;
+
+  // checkboxy osób
+  const osobyHtml = osoby.length
+    ? osoby.map(o => `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">
+        <input type="checkbox" value="${o}" ${sel.includes(o)?'checked':''} style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">
+        <span style="font-size:14px;font-weight:600">${o}</span>
+      </label>`).join('')
+    : '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak osób — dodaj w ⚙️ Ustawieniach</div>';
+
+  // select aut + pole ręczne
+  const autaOptsHtml = auta.map(a => `<option value="${a}" ${selAuto===a?'selected':''}>${a}</option>`).join('');
+
+  document.getElementById('planerWpisBody').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">👷 Osoby</div>
+      <div id="planerOsobyChk">${osobyHtml}</div>
+    </div>
+
+    <div class="field">
+      <label>🚗 Samochód</label>
+      <select id="planerAutoSel" onchange="planerAutoSelChange(this)">
+        <option value="">— wybierz —</option>
+        ${autaOptsHtml}
+        <option value="__reczny__">✏️ Wpisz ręcznie...</option>
+      </select>
+    </div>
+    <div class="field" id="planerAutoRecznyField" style="display:${selAuto && !auta.includes(selAuto)?'':'none'}">
+      <label>Nazwa auta (ręcznie)</label>
+      <input type="text" id="planerAutoReczny" value="${selAuto && !auta.includes(selAuto)?selAuto:''}" placeholder="Np. Ford Transit">
+    </div>
+
+    <div class="field">
+      <label>📍 Obiekt / miejsce pracy</label>
+      <input type="text" id="planerObiektInp" value="${w&&w.obiekt?w.obiekt:''}" placeholder="Np. Szpital Zabrze, budowa...">
+    </div>
+
+    <div class="field">
+      <label>📝 Uwagi</label>
+      <textarea id="planerUwagiInp" placeholder="Np. wziąć drabinę, nocleg..." style="min-height:60px">${w&&w.uwagi?w.uwagi:''}</textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:6px">
+      ${_planerEditIdx !== null ? `<button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="planerUsunWpisModal()">🗑️ Usuń</button>` : ''}
+      <button class="btn btn-red" style="flex:2;margin:0" onclick="planerZapiszWpis()">💾 Zapisz</button>
+    </div>`;
+
+  // Jeśli auto było ręczne — ustaw select na __reczny__
+  if (selAuto && !auta.includes(selAuto)) {
+    const sel2 = document.getElementById('planerAutoSel');
+    if (sel2) sel2.value = '__reczny__';
+    const rf = document.getElementById('planerAutoRecznyField');
+    if (rf) rf.style.display = '';
+  }
+
+  document.getElementById('planerWpisModal').classList.add('active');
+}
+
+function planerAutoSelChange(sel) {
+  const rf = document.getElementById('planerAutoRecznyField');
+  if (rf) rf.style.display = sel.value === '__reczny__' ? '' : 'none';
+}
+
+function planerZapiszWpis() {
+  const chks = document.querySelectorAll('#planerOsobyChk input[type=checkbox]:checked');
+  const osoby = Array.from(chks).map(c => c.value);
+
+  const autoSel = document.getElementById('planerAutoSel').value;
+  const auto = autoSel === '__reczny__'
+    ? (document.getElementById('planerAutoReczny').value.trim())
+    : autoSel;
+
+  const obiekt = document.getElementById('planerObiektInp').value.trim();
+  const uwagi  = document.getElementById('planerUwagiInp').value.trim();
+
+  const wpisy = plGetWpisy();
+  if (!wpisy[_planerEditKey]) wpisy[_planerEditKey] = [];
+
+  const entry = { katId: _planerEditKatId, osoby, auto, obiekt, uwagi };
+
+  if (_planerEditIdx !== null) {
+    wpisy[_planerEditKey][_planerEditIdx] = entry;
+  } else {
+    wpisy[_planerEditKey].push(entry);
+  }
+
+  plSaveWpisy(wpisy);
+  closePlanerWpis();
+  planerRender();
+  toast('✅ Wpis zapisany');
+}
+
+function planerUsunWpisModal() {
+  const wpisy = plGetWpisy();
+  if (wpisy[_planerEditKey]) {
+    wpisy[_planerEditKey].splice(_planerEditIdx, 1);
+    plSaveWpisy(wpisy);
+  }
+  closePlanerWpis();
+  planerRender();
+  toast('🗑️ Wpis usunięty');
+}
+
+function planerUsunWpis(key, idx) {
+  const wpisy = plGetWpisy();
+  if (wpisy[key]) { wpisy[key].splice(idx, 1); plSaveWpisy(wpisy); }
+  planerRender();
+  toast('🗑️ Usunięto');
+}
+
+function closePlanerWpis() {
+  document.getElementById('planerWpisModal').classList.remove('active');
+}
+
+// --- USTAWIENIA ---
+function planerShowUstawienia() {
+  showScreen('planer-ustaw');
+  planerRenderUstaw();
+}
+
+function planerRenderUstaw() {
+  const kats  = plGetKat();
+  const osoby = plGetOsoby();
+  const auta  = plGetAuta();
+
+  document.getElementById('planerKatList').innerHTML = kats.map((k,i) => `
+    <div class="pl-ust-item">
+      <div class="pl-ust-dot" style="background:${k.kolor}"></div>
+      <span class="pl-ust-label">${k.nazwa}</span>
+      <button class="pl-ust-del" onclick="planerUsunKat(${i})">🗑️</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--muted);padding:6px 0">Brak kategorii</div>';
+
+  document.getElementById('planerOsobyList').innerHTML = osoby.map((o,i) => `
+    <div class="pl-ust-item">
+      <span class="pl-ust-label">👷 ${o}</span>
+      <button class="pl-ust-del" onclick="planerUsunOsobe(${i})">🗑️</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--muted);padding:6px 0">Brak osób</div>';
+
+  document.getElementById('planerAutaList').innerHTML = auta.map((a,i) => `
+    <div class="pl-ust-item">
+      <span class="pl-ust-label">🚗 ${a}</span>
+      <button class="pl-ust-del" onclick="planerUsunAuto(${i})">🗑️</button>
+    </div>`).join('') || '<div style="font-size:13px;color:var(--muted);padding:6px 0">Brak aut</div>';
+}
+
+function planerDodajKat() {
+  const nazwa = document.getElementById('newKatNazwa').value.trim();
+  const kolor = document.getElementById('newKatKolor').value;
+  if (!nazwa) { toast('⚠️ Wpisz nazwę kategorii',1); return; }
+  const kats = plGetKat();
+  kats.push({ id: 'kat_' + Date.now(), nazwa, kolor });
+  plSaveKat(kats);
+  document.getElementById('newKatNazwa').value = '';
+  planerRenderUstaw();
+  toast('✅ Kategoria dodana');
+}
+
+function planerUsunKat(i) {
+  if (!confirm('Usunąć kategorię? Wpisy w tej kategorii zostaną usunięte z harmonogramu.')) return;
+  const kats = plGetKat();
+  const katId = kats[i].id;
+  kats.splice(i, 1);
+  plSaveKat(kats);
+  // usuń wpisy tej kategorii
+  const wpisy = plGetWpisy();
+  Object.keys(wpisy).forEach(d => { wpisy[d] = wpisy[d].filter(w => w.katId !== katId); });
+  plSaveWpisy(wpisy);
+  planerRenderUstaw();
+  toast('🗑️ Kategoria usunięta');
+}
+
+function planerDodajOsobe() {
+  const imie = document.getElementById('newOsobaImie').value.trim();
+  if (!imie) { toast('⚠️ Wpisz imię i nazwisko',1); return; }
+  const osoby = plGetOsoby();
+  if (osoby.includes(imie)) { toast('⚠️ Taka osoba już istnieje',1); return; }
+  osoby.push(imie);
+  plSaveOsoby(osoby);
+  document.getElementById('newOsobaImie').value = '';
+  planerRenderUstaw();
+  toast('✅ Osoba dodana');
+}
+
+function planerUsunOsobe(i) {
+  const osoby = plGetOsoby();
+  osoby.splice(i, 1);
+  plSaveOsoby(osoby);
+  planerRenderUstaw();
+  toast('🗑️ Osoba usunięta');
+}
+
+function planerDodajAuto() {
+  const nazwa = document.getElementById('newAutoNazwa').value.trim();
+  if (!nazwa) { toast('⚠️ Wpisz nazwę auta',1); return; }
+  const auta = plGetAuta();
+  if (auta.includes(nazwa)) { toast('⚠️ Takie auto już istnieje',1); return; }
+  auta.push(nazwa);
+  plSaveAuta(auta);
+  document.getElementById('newAutoNazwa').value = '';
+  planerRenderUstaw();
+  toast('✅ Auto dodane');
+}
+
+function planerUsunAuto(i) {
+  const auta = plGetAuta();
+  auta.splice(i, 1);
+  plSaveAuta(auta);
+  planerRenderUstaw();
+  toast('🗑️ Auto usunięte');
+}
+
 function biuroToggle(event, kEnc, field) {
   event.preventDefault();
   const k = decodeURIComponent(kEnc);
@@ -3540,6 +3970,17 @@ function _doGeneratePDF(p) {
   toast('PDF wygenerowany!');
 }
 </script>
+
+<!-- MODAL PLANER WPIS -->
+<div class="modal-overlay" id="planerWpisModal" onclick="if(event.target===this)closePlanerWpis()">
+  <div class="modal" style="max-height:92vh;overflow-y:auto">
+    <div class="modal-hd">
+      <span id="planerWpisTitle">Dodaj wpis</span>
+      <button class="close-btn" onclick="closePlanerWpis()">✕</button>
+    </div>
+    <div id="planerWpisBody" style="padding:0 4px 8px"></div>
+  </div>
+</div>
 
 <!-- MODAL ZAPLANUJ SERWIS -->
 <div class="modal-overlay" id="serwisModal" onclick="if(event.target===this)closeSerwisModal()">
