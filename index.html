@@ -2773,19 +2773,56 @@ function _doGeneratePDF(p) {
   if (p.ksiazka)       row('Ksiazka eksploatacji', p.ksiazka);
   y += 4;
 
-  // Klauzule prawne
-  checkY(32);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
-  doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
+  // Klauzule prawne - pelna tresc
+  checkY(80);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+  doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
   [
-    'Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:',
-    '• PKN-CEN/TS 54-14 Systemy sygnalizacji pozarowej. Czesc 14: Wytyczne planowania, projektowania,',
-    '  odbioru, eksploatacji i konserwacji',
-    '• Rozporzadzenie MSWiA z dnia 7 czerwca 2010 r. w sprawie ochrony przeciwpozarowej budynkow',
-    '  DZ.U. 2023 poz. 822 ze zmianami',
-    '• Rozporzadzenie MI z dnia 15 kwietnia 2022r w sprawie warunkow technicznych (Dz.U.2022r. poz. 1225)',
-  ].forEach(function(line) { doc.text(line, ML, y); y += 4; });
+    '\u2022 PKN-CEN/TS 54-14 Systemy sygnalizacji pozarowej. Czesc 14: Wytyczne planowania,',
+    '  projektowania, odbioru, eksploatacji i konserwacji',
+    '\u2022 Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji z dnia 7 czerwca 2010 r.',
+    '  w sprawie ochrony przeciwpozarowej budynkow, innych obiektow budowlanych i terenow',
+    '  - DZ. U. 2023 poz. 822 ze zmianami',
+    '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 15 kwietnia 2022r w sprawie warunkow',
+    '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie (Tj. Dz.U.2022r. poz. 1225)',
+  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+  y += 4;
+
+  checkY(30);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+  doc.text('Kwalifikacje:', ML, y); y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  [
+    '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
+    '  obslugi technicznej i napraw instalacji.',
+    '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
+    '  wymagane przez producenta systemu.',
+  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+  y += 4;
+
+  checkY(36);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+  doc.text('Odpowiedzialnosc:', ML, y); y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  [
+    '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
+    '  nieprawidlowo wykonanego przegladu.',
+    '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
+    '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
+    '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
+    '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
+  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
   y += 6;
 
   // II. Wykaz elementow systemu
@@ -2859,29 +2896,23 @@ function _doGeneratePDF(p) {
   var wynikText = p.wynik || 'Sprawny';
   var isNie   = wynikText.toLowerCase().startsWith('nie');
   var isUwagi = wynikText.toLowerCase().indexOf('uwag') > -1;
-  // Wynik bold, czarny tekst
+
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
   if (isNie) {
-    doc.text('• ' + pl(wynikText), ML + 4, y); y += 6;
-    doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.text('Niesprawny', ML + 4, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text('Niesprawny', ML + 4, y); y += 6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
     doc.text('nie spelnia wymagan dla ktorych zostal wykonany.', ML + 4, y); y += 8;
+    doc.text('W obiekcie stwierdzono usterki/nieprawidlowosci wplywajace na prace systemu.', ML, y); y += 8;
   } else if (isUwagi) {
-    doc.text('• ' + pl(wynikText), ML + 4, y); y += 6;
-    doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.text('Sprawny z uwagami', ML + 4, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text('Sprawny z uwagami', ML + 4, y); y += 6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
     doc.text('spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
   } else {
-    doc.text('• ' + pl(wynikText), ML + 4, y); y += 6;
-    doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.text('Sprawny oraz spelnia wszelkie wymogi', ML + 4, y); y += 5;
-    doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.text('dla ktorych zostal wykonany.', ML + 4, y); y += 5;
+    doc.text('Sprawny', ML + 4, y); y += 6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('oraz spelnia wszelkie wymogi dla ktorych zostal wykonany.', ML + 4, y); y += 6;
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y);
-    y += 8;
+    doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y); y += 8;
   }
 
   // Uwagi do inwestora (TAK - widoczne dla klienta)
