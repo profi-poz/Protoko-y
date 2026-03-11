@@ -411,7 +411,7 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
           <label>🔧 Informacja do kolejnego serwisu</label>
           <textarea id="infoKolejnySerwis" placeholder="Co sprawdzono, na co zwrócić szczególną uwagę przy kolejnej wizycie..."></textarea>
         </div>
-        <div class="field">
+        <div class="field" id="fieldWynik">
           <label>Wynik przeglądu</label>
           <select id="wynikPrzegladu">
             <option value="Sprawny">✅ Sprawny / spełnia wymogi dla których został wykonany</option>
@@ -420,8 +420,32 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
             <option value="Niesprawny">❌ Niesprawny / nie spełnia wymogów dla których został wykonany</option>
           </select>
         </div>
+      </div>
 
-
+      <!-- KARTA SERWISU - widoczna tylko dla konserwacji -->
+      <div class="card" id="cardSerwis" style="display:none">
+        <div class="card-hd">🕐 Czas i zasoby serwisu</div>
+        <div class="row2">
+          <div class="field">
+            <label>Liczba osób</label>
+            <select id="serwisOsoby">
+              <option value="">–</option>
+              <option value="1">1 osoba</option>
+              <option value="2">2 osoby</option>
+              <option value="3">3 osoby</option>
+              <option value="4">4 osoby</option>
+              <option value="5">5 osób</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Czas serwisu</label>
+            <input type="text" id="serwisCzas" placeholder="np. 2h 30min">
+          </div>
+        </div>
+        <div class="field">
+          <label>Czas dojazdu (w obie strony)</label>
+          <input type="text" id="serwisDojazd" placeholder="np. 1h 15min">
+        </div>
       </div>
 
       <!-- 📷 Zdjęcia - ukryte, do wdrożenia w przyszłości -->
@@ -562,7 +586,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 25</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 28</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1044,6 +1068,15 @@ function updateChecklist() {
   const rodzaj = document.getElementById('rodzajPrzegladu').value;
   const allItems = (getCL()[typ] || getCL()['Inne'] || CL[typ] || CL.Inne);
 
+  // Pokaż/ukryj pola zależnie od rodzaju
+  const isAwaryjny = rodzaj === 'awaryjny';
+  const fieldWynik = document.getElementById('fieldWynik');
+  const cardSerwis = document.getElementById('cardSerwis');
+  const cardCl = document.getElementById('cardChecklist');
+  if (fieldWynik) fieldWynik.style.display = isAwaryjny ? 'none' : '';
+  if (cardSerwis) cardSerwis.style.display = isAwaryjny ? '' : 'none';
+  if (cardCl) cardCl.style.display = isAwaryjny ? 'none' : '';
+
   // Które zakresy pokazać dla danego rodzaju przeglądu
   const scopeMap = {
     kwartalny:   ['all','k'],
@@ -1053,9 +1086,6 @@ function updateChecklist() {
     odbiorowy:   ['all','serwis'],
     konserwacja: ['all','serwis'],
   };
-  const isAwaryjny = rodzaj === 'awaryjny';
-  const cardCl = document.getElementById('cardChecklist');
-  if (cardCl) cardCl.style.display = isAwaryjny ? 'none' : '';
 
   if (isAwaryjny) {
     cs = {};
@@ -1150,6 +1180,9 @@ function getForm() {
     infoKolejnySerwis: document.getElementById('infoKolejnySerwis').value,
     photos: photos.map(p => p.data),
     wynik: document.getElementById('wynikPrzegladu').value,
+    serwisOsoby: (document.getElementById('serwisOsoby')||{}).value||'',
+    serwisCzas: (document.getElementById('serwisCzas')||{}).value||'',
+    serwisDojazd: (document.getElementById('serwisDojazd')||{}).value||'',
     przedstawiciel: (document.getElementById('przedstawiciel')||{}).value||'',
     firmaObiektu: (document.getElementById('firmaObiektu')||{}).value||'',
     uprawnieniaPrzedst: (document.getElementById('uprawnieniaPrzedst')||{}).value||'',
@@ -1243,6 +1276,9 @@ function loadDraft(draftId) {
   set('adnotacjeBiuro', d.adnotacjeBiuro);
   set('infoKolejnySerwis', d.infoKolejnySerwis);
   set('wynikPrzegladu', d.wynik);
+  set('serwisOsoby', d.serwisOsoby);
+  set('serwisCzas', d.serwisCzas);
+  set('serwisDojazd', d.serwisDojazd);
   updateChecklist();
   if (d.checklist) Object.entries(d.checklist).forEach(([id, val]) => { if(val) setSt(id, val); });
   if (d.photos && d.photos.length) { photos = d.photos.map(src => ({data:src})); renderPhotos(); }
@@ -1337,6 +1373,9 @@ function resetForm() {
   // firmaObiektu removed
   // uprawnieniaPrzedst removed
   document.getElementById('wynikPrzegladu').value = 'Pozytywny';
+  const so = document.getElementById('serwisOsoby'); if(so) so.value = '';
+  const sc = document.getElementById('serwisCzas');  if(sc) sc.value = '';
+  const sd = document.getElementById('serwisDojazd'); if(sd) sd.value = '';
   updateChecklist();
 }
 
@@ -1460,6 +1499,15 @@ function showDetail(id) {
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)" class="${wynikClass(p.wynik)}">
       ${wynikIco(p.wynik)} ${p.wynik||'Brak'}
     </div>
+    ${(p.serwisOsoby||p.serwisCzas||p.serwisDojazd) ? `
+    <div style="margin-top:12px;background:rgba(100,180,255,.06);border:1px solid rgba(100,180,255,.2);border-radius:8px;padding:10px 12px">
+      <div style="font-size:11px;color:#64b4ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🕐 Czas i zasoby serwisu</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+        ${p.serwisOsoby ? `<span>👷 <b>${p.serwisOsoby}</b> ${p.serwisOsoby==='1'?'osoba':'osoby/osób'}</span>` : ''}
+        ${p.serwisCzas ? `<span>⏱️ Czas serwisu: <b>${p.serwisCzas}</b></span>` : ''}
+        ${p.serwisDojazd ? `<span>🚗 Dojazd: <b>${p.serwisDojazd}</b></span>` : ''}
+      </div>
+    </div>` : ''}
     ${(p.przedstawiciel||p.firmaObiektu||p.uprawnieniaPrzedst) ? '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.9">' +
       (p.przedstawiciel ? 'Przedstawiciel: <b style="color:var(--text)">' + p.przedstawiciel + '</b><br>' : '') +
       (p.firmaObiektu ? 'Firma obiektu: <b style="color:var(--text)">' + p.firmaObiektu + '</b><br>' : '') +
@@ -2901,25 +2949,50 @@ function _doGeneratePDF(p) {
   sekcja('Zalecenia do nieprawidlowosci', p.zalecenieNieprawidl);
   sekcja('Wykaz uzytych czesci zamiennych', p.czesciZamienne||'');
 
-  // V. Wnioski
-  sectionHead('V. WNIOSKI');
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  doc.text('System Sygnalizacji Pozaru jest:', ML, y); y += 7;
-  var wynikText = p.wynik || 'Sprawny';
-  var isNie   = wynikText.toLowerCase().startsWith('nie');
-  var isUwagi = wynikText.toLowerCase().indexOf('uwag') > -1;
+  // V. Wnioski / Podsumowanie
+  var isKonserwacjaPDF = (p.rodzaj||'').toLowerCase() === 'awaryjny';
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  if (isNie) {
-    doc.text('Niesprawny - nie spelnia wymagan dla ktorych zostal wykonany.', ML + 4, y); y += 6;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('W obiekcie stwierdzono usterki/nieprawidlowosci wplywajace na prace systemu.', ML, y); y += 8;
-  } else if (isUwagi) {
-    doc.text('Sprawny z uwagami - spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
+  if (isKonserwacjaPDF) {
+    // Dla konserwacji: zamiast wyniku - zestawienie czasu i zasobów
+    sectionHead('V. PODSUMOWANIE SERWISU');
+    checkY(30);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Zestawienie czasu i zasobow przeznaczonych na serwis:', ML, y); y += 8;
+    var serwisRows = [
+      ['Liczba osob:', p.serwisOsoby || '-'],
+      ['Czas serwisu:', p.serwisCzas || '-'],
+      ['Czas dojazdu (w obie strony):', p.serwisDojazd || '-'],
+    ];
+    serwisRows.forEach(function(r) {
+      checkY(7);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
+      doc.text(pl(r[0]), ML + 4, y);
+      doc.setFont('helvetica','normal'); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      doc.text(pl(r[1]), ML + 70, y);
+      y += 6;
+    });
+    y += 4;
   } else {
-    doc.text('Sprawny oraz spelnia wszelkie wymogi dla ktorych zostal wykonany.', ML + 4, y); y += 6;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y); y += 8;
+    // Dla pozostałych: standardowe wnioski z wynikiem
+    sectionHead('V. WNIOSKI');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('System Sygnalizacji Pozaru jest:', ML, y); y += 7;
+    var wynikText = p.wynik || 'Sprawny';
+    var isNie   = wynikText.toLowerCase().startsWith('nie');
+    var isUwagi = wynikText.toLowerCase().indexOf('uwag') > -1;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    if (isNie) {
+      doc.text('Niesprawny - nie spelnia wymagan dla ktorych zostal wykonany.', ML + 4, y); y += 6;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      doc.text('W obiekcie stwierdzono usterki/nieprawidlowosci wplywajace na prace systemu.', ML, y); y += 8;
+    } else if (isUwagi) {
+      doc.text('Sprawny z uwagami - spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
+    } else {
+      doc.text('Sprawny oraz spelnia wszelkie wymogi dla ktorych zostal wykonany.', ML + 4, y); y += 6;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y); y += 8;
+    }
   }
 
   // Uwagi do inwestora (TAK - widoczne dla klienta)
