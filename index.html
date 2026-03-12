@@ -649,7 +649,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 38</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 42</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -752,6 +752,7 @@ Content-Type: application/json
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
           <button onclick="showScreen('panel')" style="background:none;border:none;color:var(--red2);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;flex:1">🏢 Biuro</div>
+          <button id="biuroEditBtn" onclick="biuroToggleEdit()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:7px 11px;cursor:pointer">✏️ Edytuj</button>
           <button onclick="biuroPinCheck(function(){showScreen('planer')})" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:5px">📅 Harmonogram</button>
         </div>
         <input type="text" id="biuroSearch" placeholder="🔍 Szukaj obiektu..." oninput="biuroRender()"
@@ -785,7 +786,8 @@ Content-Type: application/json
         </div>
         <button onclick="planerGoToday()" id="planerTodayBtn" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:700;padding:5px;cursor:pointer;font-family:'Barlow',sans-serif;display:none">↩ Wróć do dziś</button>
       </div>
-      <div id="planerBody" style="padding:0 0 100px;overflow-y:auto"></div>
+      <div id="planerBody" style="padding:0 0 140px;overflow-y:auto"></div>
+      <div id="planerSuma" style="display:none;position:sticky;bottom:60px;left:0;right:0;background:var(--surface);border-top:2px solid var(--border);padding:10px 16px;z-index:5"></div>
     </div>
 
     <!-- PLANER USTAWIENIA -->
@@ -1241,7 +1243,7 @@ function showScreen(name) {
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
   if(name==='biuro'){ biuroRender(); }
-  if(name==='planer'){ planerRender(); }
+  if(name==='planer'){ planerMigrateWpisy(); planerRender(); }
   if(name==='planer-ustaw'){ planerRenderUstaw(); }
 }
 
@@ -1838,34 +1840,27 @@ function exportAllToExcel() {
 
   // --- Zakładka: Godziny pracy ---
   const planerWpisy = plGetWpisy();
-  // Zbierz wszystkie wpisy ze wszystkich dni
+  const planerKatMap = {}; plGetKat().forEach(k => planerKatMap[k.id] = k);
   const godzRows = [
     ['GODZINY PRACY · PROFI-POŻ','','','','',''],
     ['Wygenerowano:', new Date().toLocaleString('pl-PL'),'','','',''],
     [''],
-    ['Data','Obiekt','Osoby','Auto','Godz/os.','Godz łącznie','Uwagi'],
+    ['Data','Obiekt / Kategoria','Osoby','Auto','Godz/os.','Godz łącznie','Uwagi'],
   ];
-  // Sumuj per obiekt
-  const perObiektTotal = {}; // {obiekt: {godziny, dni:Set}}
+  const perObiektTotal = {};
   const allDays = Object.keys(planerWpisy).sort();
   allDays.forEach(function(dzien) {
     (planerWpisy[dzien]||[]).forEach(function(w) {
-      if (!w.obiekt || !w.godziny || !w.osoby || !w.osoby.length) return;
+      const kat = planerKatMap[w.katId];
+      if (!kat || kat.noObiekt) return;
+      if (!w.godziny || !w.osoby || !w.osoby.length) return;
+      const nazwa = kat.nazwa;
       const godz = w.godziny * w.osoby.length;
-      godzRows.push([
-        dzien,
-        w.obiekt,
-        w.osoby.join(', '),
-        w.auto || '',
-        w.godziny,
-        godz,
-        w.uwagi || '',
-      ]);
-      if (!perObiektTotal[w.obiekt]) perObiektTotal[w.obiekt] = 0;
-      perObiektTotal[w.obiekt] += godz;
+      godzRows.push([dzien, nazwa, w.osoby.join(', '), w.auto||'', w.godziny, godz, w.uwagi||'']);
+      if (!perObiektTotal[nazwa]) perObiektTotal[nazwa] = 0;
+      perObiektTotal[nazwa] += godz;
     });
   });
-  // Separator + podsumowanie per obiekt
   if (Object.keys(perObiektTotal).length) {
     godzRows.push(['']);
     godzRows.push(['PODSUMOWANIE PER OBIEKT','','','','','Godziny łącznie','']);
@@ -2942,29 +2937,65 @@ function biuroSetFilter(f) {
 }
 
 function biuroRender() {
-  // Najpierw pokaż spinner, potem załaduj status z serwera i rerenderuj
   const el = document.getElementById('biuroList');
-  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">⏳ Ładowanie statusów...</div>';
-  biuroLoadStatus(function() { _biuroRenderInner(); });
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">⏳ Ładowanie...</div>';
+
+  const doRender = function() {
+    biuroLoadStatus(function() { _biuroRenderInner(); });
+  };
+
+  // Jeśli allProtokoly puste — załaduj z serwera najpierw
+  if (!allProtokoly.length) {
+    const url = localStorage.getItem('serverUrl');
+    if (!url) { doRender(); return; }
+    const cbName = 'cb_biuro_list_' + Date.now();
+    const timer = setTimeout(function() {
+      delete window[cbName];
+      doRender();
+    }, 8000);
+    window[cbName] = function(res) {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (res && res.protokoly && res.protokoly.length) {
+        const localIds = new Set(protokoly.map(p => String(p.id)));
+        const onlyServer = res.protokoly.filter(p => !localIds.has(String(p.id)));
+        allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => (b.data||'').localeCompare(a.data||''));
+      }
+      doRender();
+    };
+    const s = document.createElement('script');
+    s.src = url + '?list=1&callback=' + cbName;
+    document.body.appendChild(s);
+  } else {
+    doRender();
+  }
 }
 
 function _biuroRenderInner() {
   const src = allProtokoly.length ? allProtokoly : protokoly;
   const q = ((document.getElementById('biuroSearch')||{}).value||'').toLowerCase().trim();
   const status = biuroGetStatus();
+  const hidden = biuroGetHidden();
 
   const today = new Date(); today.setHours(0,0,0,0);
   const rodzajDni = { kwartalny:90, polroczny:180, roczny:365, odbiorowy:365, konserwacja:365, awaryjny:0 };
 
-  // Najnowszy protokół per obiekt+typ
+  // Najnowszy protokół per obiekt+typ (wliczając lokalne protokoly które nie są jeszcze na serwerze)
   const map = {};
+  // Najpierw serwer/allProtokoly
   src.forEach(function(p) {
     if (!p.obiekt) return;
     const k = (p.obiekt||'').trim() + '|' + (p.typ||'');
     if (!map[k] || (p.data||'') > (map[k].data||'')) map[k] = p;
   });
+  // Potem lokalne — mogą być nowsze lub nowe obiekty których serwer jeszcze nie ma
+  protokoly.forEach(function(p) {
+    if (!p.obiekt) return;
+    const k = (p.obiekt||'').trim() + '|' + (p.typ||'');
+    if (!map[k] || (p.data||'') > (map[k].data||'')) map[k] = p;
+  });
 
-  // Zbuduj karty per obiekt+typ
+  // Zbuduj karty
   let cards = Object.keys(map).map(function(k) {
     const p = map[k];
     const st = status[k] || { protokol:false, fv:false };
@@ -2979,8 +3010,14 @@ function _biuroRenderInner() {
       else if (daysLeft<=30) { colorClass='yellow'; daysLabel='Za '+daysLeft+' dni'; }
       else                   { colorClass='green';  daysLabel='Za '+daysLeft+' dni'; }
     }
-    return { k, p, st, colorClass, daysLabel, daysLeft, dataNast, obiekt:(p.obiekt||'').trim() };
+    const isHidden = hidden.has(k);
+    return { k, p, st, colorClass, daysLabel, daysLeft, dataNast, obiekt:(p.obiekt||'').trim(), isHidden };
   });
+
+  // W trybie normalnym — odfiltruj ukryte; w trybie edycji — pokaż wszystko (szare)
+  if (!_biuroEditMode) {
+    cards = cards.filter(c => !c.isHidden);
+  }
 
   // Filtruj
   if (_biuroFilter === 'red')   cards = cards.filter(c => c.colorClass === 'red');
@@ -2988,13 +3025,13 @@ function _biuroRenderInner() {
   if (q) cards = cards.filter(c => c.obiekt.toLowerCase().includes(q));
 
   // Grupuj po nazwie obiektu
-  const grupy = {}; // obiektNazwa → [cards...]
+  const grupy = {};
   cards.forEach(function(c) {
     if (!grupy[c.obiekt]) grupy[c.obiekt] = [];
     grupy[c.obiekt].push(c);
   });
 
-  // Sortuj grupy: najgorszy kolor grupy decyduje, potem alfa
+  // Sortuj grupy
   const orderC = {red:0,yellow:1,green:2};
   const sortedGrupy = Object.keys(grupy).sort(function(a,b) {
     const wa = Math.min(...grupy[a].map(c=>orderC[c.colorClass]));
@@ -3013,14 +3050,20 @@ function _biuroRenderInner() {
   const colorHex = {red:'#e74c3c',yellow:'#f1c40f',green:'#2ecc71'};
 
   let html = '';
+
+  // W trybie edycji — przycisk "przywróć wszystkie" jeśli są ukryte
+  if (_biuroEditMode && hidden.size > 0) {
+    html += `<div style="margin:0 16px 12px;padding:10px 14px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;color:var(--muted)">Ukrytych: <strong style="color:#e74c3c">${hidden.size}</strong></span>
+      <button onclick="biuroResetHidden()" style="background:none;border:1px solid rgba(231,76,60,.4);border-radius:6px;color:#e74c3c;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer">👁️ Pokaż wszystkie</button>
+    </div>`;
+  }
+
   sortedGrupy.forEach(function(obiektNazwa) {
     const group = grupy[obiektNazwa];
-    // Sortuj typy w grupie: najpierw najgorsze
     group.sort(function(a,b){ return orderC[a.colorClass]-orderC[b.colorClass]; });
-    const worstColor = group[0].colorClass;
     const isMulti = group.length > 1;
 
-    // Nagłówek grupy (tylko gdy >1 typ)
     if (isMulti) {
       html += `<div style="margin:14px 16px 0;display:flex;align-items:center;gap:8px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--text)">${obiektNazwa}</div>
@@ -3030,25 +3073,23 @@ function _biuroRenderInner() {
     }
 
     group.forEach(function(c, ci) {
-      const {k, p, st, colorClass, daysLabel, dataNast} = c;
+      const {k, p, st, colorClass, daysLabel, dataNast, isHidden} = c;
       const kEnc = encodeURIComponent(k);
       const nastStr = dataNast ? dataNast.toLocaleDateString('pl-PL',{year:'numeric',month:'long'}) : '—';
       const isLast = ci === group.length - 1;
 
-      // Zaokrąglenia: jeśli multi - pierwsze/środkowe/ostatnie
-      let borderRadius = '12px';
-      let marginBottom = '2px';
+      let borderRadius = '12px', marginBottom = isLast ? '10px' : '2px';
       if (isMulti) {
-        if (ci === 0)              borderRadius = '0 0 4px 4px';
-        else if (isLast)           borderRadius = '4px 4px 12px 12px';
-        else                       borderRadius = '4px';
-        if (isLast) marginBottom = '10px';
-      } else {
-        marginBottom = '10px';
+        if (ci === 0)    borderRadius = '0 0 4px 4px';
+        else if (isLast) borderRadius = '4px 4px 12px 12px';
+        else             borderRadius = '4px';
       }
 
+      // Ukryte w trybie edycji — szare z przyciskiem odkryj
+      const hiddenStyle = isHidden ? 'opacity:0.4;filter:grayscale(1)' : '';
+
       let togglesHtml = '';
-      if (colorClass === 'green' || colorClass === 'yellow') {
+      if (!_biuroEditMode && (colorClass === 'green' || colorClass === 'yellow')) {
         togglesHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
           <div class="toggle-row">
             <span class="toggle-label">📤 Wysłano protokół</span>
@@ -3067,7 +3108,30 @@ function _biuroRenderInner() {
         </div>`;
       }
 
-      html += `<div class="biuro-card ${colorClass}" style="margin:0 16px ${marginBottom};border-radius:${borderRadius}">
+      // Przyciski trybu edycji
+      let editHtml = '';
+      if (_biuroEditMode) {
+        editHtml = isHidden
+          ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+              <button onclick="biuroOdkryj('${kEnc}')" style="width:100%;background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.3);border-radius:8px;color:#2ecc71;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">👁️ Przywróć</button>
+            </div>`
+          : `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+              <button onclick="biuroUkryj('${kEnc}')" style="width:100%;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;color:#e74c3c;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">🗑️ Ukryj pozycję</button>
+            </div>`;
+      }
+
+      // Zaplanuj serwis — tylko w normalnym trybie
+      let serwisHtml = '';
+      if (!_biuroEditMode) {
+        serwisHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+          <button onclick="openSerwisModal('${kEnc}')"
+            style="width:100%;background:rgba(100,149,237,.12);border:1px solid rgba(100,149,237,.3);border-radius:8px;color:#6495ed;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">
+            📅 Zaplanuj serwis
+          </button>
+        </div>`;
+      }
+
+      html += `<div class="biuro-card ${colorClass}" style="margin:0 16px ${marginBottom};border-radius:${borderRadius};${hiddenStyle}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="flex:1">
             ${isMulti ? '' : `<div class="biuro-obj">${obiektNazwa}</div>`}
@@ -3078,13 +3142,7 @@ function _biuroRenderInner() {
             <div class="biuro-days" style="color:${colorHex[colorClass]};font-size:13px">${daysLabel}</div>
           </div>
         </div>
-        ${togglesHtml}
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
-          <button onclick="openSerwisModal('${kEnc}')"
-            style="width:100%;background:rgba(100,149,237,.12);border:1px solid rgba(100,149,237,.3);border-radius:8px;color:#6495ed;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">
-            📅 Zaplanuj serwis
-          </button>
-        </div>
+        ${togglesHtml}${editHtml}${serwisHtml}
       </div>`;
     });
   });
@@ -3245,8 +3303,8 @@ _plDate.setHours(0,0,0,0);
 
 // --- domyślne kategorie jeśli brak ---
 const PL_KAT_DEFAULT = [
-  {id:'wolne',       nazwa:'Wolne',            kolor:'#c0392b'},
-  {id:'niewpisani',  nazwa:'Niewpisani',        kolor:'#d35400'},
+  {id:'wolne',       nazwa:'Wolne',            kolor:'#c0392b', noObiekt:true},
+  {id:'niewpisani',  nazwa:'Niewpisani',        kolor:'#d35400', noObiekt:true},
   {id:'przeglady',   nazwa:'Przeglądy / Serwis',kolor:'#27ae60'},
   {id:'montaz',      nazwa:'Prace montażowe',   kolor:'#8e44ad'},
   {id:'inne',        nazwa:'Inne',              kolor:'#2c3e50'},
@@ -3256,6 +3314,29 @@ function plGetKat()   { try{return JSON.parse(localStorage.getItem(PL_SK_KAT))||
 function plGetOsoby() { try{return JSON.parse(localStorage.getItem(PL_SK_OSOBY))||[];}catch(e){return [];} }
 function plGetAuta()  { try{return JSON.parse(localStorage.getItem(PL_SK_AUTA))||[];}catch(e){return [];} }
 function plGetWpisy() { try{return JSON.parse(localStorage.getItem(PL_SK_WPISY))||{};}catch(e){return {};} }
+
+// Migracja starych wpisów (mają w.obiekt zamiast prawidłowego katId)
+function planerMigrateWpisy() {
+  const wpisy = plGetWpisy();
+  const kats = plGetKat();
+  let changed = false;
+  Object.keys(wpisy).forEach(function(dzien) {
+    wpisy[dzien] = (wpisy[dzien]||[]).map(function(w) {
+      // Stary wpis — katId nie pasuje do żadnej kategorii
+      const katExists = kats.find(k => k.id === w.katId);
+      if (!katExists) {
+        // Spróbuj dopasować po nazwie obiektu lub katId
+        const byNazwa = kats.find(k => k.nazwa.toLowerCase() === (w.obiekt||w.katId||'').toLowerCase());
+        if (byNazwa) { changed = true; return {...w, katId: byNazwa.id}; }
+        // Fallback: wrzuć do "inne" jeśli istnieje
+        const inne = kats.find(k => k.id === 'inne');
+        if (inne) { changed = true; return {...w, katId: 'inne'}; }
+      }
+      return w;
+    });
+  });
+  if (changed) plSaveWpisy(wpisy);
+}
 
 function plSaveKat(v)   { localStorage.setItem(PL_SK_KAT, JSON.stringify(v)); }
 function plSaveOsoby(v) { localStorage.setItem(PL_SK_OSOBY, JSON.stringify(v)); }
@@ -3296,18 +3377,28 @@ function planerRender() {
   let html = '';
   kats.forEach(function(kat) {
     const wpisyKat = dzienWpisy.filter(w => w.katId === kat.id);
+    const isNoObiekt = !!kat.noObiekt;
+    // Kategoria z obiektem — lewy panel klikalny, otwiera statystyki
+    const katClick = !isNoObiekt
+      ? `onclick="openPlanerObiekt('${encodeURIComponent(kat.id)}','${encodeURIComponent(kat.nazwa)}')" style="background:${kat.kolor};cursor:pointer;position:relative"`
+      : `style="background:${kat.kolor}"`;
+
     html += `<div class="pl-row">
-      <div class="pl-kat" style="background:${kat.kolor}">${kat.nazwa}</div>
+      <div class="pl-kat" ${katClick}>
+        ${kat.nazwa}
+        ${!isNoObiekt ? `<div style="position:absolute;bottom:5px;right:5px;font-size:9px;opacity:0.7">📊</div>` : ''}
+      </div>
       <div class="pl-cell">`;
 
     wpisyKat.forEach(function(w, wi) {
       const wIdx = dzienWpisy.indexOf(w);
+      // Suma godzin dla tego wpisu
+      const godz = (w.godziny && w.osoby && w.osoby.length) ? w.godziny * w.osoby.length : null;
       html += `<div class="pl-wpis">
         <div style="flex:1">
           <div class="pl-wpis-osoby">${(w.osoby||[]).join(', ') || '—'}</div>
           ${w.auto ? `<div class="pl-wpis-auto">🚗 ${w.auto}</div>` : ''}
-          ${w.obiekt ? `<div class="pl-wpis-obiekt">📍 ${w.obiekt}</div>` : ''}
-          ${(w.godziny&&w.osoby&&w.osoby.length) ? `<div style="font-size:11px;color:#f39c12;margin-top:2px">⏱️ ${w.godziny}h × ${w.osoby.length} os. = <strong>${w.godziny*w.osoby.length}h</strong></div>` : ''}
+          ${godz ? `<div style="font-size:11px;color:#f39c12;margin-top:2px">⏱️ ${w.godziny}h × ${w.osoby.length} os. = <strong>${godz}h</strong></div>` : ''}
           ${w.uwagi ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">📝 ${w.uwagi}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
@@ -3325,32 +3416,35 @@ function planerRender() {
 
   document.getElementById('planerBody').innerHTML = html;
 
-  // Podsumowanie godzin dnia
-  const dzienAll = dzienWpisy.filter(w => w.obiekt && w.godziny && w.osoby && w.osoby.length);
+  // Podsumowanie godzin dnia — sticky bar na dole
+  const sumaEl = document.getElementById('planerSuma');
+  const katMap = {}; plGetKat().forEach(k => katMap[k.id] = k);
+  const dzienAll = dzienWpisy.filter(w => {
+    const k = katMap[w.katId];
+    return k && !k.noObiekt && w.godziny && w.osoby && w.osoby.length;
+  });
   if (dzienAll.length) {
-    // Sumuj per obiekt
-    const perObiekt = {};
+    const perKat = {};
     dzienAll.forEach(function(w) {
-      const ob = w.obiekt || '—';
-      if (!perObiekt[ob]) perObiekt[ob] = 0;
-      perObiekt[ob] += w.godziny * (w.osoby.length || 1);
+      const nazwa = (katMap[w.katId]||{}).nazwa || w.katId;
+      if (!perKat[nazwa]) perKat[nazwa] = 0;
+      perKat[nazwa] += w.godziny * (w.osoby.length || 1);
     });
-    const totalH = Object.values(perObiekt).reduce((a,b)=>a+b,0);
-    const rowsHtml = Object.keys(perObiekt).map(ob =>
-      `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-        <span style="color:var(--muted)">📍 ${ob}</span>
-        <span style="font-weight:700;color:#f39c12">${perObiekt[ob]}h</span>
+    const totalH = Object.values(perKat).reduce((a,b)=>a+b,0);
+    const rowsHtml = Object.keys(perKat).map(nazwa =>
+      `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
+        <span style="color:var(--muted)">${nazwa}</span>
+        <span style="font-weight:700;color:#f39c12">${perKat[nazwa]}h</span>
       </div>`
     ).join('');
-    const sumEl = document.createElement('div');
-    sumEl.style.cssText = 'margin:0;padding:14px 16px;background:var(--surface);border-top:2px solid var(--border)';
-    sumEl.innerHTML = `<div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">⏱️ Godziny tego dnia</div>
-      ${rowsHtml}
-      <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:6px">
-        <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800">RAZEM</span>
-        <span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#f39c12">${totalH}h</span>
-      </div>`;
-    document.getElementById('planerBody').appendChild(sumEl);
+    sumaEl.style.display = '';
+    sumaEl.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">⏱️ Godziny dnia</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#f39c12">${totalH}h łącznie</div>
+    </div>${rowsHtml}`;
+  } else {
+    sumaEl.style.display = 'none';
+    sumaEl.innerHTML = '';
   }
 }
 
@@ -3398,6 +3492,10 @@ function _planerRenderWpisModal(w) {
 
   document.getElementById('planerWpisTitle').textContent = (w ? 'Edytuj wpis' : 'Dodaj wpis') + ' — ' + kat;
 
+  // Czy kategoria wymaga obiektu?
+  const katObj = plGetKat().find(k => k.id === _planerEditKatId) || {};
+  const isNoObiekt = !!katObj.noObiekt;
+
   // checkboxy osób
   const osobyHtml = osoby.length
     ? osoby.map(o => `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">
@@ -3428,20 +3526,15 @@ function _planerRenderWpisModal(w) {
       <input type="text" id="planerAutoReczny" value="${selAuto && !auta.includes(selAuto)?selAuto:''}" placeholder="Np. Ford Transit">
     </div>
 
+    ${isNoObiekt ? '' : `
     <div class="field">
-      <label>⏱️ Godziny pracy na obiekt (łącznie z dojazdem)</label>
+      <label>⏱️ Godziny pracy (łącznie z dojazdem)</label>
       <div style="display:flex;align-items:center;gap:10px">
         <input type="number" id="planerGodzinyInp" value="${w&&w.godziny!=null?w.godziny:8}" min="0.5" max="24" step="0.5"
           style="width:90px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:18px;font-weight:700;padding:10px 12px;outline:none;text-align:center">
-        <span style="font-size:13px;color:var(--muted)">h × ${(w&&w.osoby&&w.osoby.length)||'<span id="planerGodzinyOsob">0</span>'} osób = <span id="planerGodzinySuma" style="color:var(--text);font-weight:700">${w&&w.godziny!=null&&w.osoby?w.godziny*(w.osoby.length||1)+'h':'—'}</span> łącznie</span>
+        <span style="font-size:13px;color:var(--muted)">h na osobę</span>
       </div>
-    </div>
-
-    <div class="field">
-      <label>📍 Obiekt / miejsce pracy</label>
-      <input type="text" id="planerObiektInp" value="${w&&w.obiekt?w.obiekt:''}" placeholder="Np. Szpital Zabrze, budowa...">
-    </div>
-    </div>
+    </div>`}
 
     <div class="field">
       <label>📝 Uwagi</label>
@@ -3478,8 +3571,10 @@ function planerZapiszWpis() {
     ? (document.getElementById('planerAutoReczny').value.trim())
     : autoSel;
 
-  const godziny = parseFloat(document.getElementById('planerGodzinyInp').value) || 8;
-  const obiekt = document.getElementById('planerObiektInp').value.trim();
+  const godzEl = document.getElementById('planerGodzinyInp');
+  const godziny = godzEl ? (parseFloat(godzEl.value) || 8) : null;
+  const obiektEl = document.getElementById('planerObiektInp');
+  const obiekt = obiektEl ? obiektEl.value.trim() : '';
   const uwagi  = document.getElementById('planerUwagiInp').value.trim();
 
   const wpisy = plGetWpisy();
@@ -3515,6 +3610,108 @@ function planerUsunWpis(key, idx) {
   if (wpisy[key]) { wpisy[key].splice(idx, 1); plSaveWpisy(wpisy); }
   planerRender();
   toast('🗑️ Usunięto');
+}
+
+function openPlanerObiekt(katIdEnc, katNazwaEnc) {
+  const katId   = decodeURIComponent(katIdEnc);
+  const katNazwa = decodeURIComponent(katNazwaEnc);
+  document.getElementById('planerObiektTitle').textContent = '📊 ' + katNazwa;
+
+  const wpisy = plGetWpisy();
+
+  // Zbierz wszystkie wpisy tej kategorii ze wszystkich dni
+  const rekordy = [];
+  Object.keys(wpisy).sort().forEach(function(dzien) {
+    (wpisy[dzien]||[]).forEach(function(w) {
+      if (w.katId !== katId) return;
+      if (!w.osoby || !w.osoby.length) return;
+      rekordy.push({ data: dzien, osoby: w.osoby, godziny: w.godziny||8, auto: w.auto||'', uwagi: w.uwagi||'' });
+    });
+  });
+
+  if (!rekordy.length) {
+    document.getElementById('planerObiektBody').innerHTML =
+      '<div style="text-align:center;padding:30px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">📭</div>Brak wpisów dla tej kategorii</div>';
+    document.getElementById('planerObiektModal').classList.add('open');
+    return;
+  }
+
+  // Podsumowanie per osoba
+  const perOsoba = {};
+  rekordy.forEach(function(r) {
+    r.osoby.forEach(function(o) {
+      if (!perOsoba[o]) perOsoba[o] = { dni: new Set(), godziny: 0 };
+      perOsoba[o].dni.add(r.data);
+      perOsoba[o].godziny += r.godziny;
+    });
+  });
+
+  const totalH   = rekordy.reduce((s,r) => s + r.godziny * r.osoby.length, 0);
+  const uniqueDni = new Set(rekordy.map(r=>r.data));
+
+  // Historia wizyt — od najnowszej
+  const dniHtml = [...rekordy].reverse().map(function(r) {
+    const d = new Date(r.data);
+    const label = d.getDate() + ' ' + MN[d.getMonth()] + ' ' + d.getFullYear() + ' · ' + DN[d.getDay()];
+    const godzLacznie = r.godziny * r.osoby.length;
+    return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:3px">${label}</div>
+          <div style="font-size:13px;font-weight:700">${r.osoby.join(', ')}</div>
+          ${r.auto ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🚗 ${r.auto}</div>` : ''}
+          ${r.uwagi ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">📝 ${r.uwagi}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:var(--muted)">${r.godziny}h × ${r.osoby.length} os.</div>
+          <div style="font-size:18px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:#f39c12">${godzLacznie}h</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Per osoba — posortowane malejąco po godzinach
+  const osobyHtml = Object.keys(perOsoba).sort((a,b)=>perOsoba[b].godziny-perOsoba[a].godziny).map(function(o) {
+    const d = perOsoba[o];
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div>
+        <div style="font-size:13px;font-weight:700">👷 ${o}</div>
+        <div style="font-size:11px;color:var(--muted)">${d.dni.size} ${d.dni.size===1?'dzień':'dni'} na obiekcie</div>
+      </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#f39c12">${d.godziny}h</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('planerObiektBody').innerHTML = `
+    <!-- Kafelki podsumowania -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+      <div style="background:rgba(243,156,18,.12);border:1px solid rgba(243,156,18,.3);border-radius:10px;padding:12px 8px;text-align:center">
+        <div style="font-size:26px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:#f39c12">${totalH}h</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Łącznie</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center">
+        <div style="font-size:26px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${uniqueDni.size}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Dni</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center">
+        <div style="font-size:26px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${Object.keys(perOsoba).length}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Osób</div>
+      </div>
+    </div>
+
+    <!-- Per osoba -->
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">Podsumowanie per osoba</div>
+    <div style="margin-bottom:16px">${osobyHtml}</div>
+
+    <!-- Historia -->
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">Historia wizyt</div>
+    <div>${dniHtml}</div>`;
+
+  document.getElementById('planerObiektModal').classList.add('open');
+}
+
+function closePlanerObiekt() {
+  document.getElementById('planerObiektModal').classList.remove('open');
 }
 
 function closePlanerWpis() {
@@ -3616,6 +3813,50 @@ function planerUsunAuto(i) {
   plSaveAuta(auta);
   planerRenderUstaw();
   toast('🗑️ Auto usunięte');
+}
+
+// ===== BIURO EDYCJA (ukrywanie pozycji) =====
+const BIURO_HIDDEN_SK = 'profipoz_biuro_hidden'; // Set kluczy "obiekt|typ" do ukrycia
+let _biuroEditMode = false;
+
+function biuroGetHidden() {
+  try { return new Set(JSON.parse(localStorage.getItem(BIURO_HIDDEN_SK) || '[]')); } catch(e) { return new Set(); }
+}
+function biuroSaveHidden(set) {
+  localStorage.setItem(BIURO_HIDDEN_SK, JSON.stringify([...set]));
+}
+function biuroToggleEdit() {
+  _biuroEditMode = !_biuroEditMode;
+  const btn = document.getElementById('biuroEditBtn');
+  if (btn) {
+    btn.textContent = _biuroEditMode ? '✅ Gotowe' : '✏️ Edytuj';
+    btn.style.background = _biuroEditMode ? 'var(--red)' : 'var(--surface2)';
+    btn.style.color = _biuroEditMode ? '#fff' : 'var(--muted)';
+    btn.style.borderColor = _biuroEditMode ? 'var(--red)' : 'var(--border)';
+  }
+  _biuroRenderInner();
+}
+function biuroUkryj(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const hidden = biuroGetHidden();
+  hidden.add(k);
+  biuroSaveHidden(hidden);
+  _biuroRenderInner();
+  toast('🗑️ Pozycja ukryta');
+}
+function biuroOdkryj(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const hidden = biuroGetHidden();
+  hidden.delete(k);
+  biuroSaveHidden(hidden);
+  _biuroRenderInner();
+  toast('👁️ Pozycja przywrócona');
+}
+function biuroResetHidden() {
+  if (!confirm('Przywrócić wszystkie ukryte pozycje?')) return;
+  localStorage.removeItem(BIURO_HIDDEN_SK);
+  _biuroRenderInner();
+  toast('✅ Wszystkie pozycje przywrócone');
 }
 
 function biuroToggle(event, kEnc, field) {
@@ -4148,6 +4389,17 @@ function _doGeneratePDF(p) {
   toast('PDF wygenerowany!');
 }
 </script>
+
+<!-- MODAL STATYSTYKI OBIEKTU -->
+<div class="modal-overlay" id="planerObiektModal" onclick="if(event.target===this)closePlanerObiekt()">
+  <div class="modal" style="max-height:92vh;overflow-y:auto">
+    <div class="modal-hd">
+      <span id="planerObiektTitle" style="font-family:'Barlow Condensed',sans-serif;font-size:20px">Statystyki obiektu</span>
+      <button class="close-btn" onclick="closePlanerObiekt()">✕</button>
+    </div>
+    <div id="planerObiektBody" style="padding:0 4px 8px"></div>
+  </div>
+</div>
 
 <!-- MODAL PLANER WPIS -->
 <div class="modal-overlay" id="planerWpisModal" onclick="if(event.target===this)closePlanerWpis()">
