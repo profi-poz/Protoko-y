@@ -649,7 +649,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 37</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 38</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1821,32 +1821,64 @@ function exportAllToExcel() {
   // Zakładka Harmonogram
   const harm = harmGetAll();
   const harmRows = [
-    ['HARMONOGRAM SERWISÓW · PROFI-POŻ','','','','',''],
-    ['Wygenerowano:', new Date().toLocaleString('pl-PL'),'','','',''],
+    ['HARMONOGRAM SERWISÓW · PROFI-POŻ','','','','','',''],
+    ['Wygenerowano:', new Date().toLocaleString('pl-PL'),'','','','',''],
     [''],
     ['Data serwisu','Obiekt','Typ instalacji','Ostatni przegląd','Usterki do usunięcia','Nieprawidłowości','Uwagi do wyjazdu'],
   ];
-  // Sortuj od najbliższego
-  const today = new Date().toISOString().split('T')[0];
-  const sorted = [...harm].sort((a,b) => a.data > b.data ? 1 : -1);
-  sorted.forEach(h => {
-    const minelo = h.data < today;
-    harmRows.push([
-      h.data || '',
-      h.obiekt || '',
-      h.typ || '',
-      h.ostatniPrzeglad || '',
-      h.usterki || 'Brak',
-      h.nieprawidlowosci || 'Brak',
-      h.uwagi || '',
-    ]);
+  const today2 = new Date().toISOString().split('T')[0];
+  const sortedH = [...harm].sort((a,b) => a.data > b.data ? 1 : -1);
+  sortedH.forEach(h => {
+    harmRows.push([h.data||'', h.obiekt||'', h.typ||'', h.ostatniPrzeglad||'', h.usterki||'Brak', h.nieprawidlowosci||'Brak', h.uwagi||'']);
   });
-  if (harmRows.length === 4) {
-    harmRows.push(['Brak zaplanowanych serwisów','','','','','','']);
-  }
+  if (harmRows.length === 4) harmRows.push(['Brak zaplanowanych serwisów','','','','','','']);
   const wsH = XLSX.utils.aoa_to_sheet(harmRows);
   wsH['!cols'] = [14,30,16,14,40,40,30].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsH, 'Harmonogram');
+
+  // --- Zakładka: Godziny pracy ---
+  const planerWpisy = plGetWpisy();
+  // Zbierz wszystkie wpisy ze wszystkich dni
+  const godzRows = [
+    ['GODZINY PRACY · PROFI-POŻ','','','','',''],
+    ['Wygenerowano:', new Date().toLocaleString('pl-PL'),'','','',''],
+    [''],
+    ['Data','Obiekt','Osoby','Auto','Godz/os.','Godz łącznie','Uwagi'],
+  ];
+  // Sumuj per obiekt
+  const perObiektTotal = {}; // {obiekt: {godziny, dni:Set}}
+  const allDays = Object.keys(planerWpisy).sort();
+  allDays.forEach(function(dzien) {
+    (planerWpisy[dzien]||[]).forEach(function(w) {
+      if (!w.obiekt || !w.godziny || !w.osoby || !w.osoby.length) return;
+      const godz = w.godziny * w.osoby.length;
+      godzRows.push([
+        dzien,
+        w.obiekt,
+        w.osoby.join(', '),
+        w.auto || '',
+        w.godziny,
+        godz,
+        w.uwagi || '',
+      ]);
+      if (!perObiektTotal[w.obiekt]) perObiektTotal[w.obiekt] = 0;
+      perObiektTotal[w.obiekt] += godz;
+    });
+  });
+  // Separator + podsumowanie per obiekt
+  if (Object.keys(perObiektTotal).length) {
+    godzRows.push(['']);
+    godzRows.push(['PODSUMOWANIE PER OBIEKT','','','','','Godziny łącznie','']);
+    Object.keys(perObiektTotal).sort().forEach(function(ob) {
+      godzRows.push(['', ob, '', '', '', perObiektTotal[ob], '']);
+    });
+    const totalAll = Object.values(perObiektTotal).reduce((a,b)=>a+b,0);
+    godzRows.push(['','RAZEM WSZYSTKIE OBIEKTY','','','',totalAll,'']);
+  }
+  if (godzRows.length === 4) godzRows.push(['Brak wpisów w harmonogramie','','','','','','']);
+  const wsG = XLSX.utils.aoa_to_sheet(godzRows);
+  wsG['!cols'] = [14,30,30,16,10,14,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsG, 'Godziny pracy');
 
   protokoly.forEach((p,i) => {
     const ws = XLSX.utils.aoa_to_sheet(buildWS(p));
@@ -1855,7 +1887,7 @@ function exportAllToExcel() {
   });
   const fn = localStorage.getItem('excelFileName') || 'protokoly_profipoz.xlsx';
   XLSX.writeFile(wb, fn);
-  toast(`📊 Eksport ${protokoly.length} protokołów + harmonogram!`);
+  toast(`📊 Eksport ${protokoly.length} protokołów + harmonogram + godziny!`);
 }
 
 // ===================== SERVER =====================
@@ -2921,116 +2953,143 @@ function _biuroRenderInner() {
   const q = ((document.getElementById('biuroSearch')||{}).value||'').toLowerCase().trim();
   const status = biuroGetStatus();
 
-  // Zbuduj mapę: najnowszy protokół per obiekt+typ
+  const today = new Date(); today.setHours(0,0,0,0);
+  const rodzajDni = { kwartalny:90, polroczny:180, roczny:365, odbiorowy:365, konserwacja:365, awaryjny:0 };
+
+  // Najnowszy protokół per obiekt+typ
   const map = {};
   src.forEach(function(p) {
     if (!p.obiekt) return;
     const k = (p.obiekt||'').trim() + '|' + (p.typ||'');
-    if (!map[k] || (p.data||'') > (map[k].data||'')) {
-      map[k] = p;
-    }
+    if (!map[k] || (p.data||'') > (map[k].data||'')) map[k] = p;
   });
 
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  const rodzajDni = {
-    kwartalny: 90, polroczny: 180, roczny: 365,
-    odbiorowy: 365, konserwacja: 365, awaryjny: 0
-  };
-
+  // Zbuduj karty per obiekt+typ
   let cards = Object.keys(map).map(function(k) {
     const p = map[k];
-    const st = status[k] || { protokol: false, fv: false };
+    const st = status[k] || { protokol:false, fv:false };
     const dataOst = p.data ? new Date(p.data) : null;
     const dataNast = p._dataNastepnaPDF
       ? new Date(p._dataNastepnaPDF + '-01')
       : (dataOst ? new Date(dataOst.getTime() + (rodzajDni[p.rodzaj]||365)*24*3600*1000) : null);
-
-    let colorClass = 'yellow';
-    let daysLabel = '—';
-
+    let colorClass = 'yellow', daysLabel = '—', daysLeft = null;
     if (dataNast) {
-      const daysLeft = Math.round((dataNast - today) / (24*3600*1000));
-      if (daysLeft < 0) {
-        colorClass = 'red';
-        daysLabel = 'Przekroczono o ' + Math.abs(daysLeft) + ' dni';
-      } else if (daysLeft <= 30) {
-        colorClass = 'yellow';
-        daysLabel = 'Za ' + daysLeft + ' dni';
-      } else {
-        colorClass = 'green';
-        daysLabel = 'Za ' + daysLeft + ' dni';
-      }
+      daysLeft = Math.round((dataNast - today) / (24*3600*1000));
+      if (daysLeft < 0)      { colorClass='red';    daysLabel='Przekroczono o '+Math.abs(daysLeft)+' dni'; }
+      else if (daysLeft<=30) { colorClass='yellow'; daysLabel='Za '+daysLeft+' dni'; }
+      else                   { colorClass='green';  daysLabel='Za '+daysLeft+' dni'; }
     }
-
-    return { k, p, st, colorClass, daysLabel, dataNast };
+    return { k, p, st, colorClass, daysLabel, daysLeft, dataNast, obiekt:(p.obiekt||'').trim() };
   });
 
+  // Filtruj
   if (_biuroFilter === 'red')   cards = cards.filter(c => c.colorClass === 'red');
   if (_biuroFilter === 'green') cards = cards.filter(c => c.colorClass === 'green');
-  if (q) cards = cards.filter(c => (c.p.obiekt||'').toLowerCase().includes(q));
+  if (q) cards = cards.filter(c => c.obiekt.toLowerCase().includes(q));
 
-  const order = {red:0,yellow:1,green:2};
-  cards.sort(function(a,b) {
-    if (order[a.colorClass] !== order[b.colorClass]) return order[a.colorClass] - order[b.colorClass];
-    return (a.p.obiekt||'').localeCompare(b.p.obiekt||'','pl');
+  // Grupuj po nazwie obiektu
+  const grupy = {}; // obiektNazwa → [cards...]
+  cards.forEach(function(c) {
+    if (!grupy[c.obiekt]) grupy[c.obiekt] = [];
+    grupy[c.obiekt].push(c);
+  });
+
+  // Sortuj grupy: najgorszy kolor grupy decyduje, potem alfa
+  const orderC = {red:0,yellow:1,green:2};
+  const sortedGrupy = Object.keys(grupy).sort(function(a,b) {
+    const wa = Math.min(...grupy[a].map(c=>orderC[c.colorClass]));
+    const wb = Math.min(...grupy[b].map(c=>orderC[c.colorClass]));
+    if (wa !== wb) return wa - wb;
+    return a.localeCompare(b,'pl');
   });
 
   const el = document.getElementById('biuroList');
-  if (!cards.length) {
+  if (!sortedGrupy.length) {
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">📭</div>Brak obiektów</div>';
     return;
   }
 
   const ico = {red:'🔴',yellow:'🟡',green:'🟢'};
+  const colorHex = {red:'#e74c3c',yellow:'#f1c40f',green:'#2ecc71'};
 
-  el.innerHTML = cards.map(function(c) {
-    const {k, p, st, colorClass, daysLabel} = c;
-    const kEnc = encodeURIComponent(k);
-    const nastStr = c.dataNast ? c.dataNast.toLocaleDateString('pl-PL', {year:'numeric',month:'long'}) : '—';
+  let html = '';
+  sortedGrupy.forEach(function(obiektNazwa) {
+    const group = grupy[obiektNazwa];
+    // Sortuj typy w grupie: najpierw najgorsze
+    group.sort(function(a,b){ return orderC[a.colorClass]-orderC[b.colorClass]; });
+    const worstColor = group[0].colorClass;
+    const isMulti = group.length > 1;
 
-    let togglesHtml = '';
-    if (colorClass === 'green' || colorClass === 'yellow') {
-      togglesHtml = `
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
-        <div class="toggle-row">
-          <span class="toggle-label">📤 Wysłano protokół</span>
-          <label class="toggle-sw">
-            <input type="checkbox" ${st.protokol?'checked':''} onchange="biuroToggle(event,'${kEnc}','protokol')">
-            <span class="sl"></span>
-          </label>
-        </div>
-        <div class="toggle-row">
-          <span class="toggle-label">🧾 Wystawiono FV</span>
-          <label class="toggle-sw">
-            <input type="checkbox" ${st.fv?'checked':''} onchange="biuroToggle(event,'${kEnc}','fv')">
-            <span class="sl"></span>
-          </label>
-        </div>
+    // Nagłówek grupy (tylko gdy >1 typ)
+    if (isMulti) {
+      html += `<div style="margin:14px 16px 0;display:flex;align-items:center;gap:8px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--text)">${obiektNazwa}</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">${group.length} instalacje</div>
       </div>`;
     }
 
-    return `<div class="biuro-card ${colorClass}">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-        <div style="flex:1">
-          <div class="biuro-obj">${p.obiekt||'—'}</div>
-          <div class="biuro-meta">🔧 ${p.typ||'—'} · 📅 Ostatni: ${p.data||'—'} · Następny: ${nastStr}</div>
+    group.forEach(function(c, ci) {
+      const {k, p, st, colorClass, daysLabel, dataNast} = c;
+      const kEnc = encodeURIComponent(k);
+      const nastStr = dataNast ? dataNast.toLocaleDateString('pl-PL',{year:'numeric',month:'long'}) : '—';
+      const isLast = ci === group.length - 1;
+
+      // Zaokrąglenia: jeśli multi - pierwsze/środkowe/ostatnie
+      let borderRadius = '12px';
+      let marginBottom = '2px';
+      if (isMulti) {
+        if (ci === 0)              borderRadius = '0 0 4px 4px';
+        else if (isLast)           borderRadius = '4px 4px 12px 12px';
+        else                       borderRadius = '4px';
+        if (isLast) marginBottom = '10px';
+      } else {
+        marginBottom = '10px';
+      }
+
+      let togglesHtml = '';
+      if (colorClass === 'green' || colorClass === 'yellow') {
+        togglesHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+          <div class="toggle-row">
+            <span class="toggle-label">📤 Wysłano protokół</span>
+            <label class="toggle-sw">
+              <input type="checkbox" ${st.protokol?'checked':''} onchange="biuroToggle(event,'${kEnc}','protokol')">
+              <span class="sl"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">🧾 Wystawiono FV</span>
+            <label class="toggle-sw">
+              <input type="checkbox" ${st.fv?'checked':''} onchange="biuroToggle(event,'${kEnc}','fv')">
+              <span class="sl"></span>
+            </label>
+          </div>
+        </div>`;
+      }
+
+      html += `<div class="biuro-card ${colorClass}" style="margin:0 16px ${marginBottom};border-radius:${borderRadius}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            ${isMulti ? '' : `<div class="biuro-obj">${obiektNazwa}</div>`}
+            <div class="biuro-meta" style="${isMulti?'margin-bottom:4px':''}">🔧 ${p.typ||'—'} · 📅 ${p.data||'—'} · ➡️ ${nastStr}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:18px">${ico[colorClass]}</div>
+            <div class="biuro-days" style="color:${colorHex[colorClass]};font-size:13px">${daysLabel}</div>
+          </div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:20px">${ico[colorClass]}</div>
-          <div class="biuro-days" style="color:${colorClass==='red'?'#e74c3c':colorClass==='yellow'?'#f1c40f':'#2ecc71'}">${daysLabel}</div>
+        ${togglesHtml}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+          <button onclick="openSerwisModal('${kEnc}')"
+            style="width:100%;background:rgba(100,149,237,.12);border:1px solid rgba(100,149,237,.3);border-radius:8px;color:#6495ed;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">
+            📅 Zaplanuj serwis
+          </button>
         </div>
-      </div>
-      ${togglesHtml}
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
-        <button onclick="openSerwisModal('${kEnc}')"
-          style="width:100%;background:rgba(100,149,237,.12);border:1px solid rgba(100,149,237,.3);border-radius:8px;color:#6495ed;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">
-          📅 Zaplanuj serwis
-        </button>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    });
+  });
+
+  el.innerHTML = html;
 }
 
 // ===================== HARMONOGRAM SERWISÓW =====================
@@ -3248,6 +3307,7 @@ function planerRender() {
           <div class="pl-wpis-osoby">${(w.osoby||[]).join(', ') || '—'}</div>
           ${w.auto ? `<div class="pl-wpis-auto">🚗 ${w.auto}</div>` : ''}
           ${w.obiekt ? `<div class="pl-wpis-obiekt">📍 ${w.obiekt}</div>` : ''}
+          ${(w.godziny&&w.osoby&&w.osoby.length) ? `<div style="font-size:11px;color:#f39c12;margin-top:2px">⏱️ ${w.godziny}h × ${w.osoby.length} os. = <strong>${w.godziny*w.osoby.length}h</strong></div>` : ''}
           ${w.uwagi ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">📝 ${w.uwagi}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
@@ -3264,6 +3324,34 @@ function planerRender() {
   });
 
   document.getElementById('planerBody').innerHTML = html;
+
+  // Podsumowanie godzin dnia
+  const dzienAll = dzienWpisy.filter(w => w.obiekt && w.godziny && w.osoby && w.osoby.length);
+  if (dzienAll.length) {
+    // Sumuj per obiekt
+    const perObiekt = {};
+    dzienAll.forEach(function(w) {
+      const ob = w.obiekt || '—';
+      if (!perObiekt[ob]) perObiekt[ob] = 0;
+      perObiekt[ob] += w.godziny * (w.osoby.length || 1);
+    });
+    const totalH = Object.values(perObiekt).reduce((a,b)=>a+b,0);
+    const rowsHtml = Object.keys(perObiekt).map(ob =>
+      `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <span style="color:var(--muted)">📍 ${ob}</span>
+        <span style="font-weight:700;color:#f39c12">${perObiekt[ob]}h</span>
+      </div>`
+    ).join('');
+    const sumEl = document.createElement('div');
+    sumEl.style.cssText = 'margin:0;padding:14px 16px;background:var(--surface);border-top:2px solid var(--border)';
+    sumEl.innerHTML = `<div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">⏱️ Godziny tego dnia</div>
+      ${rowsHtml}
+      <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:6px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800">RAZEM</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#f39c12">${totalH}h</span>
+      </div>`;
+    document.getElementById('planerBody').appendChild(sumEl);
+  }
 }
 
 function planerPrevDay() {
@@ -3341,8 +3429,18 @@ function _planerRenderWpisModal(w) {
     </div>
 
     <div class="field">
+      <label>⏱️ Godziny pracy na obiekt (łącznie z dojazdem)</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="number" id="planerGodzinyInp" value="${w&&w.godziny!=null?w.godziny:8}" min="0.5" max="24" step="0.5"
+          style="width:90px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:18px;font-weight:700;padding:10px 12px;outline:none;text-align:center">
+        <span style="font-size:13px;color:var(--muted)">h × ${(w&&w.osoby&&w.osoby.length)||'<span id="planerGodzinyOsob">0</span>'} osób = <span id="planerGodzinySuma" style="color:var(--text);font-weight:700">${w&&w.godziny!=null&&w.osoby?w.godziny*(w.osoby.length||1)+'h':'—'}</span> łącznie</span>
+      </div>
+    </div>
+
+    <div class="field">
       <label>📍 Obiekt / miejsce pracy</label>
       <input type="text" id="planerObiektInp" value="${w&&w.obiekt?w.obiekt:''}" placeholder="Np. Szpital Zabrze, budowa...">
+    </div>
     </div>
 
     <div class="field">
@@ -3380,13 +3478,14 @@ function planerZapiszWpis() {
     ? (document.getElementById('planerAutoReczny').value.trim())
     : autoSel;
 
+  const godziny = parseFloat(document.getElementById('planerGodzinyInp').value) || 8;
   const obiekt = document.getElementById('planerObiektInp').value.trim();
   const uwagi  = document.getElementById('planerUwagiInp').value.trim();
 
   const wpisy = plGetWpisy();
   if (!wpisy[_planerEditKey]) wpisy[_planerEditKey] = [];
 
-  const entry = { katId: _planerEditKatId, osoby, auto, obiekt, uwagi };
+  const entry = { katId: _planerEditKatId, osoby, auto, godziny, obiekt, uwagi };
 
   if (_planerEditIdx !== null) {
     wpisy[_planerEditKey][_planerEditIdx] = entry;
