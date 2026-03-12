@@ -649,7 +649,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 43</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 44</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -786,8 +786,7 @@ Content-Type: application/json
         </div>
         <button onclick="planerGoToday()" id="planerTodayBtn" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:700;padding:5px;cursor:pointer;font-family:'Barlow',sans-serif;display:none">↩ Wróć do dziś</button>
       </div>
-      <div id="planerBody" style="padding:0 0 140px;overflow-y:auto"></div>
-      <div id="planerSuma" style="display:none;position:sticky;bottom:60px;left:0;right:0;background:var(--surface);border-top:2px solid var(--border);padding:10px 16px;z-index:5"></div>
+      <div id="planerBody" style="padding:0 0 80px;overflow-y:auto"></div>
     </div>
 
     <!-- PLANER USTAWIENIA -->
@@ -3310,7 +3309,25 @@ const PL_KAT_DEFAULT = [
   {id:'inne',        nazwa:'Inne',               kolor:'#2c3e50', noObiekt:true,  noGodziny:true,  noStats:true},
 ];
 
-function plGetKat()   { try{return JSON.parse(localStorage.getItem(PL_SK_KAT))||PL_KAT_DEFAULT;}catch(e){return PL_KAT_DEFAULT;} }
+function plGetKat() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PL_SK_KAT));
+    if (!stored) return PL_KAT_DEFAULT;
+    // Migracja: uzupełnij flagi z DEFAULT dla wbudowanych kategorii
+    const defMap = {};
+    PL_KAT_DEFAULT.forEach(k => defMap[k.id] = k);
+    return stored.map(function(k) {
+      const def = defMap[k.id];
+      if (!def) return k; // własna kategoria użytkownika — bez zmian
+      // Nadpisz flagi strukturalne z DEFAULT (nazwa/kolor zostają ze stored)
+      return Object.assign({}, k, {
+        noObiekt:  def.noObiekt  || false,
+        noGodziny: def.noGodziny || false,
+        noStats:   def.noStats   || false,
+      });
+    });
+  } catch(e) { return PL_KAT_DEFAULT; }
+}
 function plGetOsoby() { try{return JSON.parse(localStorage.getItem(PL_SK_OSOBY))||[];}catch(e){return [];} }
 function plGetAuta()  { try{return JSON.parse(localStorage.getItem(PL_SK_AUTA))||[];}catch(e){return [];} }
 function plGetWpisy() { try{return JSON.parse(localStorage.getItem(PL_SK_WPISY))||{};}catch(e){return {};} }
@@ -3419,12 +3436,11 @@ function planerRender() {
 
   document.getElementById('planerBody').innerHTML = html;
 
-  // Podsumowanie godzin dnia — sticky bar na dole
-  const sumaEl = document.getElementById('planerSuma');
+  // Podsumowanie godzin dnia — statyczny baner pod listą
   const katMap = {}; plGetKat().forEach(k => katMap[k.id] = k);
   const dzienAll = dzienWpisy.filter(w => {
     const k = katMap[w.katId];
-    return k && !k.noObiekt && w.godziny && w.osoby && w.osoby.length;
+    return k && !k.noGodziny && w.godziny && w.osoby && w.osoby.length;
   });
   if (dzienAll.length) {
     const perKat = {};
@@ -3435,19 +3451,20 @@ function planerRender() {
     });
     const totalH = Object.values(perKat).reduce((a,b)=>a+b,0);
     const rowsHtml = Object.keys(perKat).map(nazwa =>
-      `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-        <span style="color:var(--muted)">${nazwa}</span>
+      `<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
+        <span style="color:var(--muted)">📍 ${nazwa}</span>
         <span style="font-weight:700;color:#f39c12">${perKat[nazwa]}h</span>
       </div>`
     ).join('');
-    sumaEl.style.display = '';
-    sumaEl.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">⏱️ Godziny dnia</div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#f39c12">${totalH}h łącznie</div>
-    </div>${rowsHtml}`;
-  } else {
-    sumaEl.style.display = 'none';
-    sumaEl.innerHTML = '';
+    document.getElementById('planerBody').insertAdjacentHTML('beforeend',
+      `<div style="margin:12px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">⏱️ Godziny tego dnia</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:#f39c12">${totalH}h</div>
+        </div>
+        ${rowsHtml}
+      </div>`
+    );
   }
 }
 
