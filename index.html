@@ -649,7 +649,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 42</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 43</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3303,11 +3303,11 @@ _plDate.setHours(0,0,0,0);
 
 // --- domyślne kategorie jeśli brak ---
 const PL_KAT_DEFAULT = [
-  {id:'wolne',       nazwa:'Wolne',            kolor:'#c0392b', noObiekt:true},
-  {id:'niewpisani',  nazwa:'Niewpisani',        kolor:'#d35400', noObiekt:true},
-  {id:'przeglady',   nazwa:'Przeglądy / Serwis',kolor:'#27ae60'},
-  {id:'montaz',      nazwa:'Prace montażowe',   kolor:'#8e44ad'},
-  {id:'inne',        nazwa:'Inne',              kolor:'#2c3e50'},
+  {id:'wolne',       nazwa:'Wolne',             kolor:'#c0392b', noObiekt:true,  noGodziny:true,  noStats:true},
+  {id:'niewpisani',  nazwa:'Niewpisani',         kolor:'#d35400', noObiekt:true,  noGodziny:true,  noStats:true},
+  {id:'przeglady',   nazwa:'Przeglądy / Serwis', kolor:'#27ae60', noGodziny:true, noStats:true},
+  {id:'montaz',      nazwa:'Prace montażowe',    kolor:'#8e44ad'},
+  {id:'inne',        nazwa:'Inne',               kolor:'#2c3e50', noObiekt:true,  noGodziny:true,  noStats:true},
 ];
 
 function plGetKat()   { try{return JSON.parse(localStorage.getItem(PL_SK_KAT))||PL_KAT_DEFAULT;}catch(e){return PL_KAT_DEFAULT;} }
@@ -3377,27 +3377,30 @@ function planerRender() {
   let html = '';
   kats.forEach(function(kat) {
     const wpisyKat = dzienWpisy.filter(w => w.katId === kat.id);
-    const isNoObiekt = !!kat.noObiekt;
-    // Kategoria z obiektem — lewy panel klikalny, otwiera statystyki
-    const katClick = !isNoObiekt
+    const isNoObiekt  = !!kat.noObiekt;
+    const isNoGodziny = !!kat.noGodziny;
+    const isNoStats   = !!kat.noStats;
+
+    // Lewy panel klikalny tylko gdy ma statystyki
+    const katClick = !isNoStats
       ? `onclick="openPlanerObiekt('${encodeURIComponent(kat.id)}','${encodeURIComponent(kat.nazwa)}')" style="background:${kat.kolor};cursor:pointer;position:relative"`
       : `style="background:${kat.kolor}"`;
 
     html += `<div class="pl-row">
       <div class="pl-kat" ${katClick}>
         ${kat.nazwa}
-        ${!isNoObiekt ? `<div style="position:absolute;bottom:5px;right:5px;font-size:9px;opacity:0.7">📊</div>` : ''}
+        ${!isNoStats ? `<div style="position:absolute;bottom:5px;right:5px;font-size:9px;opacity:0.7">📊</div>` : ''}
       </div>
       <div class="pl-cell">`;
 
     wpisyKat.forEach(function(w, wi) {
       const wIdx = dzienWpisy.indexOf(w);
-      // Suma godzin dla tego wpisu
-      const godz = (w.godziny && w.osoby && w.osoby.length) ? w.godziny * w.osoby.length : null;
+      const godz = (!isNoGodziny && w.godziny && w.osoby && w.osoby.length) ? w.godziny * w.osoby.length : null;
       html += `<div class="pl-wpis">
         <div style="flex:1">
           <div class="pl-wpis-osoby">${(w.osoby||[]).join(', ') || '—'}</div>
           ${w.auto ? `<div class="pl-wpis-auto">🚗 ${w.auto}</div>` : ''}
+          ${(!isNoObiekt && w.obiekt) ? `<div class="pl-wpis-obiekt">📍 ${w.obiekt}</div>` : ''}
           ${godz ? `<div style="font-size:11px;color:#f39c12;margin-top:2px">⏱️ ${w.godziny}h × ${w.osoby.length} os. = <strong>${godz}h</strong></div>` : ''}
           ${w.uwagi ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">📝 ${w.uwagi}</div>` : ''}
         </div>
@@ -3494,7 +3497,8 @@ function _planerRenderWpisModal(w) {
 
   // Czy kategoria wymaga obiektu?
   const katObj = plGetKat().find(k => k.id === _planerEditKatId) || {};
-  const isNoObiekt = !!katObj.noObiekt;
+  const isNoObiekt  = !!katObj.noObiekt;
+  const isNoGodziny = !!katObj.noGodziny;
 
   // checkboxy osób
   const osobyHtml = osoby.length
@@ -3526,7 +3530,13 @@ function _planerRenderWpisModal(w) {
       <input type="text" id="planerAutoReczny" value="${selAuto && !auta.includes(selAuto)?selAuto:''}" placeholder="Np. Ford Transit">
     </div>
 
-    ${isNoObiekt ? '' : `
+    ${!isNoObiekt ? `
+    <div class="field">
+      <label>📍 Obiekt / miejsce pracy</label>
+      <input type="text" id="planerObiektInp" value="${w&&w.obiekt?w.obiekt:''}" placeholder="Np. Szpital Zabrze...">
+    </div>` : ''}
+
+    ${!isNoGodziny ? `
     <div class="field">
       <label>⏱️ Godziny pracy (łącznie z dojazdem)</label>
       <div style="display:flex;align-items:center;gap:10px">
@@ -3534,7 +3544,7 @@ function _planerRenderWpisModal(w) {
           style="width:90px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:18px;font-weight:700;padding:10px 12px;outline:none;text-align:center">
         <span style="font-size:13px;color:var(--muted)">h na osobę</span>
       </div>
-    </div>`}
+    </div>` : ''}
 
     <div class="field">
       <label>📝 Uwagi</label>
