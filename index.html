@@ -266,6 +266,12 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
 /* PLANER */
 .pl-row{display:flex;min-height:60px;border-bottom:1px solid var(--border);}
 .pl-kat{width:110px;min-width:110px;display:flex;align-items:center;justify-content:center;padding:8px 6px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-align:center;letter-spacing:.5px;text-transform:uppercase;line-height:1.2;color:#fff;}
+@media(min-width:900px){
+  .pl-kat{width:70px;min-width:70px;font-size:10px;padding:6px 4px;}
+  .pl-wpis-osoby{font-size:11px!important;}
+  .pl-wpis-auto,.pl-wpis-obiekt{font-size:10px!important;}
+  .pl-add-btn{font-size:11px!important;padding:5px 6px!important;}
+}
 .pl-cell{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
 .pl-wpis{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;align-items:flex-start;gap:8px;}
 .pl-wpis-txt{flex:1;font-size:13px;line-height:1.5;}
@@ -649,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 44</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 45</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3377,19 +3383,12 @@ function plDateKey(d) {
 const DN = ['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'];
 const MN = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
 
-function planerRender() {
-  const key = plDateKey(_plDate);
-  const today = plDateKey(new Date());
-  const isToday = key === today;
-
-  document.getElementById('planerDateLabel').textContent =
-    _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
-  document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
-  document.getElementById('planerTodayBtn').style.display = isToday ? 'none' : '';
-
+// Zwraca HTML jednej kolumny dnia (bez wrappera)
+function planerDayColumnHtml(key) {
   const kats = plGetKat();
   const wpisy = plGetWpisy();
   const dzienWpisy = wpisy[key] || [];
+  const katMap = {}; kats.forEach(k => katMap[k.id] = k);
 
   let html = '';
   kats.forEach(function(kat) {
@@ -3398,7 +3397,6 @@ function planerRender() {
     const isNoGodziny = !!kat.noGodziny;
     const isNoStats   = !!kat.noStats;
 
-    // Lewy panel klikalny tylko gdy ma statystyki
     const katClick = !isNoStats
       ? `onclick="openPlanerObiekt('${encodeURIComponent(kat.id)}','${encodeURIComponent(kat.nazwa)}')" style="background:${kat.kolor};cursor:pointer;position:relative"`
       : `style="background:${kat.kolor}"`;
@@ -3410,7 +3408,7 @@ function planerRender() {
       </div>
       <div class="pl-cell">`;
 
-    wpisyKat.forEach(function(w, wi) {
+    wpisyKat.forEach(function(w) {
       const wIdx = dzienWpisy.indexOf(w);
       const godz = (!isNoGodziny && w.godziny && w.osoby && w.osoby.length) ? w.godziny * w.osoby.length : null;
       html += `<div class="pl-wpis">
@@ -3429,19 +3427,12 @@ function planerRender() {
         </div>
       </div>`;
     });
-
     html += `<button class="pl-add-btn" onclick="planerDodajWpis('${key}','${kat.id}')">＋ Dodaj</button>
       </div></div>`;
   });
 
-  document.getElementById('planerBody').innerHTML = html;
-
-  // Podsumowanie godzin dnia — statyczny baner pod listą
-  const katMap = {}; plGetKat().forEach(k => katMap[k.id] = k);
-  const dzienAll = dzienWpisy.filter(w => {
-    const k = katMap[w.katId];
-    return k && !k.noGodziny && w.godziny && w.osoby && w.osoby.length;
-  });
+  // Baner godzin dnia
+  const dzienAll = dzienWpisy.filter(w => { const k = katMap[w.katId]; return k && !k.noGodziny && w.godziny && w.osoby && w.osoby.length; });
   if (dzienAll.length) {
     const perKat = {};
     dzienAll.forEach(function(w) {
@@ -3450,30 +3441,90 @@ function planerRender() {
       perKat[nazwa] += w.godziny * (w.osoby.length || 1);
     });
     const totalH = Object.values(perKat).reduce((a,b)=>a+b,0);
-    const rowsHtml = Object.keys(perKat).map(nazwa =>
-      `<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
-        <span style="color:var(--muted)">📍 ${nazwa}</span>
-        <span style="font-weight:700;color:#f39c12">${perKat[nazwa]}h</span>
-      </div>`
-    ).join('');
-    document.getElementById('planerBody').insertAdjacentHTML('beforeend',
-      `<div style="margin:12px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">⏱️ Godziny tego dnia</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:#f39c12">${totalH}h</div>
+    const rowsHtml = Object.keys(perKat).map(n =>
+      `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
+        <span style="color:var(--muted)">📍 ${n}</span>
+        <span style="font-weight:700;color:#f39c12">${perKat[n]}h</span>
+      </div>`).join('');
+    html += `<div style="margin:10px 10px 0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">⏱️ Godziny</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#f39c12">${totalH}h</div>
+      </div>${rowsHtml}</div>`;
+  }
+
+  return html;
+}
+
+function planerRender() {
+  const isDesktop = window.innerWidth >= 900;
+  const key    = plDateKey(_plDate);
+  const today  = plDateKey(new Date());
+
+  if (isDesktop) {
+    // ── WIDOK TYGODNIOWY (desktop) ──────────────────────────────
+    // Znajdź poniedziałek bieżącego tygodnia
+    const mon = new Date(_plDate);
+    const dow = mon.getDay() === 0 ? 6 : mon.getDay() - 1;
+    mon.setDate(mon.getDate() - dow);
+
+    // Nagłówek: tydzień z przyciskami
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const fmtD = d => d.getDate() + ' ' + MN[d.getMonth()];
+    document.getElementById('planerDateLabel').textContent =
+      fmtD(mon) + ' – ' + fmtD(sun) + ' ' + sun.getFullYear();
+    document.getElementById('planerDayLabel').textContent = 'TYDZIEŃ';
+    document.getElementById('planerTodayBtn').style.display =
+      (today >= plDateKey(mon) && today <= plDateKey(sun)) ? 'none' : '';
+
+    // 7 kolumn
+    let cols = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon); d.setDate(mon.getDate() + i);
+      const dk = plDateKey(d);
+      const isT = dk === today;
+      const isSel = dk === key;
+      const isSun = d.getDay() === 0;
+      const isSat = d.getDay() === 6;
+      const dayLabel = DN[d.getDay()].slice(0,3).toUpperCase();
+      const weekend = (isSat || isSun) ? 'opacity:.6;' : '';
+      const todayBorder = isT ? 'border-top:3px solid var(--red2);' : 'border-top:3px solid transparent;';
+      cols += `<div style="flex:1;min-width:0;${weekend}${todayBorder}border-right:1px solid var(--border)">
+        <div style="padding:6px 8px;background:${isT?'rgba(220,53,69,.1)':'var(--surface)'};cursor:pointer;text-align:center;border-bottom:1px solid var(--border)"
+             onclick="planerSelectDay('${dk}')">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${isT?'var(--red2)':'var(--muted)'};letter-spacing:1px">${dayLabel}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:${isT?'20':'17'}px;font-weight:800;color:${isT?'var(--red2)':'var(--text)'}">${d.getDate()}</div>
         </div>
-        ${rowsHtml}
-      </div>`
-    );
+        <div style="overflow-y:auto;max-height:calc(100vh - 180px)">${planerDayColumnHtml(dk)}</div>
+      </div>`;
+    }
+
+    document.getElementById('planerBody').innerHTML =
+      `<div style="display:flex;height:calc(100vh - 120px);overflow:hidden">${cols}</div>`;
+
+  } else {
+    // ── WIDOK DZIENNY (mobile) ──────────────────────────────────
+    document.getElementById('planerDateLabel').textContent =
+      _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
+    document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
+    document.getElementById('planerTodayBtn').style.display = key === today ? 'none' : '';
+    document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key);
   }
 }
 
+function planerSelectDay(dk) {
+  _plDate = new Date(dk);
+  planerRender();
+}
+
 function planerPrevDay() {
-  _plDate.setDate(_plDate.getDate() - 1);
+  const step = window.innerWidth >= 900 ? 7 : 1;
+  _plDate.setDate(_plDate.getDate() - step);
   planerRender();
 }
 function planerNextDay() {
-  _plDate.setDate(_plDate.getDate() + 1);
+  const step = window.innerWidth >= 900 ? 7 : 1;
+  _plDate.setDate(_plDate.getDate() + step);
   planerRender();
 }
 function planerGoToday() {
