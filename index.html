@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 52</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 53</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3619,12 +3619,22 @@ function planerRender() {
           const osobyStr = (w2.osoby || []).join(', ');
           const godz = (!isNoGodziny && w2.godziny && w2.osoby && w2.osoby.length)
             ? w2.godziny * w2.osoby.length : null;
-          cell += '<div style="font-size:10px;line-height:1.3;padding:1px 0;border-bottom:1px dashed rgba(255,255,255,.1);cursor:pointer" onclick="event.stopPropagation();planerEdytujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')">';
-          cell += '<div style="font-weight:600;color:var(--text)">' + esc(osobyStr || '—') + '</div>';
-          if (w2.auto) cell += '<div style="color:var(--muted)">🚗 ' + esc(w2.auto) + '</div>';
-          if (!isNoObiekt && w2.obiekt) cell += '<div style="color:#6495ed">📍 ' + esc(w2.obiekt) + '</div>';
-          if (godz) cell += '<div style="color:#f39c12;font-weight:700">⏱️ ' + godz + 'h</div>';
-          if (w2.uwagi) cell += '<div style="color:var(--muted);font-style:italic">' + esc(w2.uwagi) + '</div>';
+          const editCall = 'event.stopPropagation();planerEdytujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
+          const delCall  = 'event.stopPropagation();planerUsunWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
+          cell += '<div style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px">';
+          cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:2px">';
+          cell += '<div style="flex:1;min-width:0">';
+          cell += '<div style="font-weight:700;color:var(--text);font-size:11px">' + esc(osobyStr || '—') + '</div>';
+          if (w2.auto) cell += '<div style="color:var(--muted);font-size:10px">🚗 ' + esc(w2.auto) + '</div>';
+          if (!isNoObiekt && w2.obiekt) cell += '<div style="color:#6495ed;font-size:10px">📍 ' + esc(w2.obiekt) + '</div>';
+          if (godz) cell += '<div style="color:#f39c12;font-weight:700;font-size:10px">⏱️ ' + godz + 'h</div>';
+          if (w2.uwagi) cell += '<div style="color:var(--muted);font-style:italic;font-size:9px">' + esc(w2.uwagi) + '</div>';
+          cell += '</div>';
+          cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
+          cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
+          cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
+          cell += '</div>';
+          cell += '</div>';
           cell += '</div>';
         });
 
