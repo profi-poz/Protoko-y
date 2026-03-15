@@ -1,4 +1,4 @@
-const CACHE = 'profipoz-v47';
+const CACHE = 'profipoz-v50';
 const FILES = ['./'];
 
 self.addEventListener('install', e => {
