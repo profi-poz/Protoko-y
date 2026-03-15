@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 50</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 51</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1251,10 +1251,13 @@ function showScreen(name) {
   if(name==='biuro'){ biuroRender(); }
   if(name==='planer'){
     planerMigrateWpisy();
-    // Pokaż spinner, załaduj z serwera, potem renderuj
-    document.getElementById('planerBody').innerHTML =
-      '<div style="text-align:center;padding:40px;color:var(--muted)">☁️ Synchronizacja...</div>';
-    planerLoadFromServer(function() { planerRender(); });
+    // Renderuj od razu z lokalnych danych
+    planerRender();
+    // Synchronizuj w tle — bez blokowania widoku
+    const url = localStorage.getItem('serverUrl');
+    if (url) {
+      planerLoadFromServer(function() { planerRender(); });
+    }
     // Auto-refresh co 60s na desktopie
     if (planerIsDesktop()) {
       clearInterval(window._planerRefreshInterval);
