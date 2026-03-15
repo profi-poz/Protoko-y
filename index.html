@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 51</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 52</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3511,7 +3511,7 @@ function planerDayColumnHtml(key) {
 }
 
 function planerIsDesktop() {
-  return planerIsDesktop() && !/Mobi|Android/i.test(navigator.userAgent);
+  return window.innerWidth >= 900 && !/Mobi|Android/i.test(navigator.userAgent);
 }
 
 function planerRender() {
