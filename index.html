@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 53</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 54</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4543,34 +4543,71 @@ function _doGeneratePDF(p) {
   y += 6;
 
   // III. Zakres przegladu - lista kontrolna
-  sectionHead('III. ZAKRES PRZEGLADU');
+  sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
   var allItems2 = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
   var scopeMap2 = {
     kwartalny:['all','k'], polroczny:['all','k','p'], roczny:['all','k','p','r'],
     awaryjny:[], odbiorowy:['all','serwis'], konserwacja:['all','serwis']
   };
+  // Normalizacja rodzaju — usuń polskie znaki i sprowadź do klucza
   var rk = (p.rodzaj||'roczny').toLowerCase()
-    .replace(/\u00f3/g,'o').replace(/\u0142/g,'l').replace(/\u00f3/g,'o')
-    .replace('polroczny','polroczny').replace('p\u00f3\u0142roczny','polroczny');
+    .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
+    .replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z').replace(/ń/g,'n').replace(/ć/g,'c');
+  // Obsłuż "okresowy roczny" → "roczny" itp.
+  if (rk.includes('roczny') && !rk.includes('pol')) rk = 'roczny';
+  else if (rk.includes('polroczny') || rk.includes('pol')) rk = 'polroczny';
+  else if (rk.includes('kwartalny')) rk = 'kwartalny';
+  else if (rk.includes('odbiorowy')) rk = 'odbiorowy';
+  else if (rk.includes('konserwacja')) rk = 'konserwacja';
+  else if (rk.includes('awaryjny')) rk = 'awaryjny';
   var allowed = scopeMap2[rk] || ['all','k','p','r'];
   var okItems = allItems2.filter(function(item){
     return allowed.includes(item.scope||'all') && p.checklist && p.checklist[item.id]==='ok';
   });
+  var failItems = allItems2.filter(function(item){
+    return allowed.includes(item.scope||'all') && p.checklist && p.checklist[item.id]==='fail';
+  });
   doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  if (!okItems.length) {
+  if (!okItems.length && !failItems.length) {
     doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
     doc.text('Brak zaznaczonych pozycji listy kontrolnej', ML, y); y += 7;
   } else {
-    okItems.forEach(function(item) {
-      checkY(8);
-      checkmark(ML, y);
-      var lines2 = doc.splitTextToSize(pl(item.l), TW - 8);
+    if (okItems.length) {
+      // Nagłówek OK
+      checkY(7);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(46,204,113);
+      doc.text('POZYCJE SPRAWDZONE (OK):', ML, y); y += 5;
       doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      doc.text(lines2, ML + 5.5, y);
-      y += lines2.length * 5 + 1;
-    });
+      okItems.forEach(function(item) {
+        checkY(8);
+        checkmark(ML, y);
+        var lines2 = doc.splitTextToSize(pl(item.l), TW - 8);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+        doc.text(lines2, ML + 5.5, y);
+        y += lines2.length * 5 + 1;
+      });
+    }
+    if (failItems.length) {
+      y += 3;
+      checkY(7);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(231,76,60);
+      doc.text('POZYCJE Z BŁĘDEM / DO POPRAWY:', ML, y); y += 5;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+      failItems.forEach(function(item) {
+        checkY(8);
+        // Czerwone X
+        doc.setFillColor(231,76,60);
+        doc.circle(ML + 1.8, y - 1.2, 1.8, 'F');
+        doc.setDrawColor(255,255,255); doc.setLineWidth(0.6);
+        doc.lines([[1.2,1.2]], ML + 0.8, y - 2.2);
+        doc.lines([[1.2,-1.2]], ML + 0.8, y - 0.2);
+        var lines3 = doc.splitTextToSize(pl(item.l), TW - 8);
+        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+        doc.text(lines3, ML + 5.5, y);
+        y += lines3.length * 5 + 1;
+      });
+    }
   }
-  y += 6;
 
   // IV. Analiza przegladu
   sectionHead('IV. ANALIZA PRZEGLADU');
