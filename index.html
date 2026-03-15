@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 45</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 46</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -779,6 +779,7 @@ Content-Type: application/json
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <button onclick="showScreen('biuro')" style="background:none;border:none;color:var(--red2);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;flex:1">📅 Harmonogram</div>
+          <button id="planerViewToggle" onclick="planerToggleView()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:700;padding:7px 10px;cursor:pointer;font-family:'Barlow',sans-serif;margin-right:4px">📆 Miesiąc</button>
           <button onclick="planerShowUstawienia()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:700;padding:7px 11px;cursor:pointer;font-family:'Barlow',sans-serif">⚙️ Ustaw.</button>
         </div>
         <!-- Nawigacja daty -->
@@ -1248,7 +1249,24 @@ function showScreen(name) {
   }
   if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
   if(name==='biuro'){ biuroRender(); }
-  if(name==='planer'){ planerMigrateWpisy(); planerRender(); }
+  if(name==='planer'){
+    planerMigrateWpisy();
+    // Pokaż spinner, załaduj z serwera, potem renderuj
+    document.getElementById('planerBody').innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--muted)">☁️ Synchronizacja...</div>';
+    planerLoadFromServer(function() { planerRender(); });
+    // Auto-refresh co 60s na desktopie
+    if (window.innerWidth >= 900) {
+      clearInterval(window._planerRefreshInterval);
+      window._planerRefreshInterval = setInterval(function() {
+        if (document.getElementById('s-planer').classList.contains('active')) {
+          planerLoadFromServer(function() { planerRender(); });
+        } else {
+          clearInterval(window._planerRefreshInterval);
+        }
+      }, 60000);
+    }
+  }
   if(name==='planer-ustaw'){ planerRenderUstaw(); }
 }
 
@@ -3366,13 +3384,46 @@ function plSaveOsoby(v) { localStorage.setItem(PL_SK_OSOBY, JSON.stringify(v)); 
 function plSaveAuta(v)  { localStorage.setItem(PL_SK_AUTA, JSON.stringify(v)); }
 function plSaveWpisy(v) {
   localStorage.setItem(PL_SK_WPISY, JSON.stringify(v));
-  // sync serwer
+}
+
+// Zapisz jeden dzień na serwer (merge — nie nadpisuje innych dni)
+function plSyncDzien(dzien) {
   const url = localStorage.getItem('serverUrl');
   if (!url) return;
-  const cbName = 'cb_plwpisy_' + Date.now();
-  window[cbName] = function() { delete window[cbName]; };
+  const wpisy = plGetWpisy();
+  const payload = JSON.stringify({ dzien: dzien, wpisy: wpisy[dzien] || [] });
+  const cbName = 'cb_pldzien_' + Date.now();
+  window[cbName] = function(r) {
+    delete window[cbName];
+    if (r && r.ok) toast('☁️ Synchronizacja OK');
+  };
   const s = document.createElement('script');
-  s.src = url + '?savePlanerWpisy=' + encodeURIComponent(JSON.stringify(v)) + '&callback=' + cbName;
+  s.src = url + '?savePlanerDzien=' + encodeURIComponent(payload) + '&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
+// Załaduj wpisy z serwera i zmerguj z lokalnymi (serwer ma wyższy priorytet)
+function planerLoadFromServer(callback) {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) { if (callback) callback(); return; }
+  const cbName = 'cb_plload_' + Date.now();
+  const timer = setTimeout(function() {
+    delete window[cbName];
+    if (callback) callback();
+  }, 6000);
+  window[cbName] = function(res) {
+    clearTimeout(timer);
+    delete window[cbName];
+    if (res && typeof res === 'object' && !res.error) {
+      // Merge: serwer nadpisuje lokalne per dzień
+      const local = plGetWpisy();
+      const merged = Object.assign({}, local, res);
+      plSaveWpisy(merged);
+    }
+    if (callback) callback();
+  };
+  const s = document.createElement('script');
+  s.src = url + '?getPlanerWpisy=1&callback=' + cbName;
   document.body.appendChild(s);
 }
 
@@ -3456,19 +3507,116 @@ function planerDayColumnHtml(key) {
   return html;
 }
 
+let _planerView = 'week'; // 'week' | 'month'
+
+function planerToggleView() {
+  _planerView = _planerView === 'month' ? 'week' : 'month';
+  const btn = document.getElementById('planerViewToggle');
+  if (btn) btn.textContent = _planerView === 'month' ? '📅 Tydzień' : '📆 Miesiąc';
+  planerRender();
+}
+
 function planerRender() {
   const isDesktop = window.innerWidth >= 900;
-  const key    = plDateKey(_plDate);
-  const today  = plDateKey(new Date());
+  const key   = plDateKey(_plDate);
+  const today = plDateKey(new Date());
 
-  if (isDesktop) {
-    // ── WIDOK TYGODNIOWY (desktop) ──────────────────────────────
-    // Znajdź poniedziałek bieżącego tygodnia
+  const toggleBtn = document.getElementById('planerViewToggle');
+  if (toggleBtn) {
+    toggleBtn.style.display = isDesktop ? '' : 'none';
+    toggleBtn.textContent = _planerView === 'month' ? '📅 Tydzień' : '📆 Miesiąc';
+  }
+
+  if (!isDesktop) {
+    // ── WIDOK DZIENNY (mobile) ──────────────────────────
+    document.getElementById('planerDateLabel').textContent =
+      _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
+    document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
+    document.getElementById('planerTodayBtn').style.display = key === today ? 'none' : '';
+    document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key);
+    return;
+  }
+
+  if (_planerView === 'month') {
+    // ── WIDOK MIESIĘCZNY (desktop) ───────────────────────
+    const year  = _plDate.getFullYear();
+    const month = _plDate.getMonth();
+    const miesNazwy = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
+                       'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+    document.getElementById('planerDateLabel').textContent = miesNazwy[month] + ' ' + year;
+    document.getElementById('planerDayLabel').textContent = 'MIESIĄC';
+    const nowY = new Date().getFullYear(), nowM = new Date().getMonth();
+    document.getElementById('planerTodayBtn').style.display =
+      (nowY === year && nowM === month) ? 'none' : '';
+
+    const wpisy  = plGetWpisy();
+    const kats   = plGetKat();
+    const katMap = {}; kats.forEach(k => katMap[k.id] = k);
+
+    const firstDay = new Date(year, month, 1);
+    const startDow = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    const gridStart = new Date(firstDay); gridStart.setDate(1 - startDow);
+
+    const lastDay = new Date(year, month + 1, 0);
+    const endDow  = lastDay.getDay() === 0 ? 6 : lastDay.getDay() - 1;
+    const gridEnd = new Date(lastDay); gridEnd.setDate(lastDay.getDate() + (6 - endDow));
+    const totalDays = Math.round((gridEnd - gridStart) / 86400000) + 1;
+
+    const dayHeaders = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'].map(d =>
+      `<div style="text-align:center;padding:5px 0;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)">${d}</div>`
+    ).join('');
+
+    let cells = '';
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i);
+      const dk = plDateKey(d);
+      const inMonth  = d.getMonth() === month;
+      const isToday2 = dk === today;
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const dayWpisy  = wpisy[dk] || [];
+
+      // Godziny łącznie
+      let godzH = 0;
+      dayWpisy.forEach(function(w) {
+        const k = katMap[w.katId];
+        if (k && !k.noGodziny && w.godziny && w.osoby && w.osoby.length)
+          godzH += w.godziny * w.osoby.length;
+      });
+
+      // Kolorowe kropki per kategoria
+      const katIds = [...new Set(dayWpisy.map(w => w.katId))];
+      const dots = katIds.map(function(kid) {
+        const k = katMap[kid];
+        return k ? `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${k.kolor};margin-right:2px"></span>` : '';
+      }).join('');
+
+      const osoby = [...new Set(dayWpisy.flatMap(w => w.osoby||[]))];
+
+      cells += `<div onclick="planerClickMonthDay('${dk}')"
+        style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+               padding:5px 6px;cursor:pointer;min-height:72px;vertical-align:top;
+               background:${isToday2?'rgba(220,53,69,.08)':isWeekend&&inMonth?'rgba(255,255,255,.015)':'transparent'};
+               opacity:${inMonth?1:.3};
+               ${isToday2?'box-shadow:inset 0 0 0 2px var(--red2);':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:${isToday2?'15':'12'}px;font-weight:${isToday2?'900':'700'};color:${isToday2?'var(--red2)':'var(--text)'}">${d.getDate()}</span>
+          ${godzH ? `<span style="font-size:9px;font-weight:800;color:#f39c12">${godzH}h</span>` : ''}
+        </div>
+        ${dots ? `<div style="margin-bottom:3px;line-height:1">${dots}</div>` : ''}
+        ${osoby.length ? `<div style="font-size:9px;color:var(--muted);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${osoby.join(', ')}</div>` : ''}
+      </div>`;
+    }
+
+    document.getElementById('planerBody').innerHTML =
+      `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--border);border-left:1px solid var(--border)">
+        ${dayHeaders}${cells}
+      </div>`;
+
+  } else {
+    // ── WIDOK TYGODNIOWY (desktop) ───────────────────────
     const mon = new Date(_plDate);
     const dow = mon.getDay() === 0 ? 6 : mon.getDay() - 1;
     mon.setDate(mon.getDate() - dow);
-
-    // Nagłówek: tydzień z przyciskami
     const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
     const fmtD = d => d.getDate() + ' ' + MN[d.getMonth()];
     document.getElementById('planerDateLabel').textContent =
@@ -3477,39 +3625,33 @@ function planerRender() {
     document.getElementById('planerTodayBtn').style.display =
       (today >= plDateKey(mon) && today <= plDateKey(sun)) ? 'none' : '';
 
-    // 7 kolumn
     let cols = '';
     for (let i = 0; i < 7; i++) {
       const d = new Date(mon); d.setDate(mon.getDate() + i);
       const dk = plDateKey(d);
       const isT = dk === today;
-      const isSel = dk === key;
-      const isSun = d.getDay() === 0;
-      const isSat = d.getDay() === 6;
-      const dayLabel = DN[d.getDay()].slice(0,3).toUpperCase();
-      const weekend = (isSat || isSun) ? 'opacity:.6;' : '';
-      const todayBorder = isT ? 'border-top:3px solid var(--red2);' : 'border-top:3px solid transparent;';
-      cols += `<div style="flex:1;min-width:0;${weekend}${todayBorder}border-right:1px solid var(--border)">
+      const isWE = d.getDay() === 0 || d.getDay() === 6;
+      cols += `<div style="flex:1;min-width:0;${isWE?'opacity:.6;':''}border-top:3px solid ${isT?'var(--red2)':'transparent'};border-right:1px solid var(--border)">
         <div style="padding:6px 8px;background:${isT?'rgba(220,53,69,.1)':'var(--surface)'};cursor:pointer;text-align:center;border-bottom:1px solid var(--border)"
              onclick="planerSelectDay('${dk}')">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${isT?'var(--red2)':'var(--muted)'};letter-spacing:1px">${dayLabel}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:${isT?'var(--red2)':'var(--muted)'};letter-spacing:1px">${DN[d.getDay()].slice(0,3).toUpperCase()}</div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:${isT?'20':'17'}px;font-weight:800;color:${isT?'var(--red2)':'var(--text)'}">${d.getDate()}</div>
         </div>
         <div style="overflow-y:auto;max-height:calc(100vh - 180px)">${planerDayColumnHtml(dk)}</div>
       </div>`;
     }
-
     document.getElementById('planerBody').innerHTML =
       `<div style="display:flex;height:calc(100vh - 120px);overflow:hidden">${cols}</div>`;
-
-  } else {
-    // ── WIDOK DZIENNY (mobile) ──────────────────────────────────
-    document.getElementById('planerDateLabel').textContent =
-      _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
-    document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
-    document.getElementById('planerTodayBtn').style.display = key === today ? 'none' : '';
-    document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key);
   }
+}
+
+// Klik w dzień miesiąca — przełącz na widok tygodniowy tego dnia
+function planerClickMonthDay(dk) {
+  _plDate = new Date(dk);
+  _planerView = 'week';
+  const btn = document.getElementById('planerViewToggle');
+  if (btn) btn.textContent = '📆 Miesiąc';
+  planerRender();
 }
 
 function planerSelectDay(dk) {
@@ -3518,13 +3660,27 @@ function planerSelectDay(dk) {
 }
 
 function planerPrevDay() {
-  const step = window.innerWidth >= 900 ? 7 : 1;
-  _plDate.setDate(_plDate.getDate() - step);
+  if (window.innerWidth >= 900) {
+    if (_planerView === 'month') {
+      _plDate.setMonth(_plDate.getMonth() - 1);
+    } else {
+      _plDate.setDate(_plDate.getDate() - 7);
+    }
+  } else {
+    _plDate.setDate(_plDate.getDate() - 1);
+  }
   planerRender();
 }
 function planerNextDay() {
-  const step = window.innerWidth >= 900 ? 7 : 1;
-  _plDate.setDate(_plDate.getDate() + step);
+  if (window.innerWidth >= 900) {
+    if (_planerView === 'month') {
+      _plDate.setMonth(_plDate.getMonth() + 1);
+    } else {
+      _plDate.setDate(_plDate.getDate() + 7);
+    }
+  } else {
+    _plDate.setDate(_plDate.getDate() + 1);
+  }
   planerRender();
 }
 function planerGoToday() {
@@ -3667,6 +3823,7 @@ function planerZapiszWpis() {
   }
 
   plSaveWpisy(wpisy);
+  plSyncDzien(_planerEditKey);
   closePlanerWpis();
   planerRender();
   toast('✅ Wpis zapisany');
@@ -3677,6 +3834,7 @@ function planerUsunWpisModal() {
   if (wpisy[_planerEditKey]) {
     wpisy[_planerEditKey].splice(_planerEditIdx, 1);
     plSaveWpisy(wpisy);
+    plSyncDzien(_planerEditKey);
   }
   closePlanerWpis();
   planerRender();
@@ -3685,7 +3843,7 @@ function planerUsunWpisModal() {
 
 function planerUsunWpis(key, idx) {
   const wpisy = plGetWpisy();
-  if (wpisy[key]) { wpisy[key].splice(idx, 1); plSaveWpisy(wpisy); }
+  if (wpisy[key]) { wpisy[key].splice(idx, 1); plSaveWpisy(wpisy); plSyncDzien(key); }
   planerRender();
   toast('🗑️ Usunięto');
 }
