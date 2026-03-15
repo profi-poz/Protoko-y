@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 54</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 55</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1251,13 +1251,15 @@ function showScreen(name) {
   if(name==='biuro'){ biuroRender(); }
   if(name==='planer'){
     planerMigrateWpisy();
-    // Renderuj od razu z lokalnych danych
-    planerRender();
-    // Synchronizuj w tle — bez blokowania widoku
-    const url = localStorage.getItem('serverUrl');
-    if (url) {
-      planerLoadFromServer(function() { planerRender(); });
-    }
+    // Załaduj harmCache i od razu renderuj
+    harmLoad(function() {
+      planerRender();
+      // Synchronizuj wpisy planera w tle
+      const url = localStorage.getItem('serverUrl');
+      if (url) {
+        planerLoadFromServer(function() { planerRender(); });
+      }
+    });
     // Auto-refresh co 60s na desktopie
     if (planerIsDesktop()) {
       clearInterval(window._planerRefreshInterval);
@@ -3514,6 +3516,54 @@ function planerIsDesktop() {
   return window.innerWidth >= 900 && !/Mobi|Android/i.test(navigator.userAgent);
 }
 
+function planerSerwisyHtml() {
+  const lista = (_harmCache || []).slice().sort(function(a, b) {
+    return (a.data || '') > (b.data || '') ? 1 : -1;
+  });
+  if (!lista.length) return '';
+
+  const today = plDateKey(new Date());
+
+  let rows = '';
+  lista.forEach(function(h) {
+    const isPast    = h.data && h.data < today;
+    const isToday2  = h.data === today;
+    const isSoon    = h.data && h.data > today && h.data <= plDateKey(new Date(Date.now() + 7*86400000));
+    const dotColor  = isPast ? '#e74c3c' : isToday2 ? '#f39c12' : isSoon ? '#f39c12' : '#2ecc71';
+    const dateLabel = h.data ? (function(){
+      const d = new Date(h.data);
+      return d.getDate() + ' ' + MN[d.getMonth()] + ' ' + d.getFullYear();
+    })() : '—';
+
+    rows += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">';
+    // Data + kolorowy indicator
+    rows += '<div style="flex-shrink:0;text-align:center;min-width:54px">';
+    rows += '<div style="width:10px;height:10px;border-radius:50%;background:' + dotColor + ';margin:0 auto 4px"></div>';
+    rows += '<div style="font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:800;color:' + (isPast ? '#e74c3c' : isToday2 ? '#f39c12' : 'var(--text)') + ';line-height:1.2">' + dateLabel + '</div>';
+    rows += '</div>';
+    // Treść
+    rows += '<div style="flex:1;min-width:0">';
+    rows += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (h.obiekt || '—') + '</div>';
+    rows += '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">🔧 ' + (h.typ || '') + '</div>';
+    if (h.uwagi) rows += '<div style="font-size:12px;color:var(--text);background:var(--surface2);border-radius:6px;padding:5px 8px;margin-top:3px">📝 ' + h.uwagi + '</div>';
+    if (h.usterki && h.usterki.trim() && h.usterki.trim() !== '-') {
+      rows += '<div style="font-size:11px;color:#e74c3c;margin-top:4px">⚠️ ' + h.usterki + '</div>';
+    }
+    rows += '</div>';
+    // Przycisk edycji
+    rows += '<button onclick="openSerwisModal(' + JSON.stringify(encodeURIComponent(h.k)) + ')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer">✏️</button>';
+    rows += '</div>';
+  });
+
+  return '<div style="margin:16px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">'
+    + '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+    + '<div style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px">📋 Zaplanowane serwisy</div>'
+    + '<div style="font-size:11px;color:var(--muted)">' + lista.length + ' pozycji</div>'
+    + '</div>'
+    + '<div style="padding:0 14px">' + rows + '</div>'
+    + '</div>';
+}
+
 function planerRender() {
   const isDesktop = planerIsDesktop();
   const today = plDateKey(new Date());
@@ -3526,7 +3576,7 @@ function planerRender() {
       _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
     document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
     document.getElementById('planerTodayBtn').style.display = key === today ? 'none' : '';
-    document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key);
+    document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key) + planerSerwisyHtml();
     return;
   }
 
@@ -3650,7 +3700,7 @@ function planerRender() {
     html += '</div>';
   }
 
-  document.getElementById('planerBody').innerHTML = '<div style="overflow-x:auto;padding-bottom:20px">' + html + '</div>';
+  document.getElementById('planerBody').innerHTML = '<div style="overflow-x:auto;padding-bottom:20px">' + html + '</div>' + planerSerwisyHtml();
 }
 function planerSelectDay(dk) {
   _plDate = new Date(dk);
