@@ -375,9 +375,7 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
         <div class="field">
           <label>Rodzaj przeglądu</label>
           <select id="rodzajPrzegladu" onchange="updateChecklist()">
-            <option value="kwartalny">Okresowy kwartalny</option>
-            <option value="polroczny">Okresowy półroczny</option>
-            <option value="roczny" selected>Okresowy roczny</option>
+            <option value="przeglad" selected>Przegląd</option>
             <option value="awaryjny">Awaryjny</option>
             <option value="odbiorowy">Odbiorowy</option>
             <option value="konserwacja">Konserwacja</option>
@@ -655,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 57</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 58</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1292,6 +1290,7 @@ function updateChecklist() {
 
   // Które zakresy pokazać dla danego rodzaju przeglądu
   const scopeMap = {
+    przeglad:    ['all','k','p','r'],
     kwartalny:   ['all','k'],
     polroczny:   ['all','k','p'],
     roczny:      ['all','k','p','r'],
@@ -4339,6 +4338,7 @@ function showNextReviewPicker(p, callback) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
 
   const rodzajOpcje = [
+    {v:'przeglad',   l:'Przegląd (pełna lista)'},
     {v:'kwartalny',  l:'Kwartalny'},
     {v:'polroczny',  l:'Półroczny'},
     {v:'roczny',     l:'Roczny'},
@@ -4349,12 +4349,14 @@ function showNextReviewPicker(p, callback) {
   const aktualnyRodzaj = (p.rodzaj||'roczny').toLowerCase()
     .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
     .replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z').replace(/ń/g,'n').replace(/ć/g,'c');
-  let normRodzaj = 'roczny';
+  let normRodzaj = 'przeglad';
   if (aktualnyRodzaj.includes('kwartalny')) normRodzaj = 'kwartalny';
   else if (aktualnyRodzaj.includes('polroczny') || aktualnyRodzaj.includes('pol')) normRodzaj = 'polroczny';
+  else if (aktualnyRodzaj.includes('roczny') && !aktualnyRodzaj.includes('pol')) normRodzaj = 'roczny';
   else if (aktualnyRodzaj.includes('odbiorowy')) normRodzaj = 'odbiorowy';
   else if (aktualnyRodzaj.includes('konserwacja')) normRodzaj = 'konserwacja';
   else if (aktualnyRodzaj.includes('awaryjny')) normRodzaj = 'awaryjny';
+  else if (aktualnyRodzaj.includes('przeglad') || aktualnyRodzaj.includes('przegląd')) normRodzaj = 'przeglad';
 
   const rodzajOpts = rodzajOpcje.map(r =>
     `<option value="${r.v}" ${normRodzaj === r.v ? 'selected' : ''}>${r.l}</option>`
@@ -4692,77 +4694,39 @@ function _doGeneratePDF(p) {
   });
   y += 6;
 
-  // III. Zakres przegladu - lista kontrolna
+  // III. LISTA KONTROLNA - tylko pozycje OK
   sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
-  var allItems2 = (p.checklistItems && p.checklistItems.length)
+
+  // Pobierz etykiety — z checklistItems (nowe) lub z CL (stare)
+  var itemLabels = {};
+  var srcItems = (p.checklistItems && p.checklistItems.length)
     ? p.checklistItems
     : (getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || []);
+  srcItems.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
 
-  var scopeMap2 = {
-    kwartalny:['all','k'], polroczny:['all','k','p'], roczny:['all','k','p','r'],
-    awaryjny:[], odbiorowy:['all','serwis'], konserwacja:['all','serwis']
-  };
-  var rk = (p.rodzaj||'roczny').toLowerCase()
-    .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
-    .replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z').replace(/ń/g,'n').replace(/ć/g,'c');
-  if (rk.includes('kwartalny')) rk = 'kwartalny';
-  else if (rk.includes('polroczny') || rk.includes('pol')) rk = 'polroczny';
-  else if (rk.includes('roczny') && !rk.includes('pol')) rk = 'roczny';
-  else if (rk.includes('odbiorowy')) rk = 'odbiorowy';
-  else if (rk.includes('konserwacja')) rk = 'konserwacja';
-  else if (rk.includes('awaryjny')) rk = 'awaryjny';
-  var allowed = scopeMap2[rk] || ['all','k','p','r'];
+  // Zbierz ID zaznaczonych jako OK
+  var okIds = [];
+  if (p.checklist) {
+    Object.keys(p.checklist).forEach(function(id){
+      if (p.checklist[id] === 'ok') okIds.push(id);
+    });
+  }
 
-  // Zbierz wszystkie zaznaczone — OK i FAIL, bez filtra scope dla protokołów bez checklistItems
-  var hasNewFormat = !!(p.checklistItems && p.checklistItems.length);
-  var okItems = allItems2.filter(function(item){
-    var scopeOk = !hasNewFormat || allowed.includes(item.scope||'all');
-    return scopeOk && p.checklist && p.checklist[item.id]==='ok';
-  });
-  var failItems = allItems2.filter(function(item){
-    var scopeOk = !hasNewFormat || allowed.includes(item.scope||'all');
-    return scopeOk && p.checklist && p.checklist[item.id]==='fail';
-  });
   doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  if (!okItems.length && !failItems.length) {
+
+  if (!okIds.length) {
     doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
-    doc.text('Brak zaznaczonych pozycji listy kontrolnej', ML, y); y += 7;
+    doc.text('Brak zaznaczonych pozycji (OK) listy kontrolnej', ML, y); y += 7;
   } else {
-    if (okItems.length) {
-      // Nagłówek OK
-      checkY(7);
-      doc.setFont(FONT,'bold'); doc.setFontSize(8); doc.setTextColor(46,204,113);
-      doc.text('POZYCJE SPRAWDZONE (OK):', ML, y); y += 5;
+    okIds.forEach(function(id) {
+      var label = itemLabels[id] || id;
+      checkY(8);
+      checkmark(ML, y);
+      var lines2 = doc.splitTextToSize(pl(label), TW - 8);
       doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      okItems.forEach(function(item) {
-        checkY(8);
-        checkmark(ML, y);
-        var lines2 = doc.splitTextToSize(pl(item.l), TW - 8);
-        doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-        doc.text(lines2, ML + 5.5, y);
-        y += lines2.length * 5 + 1;
-      });
-    }
-    if (failItems.length) {
-      y += 3;
-      checkY(7);
-      doc.setFont(FONT,'bold'); doc.setFontSize(8); doc.setTextColor(231,76,60);
-      doc.text('POZYCJE Z BŁĘDEM / DO POPRAWY:', ML, y); y += 5;
-      doc.setFont(FONT,'normal'); doc.setFontSize(8.5);
-      failItems.forEach(function(item) {
-        checkY(8);
-        // Czerwone X
-        doc.setFillColor(231,76,60);
-        doc.circle(ML + 1.8, y - 1.2, 1.8, 'F');
-        doc.setDrawColor(255,255,255); doc.setLineWidth(0.6);
-        doc.lines([[1.2,1.2]], ML + 0.8, y - 2.2);
-        doc.lines([[1.2,-1.2]], ML + 0.8, y - 0.2);
-        var lines3 = doc.splitTextToSize(pl(item.l), TW - 8);
-        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-        doc.text(lines3, ML + 5.5, y);
-        y += lines3.length * 5 + 1;
-      });
-    }
+      doc.text(lines2, ML + 5.5, y);
+      y += lines2.length * 5 + 1;
+    });
   }
 
   // IV. Analiza przegladu
