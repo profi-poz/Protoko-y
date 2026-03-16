@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 59</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 60</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1384,7 +1384,6 @@ function getForm() {
     serwisant: document.getElementById('serwisant').value,
     uprawnienia: (document.getElementById('uprawnienia')||{}).value||'',
     checklist: {...cs},
-    checklistItems: (getCL()[document.getElementById('typInstalacji').value] || []).map(function(i){ return {id:i.id, l:i.l, scope:i.scope||'all'}; }),
     usterki: document.getElementById('usterki').value,
     zalecenia: document.getElementById('zalecenia').value,
     nieprawidlowosci: document.getElementById('nieprawidlowosci').value,
@@ -4697,21 +4696,12 @@ function _doGeneratePDF(p) {
   // III. LISTA KONTROLNA - tylko pozycje OK
   sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
 
-  // DEBUG
-  console.log('DEBUG checklist:', JSON.stringify(p.checklist).substring(0,300));
-  console.log('DEBUG checklistItems len:', p.checklistItems ? p.checklistItems.length : 'BRAK');
-  console.log('DEBUG typ:', p.typ, 'rodzaj:', p.rodzaj);
-  var _debugOkCount = p.checklist ? Object.keys(p.checklist).filter(function(k){ return p.checklist[k]==='ok'; }).length : 0;
-  console.log('DEBUG ok count:', _debugOkCount);
-
-  // Pobierz etykiety — z checklistItems (nowe) lub z CL (stare)
+  // Etykiety z globalnego CL (wbudowany w kod — dostępny u wszystkich)
   var itemLabels = {};
-  var srcItems = (p.checklistItems && p.checklistItems.length)
-    ? p.checklistItems
-    : (getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || []);
-  srcItems.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
+  var clSource = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
+  clSource.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
 
-  // Zbierz ID zaznaczonych jako OK
+  // Wszystkie zaznaczone jako OK
   var okIds = [];
   if (p.checklist) {
     Object.keys(p.checklist).forEach(function(id){
