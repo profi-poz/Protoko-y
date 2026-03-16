@@ -655,7 +655,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 56</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 57</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4310,21 +4310,23 @@ function generatePDF(id) {
          || _panelProtosCache.find(x => String(x.id) === String(id));
   if (!p) { toast('Nie znaleziono protokolu'); return; }
 
-  // Pokaż dialog wyboru następnego przeglądu
-  showNextReviewPicker(p, function(months) {
-    if (months > 0 && p.data) {
-      const d = new Date(p.data);
+  // Pokaż dialog wyboru rodzaju + następnego przeglądu
+  showNextReviewPicker(p, function(months, rodzajPDF) {
+    // Użyj rodzaju z dialogu (może być inny niż w protokole)
+    const pdfData = Object.assign({}, p, { rodzaj: rodzajPDF || p.rodzaj });
+    if (months > 0 && pdfData.data) {
+      const d = new Date(pdfData.data);
       d.setMonth(d.getMonth() + months);
       const miesiac = String(d.getMonth() + 1).padStart(2, '0');
       const rok = d.getFullYear();
-      p._dataNastepnaPDF = rok + '-' + miesiac; // tylko rok-miesiąc
+      pdfData._dataNastepnaPDF = rok + '-' + miesiac;
     } else {
-      p._dataNastepnaPDF = null;
+      pdfData._dataNastepnaPDF = null;
     }
     toast('Przygotowywanie PDF...');
     loadJsPDF(function(err) {
       if (err) { toast('Blad PDF: ' + err.message); return; }
-      _doGeneratePDF(p);
+      _doGeneratePDF(pdfData);
     });
   });
 }
@@ -4335,22 +4337,72 @@ function showNextReviewPicker(p, callback) {
   const modal = document.createElement('div');
   modal.id = 'nextReviewModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const rodzajOpcje = [
+    {v:'kwartalny',  l:'Kwartalny'},
+    {v:'polroczny',  l:'Półroczny'},
+    {v:'roczny',     l:'Roczny'},
+    {v:'odbiorowy',  l:'Odbiorowy'},
+    {v:'konserwacja',l:'Konserwacja'},
+    {v:'awaryjny',   l:'Awaryjny'},
+  ];
+  const aktualnyRodzaj = (p.rodzaj||'roczny').toLowerCase()
+    .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
+    .replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z').replace(/ń/g,'n').replace(/ć/g,'c');
+  let normRodzaj = 'roczny';
+  if (aktualnyRodzaj.includes('kwartalny')) normRodzaj = 'kwartalny';
+  else if (aktualnyRodzaj.includes('polroczny') || aktualnyRodzaj.includes('pol')) normRodzaj = 'polroczny';
+  else if (aktualnyRodzaj.includes('odbiorowy')) normRodzaj = 'odbiorowy';
+  else if (aktualnyRodzaj.includes('konserwacja')) normRodzaj = 'konserwacja';
+  else if (aktualnyRodzaj.includes('awaryjny')) normRodzaj = 'awaryjny';
+
+  const rodzajOpts = rodzajOpcje.map(r =>
+    `<option value="${r.v}" ${normRodzaj === r.v ? 'selected' : ''}>${r.l}</option>`
+  ).join('');
+
   modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:16px;padding:28px 24px;max-width:320px;width:100%;text-align:center">
-      <div style="font-size:32px;margin-bottom:8px">📅</div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px">Następny przegląd</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Kiedy zaplanować kolejny przegląd?</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <button onclick="document.getElementById('nextReviewModal')._cb(3)" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;cursor:pointer">Za 3 miesiące</button>
-        <button onclick="document.getElementById('nextReviewModal')._cb(6)" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;cursor:pointer">Za 6 miesięcy</button>
-        <button onclick="document.getElementById('nextReviewModal')._cb(12)" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;cursor:pointer">Za 12 miesięcy</button>
-        <button onclick="document.getElementById('nextReviewModal')._cb(0)" style="padding:10px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer">Pomiń</button>
+    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:340px;width:100%">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:28px;margin-bottom:6px">📄</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">Generuj protokół PDF</div>
+      </div>
+
+      <div class="field" style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">📋 Rodzaj przeglądu w protokole</label>
+        <select id="pdfRodzajSel" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%;margin-top:6px">${rodzajOpts}</select>
+      </div>
+
+      <div class="field" style="margin-bottom:20px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">📅 Następny przegląd za</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <button data-m="3"  style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">3 miesiące</button>
+          <button data-m="6"  style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">6 miesięcy</button>
+          <button data-m="12" style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">12 miesięcy</button>
+          <button data-m="0"  style="padding:11px 6px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">Pomiń</button>
+        </div>
       </div>
     </div>`;
-  modal._cb = function(months) {
-    modal.remove();
-    callback(months);
-  };
+
+  // Podświetl wybrany przycisk
+  modal.querySelectorAll('button[data-m]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const months = parseInt(btn.getAttribute('data-m'));
+      const rodzaj = document.getElementById('pdfRodzajSel').value;
+      modal.remove();
+      callback(months, rodzaj);
+    });
+    btn.addEventListener('mouseenter', function() {
+      btn.style.background = 'rgba(220,53,69,.15)';
+      btn.style.borderColor = 'var(--red2)';
+      btn.style.color = 'var(--red2)';
+    });
+    btn.addEventListener('mouseleave', function() {
+      btn.style.background = btn.getAttribute('data-m') === '0' ? 'transparent' : 'var(--surface2)';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = btn.getAttribute('data-m') === '0' ? 'var(--muted)' : 'var(--text)';
+    });
+  });
+
   document.body.appendChild(modal);
 }
 
@@ -4645,27 +4697,31 @@ function _doGeneratePDF(p) {
   var allItems2 = (p.checklistItems && p.checklistItems.length)
     ? p.checklistItems
     : (getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || []);
+
   var scopeMap2 = {
     kwartalny:['all','k'], polroczny:['all','k','p'], roczny:['all','k','p','r'],
     awaryjny:[], odbiorowy:['all','serwis'], konserwacja:['all','serwis']
   };
-  // Normalizacja rodzaju — usuń polskie znaki i sprowadź do klucza
   var rk = (p.rodzaj||'roczny').toLowerCase()
     .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
     .replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z').replace(/ń/g,'n').replace(/ć/g,'c');
-  // Obsłuż "okresowy roczny" → "roczny" itp.
-  if (rk.includes('roczny') && !rk.includes('pol')) rk = 'roczny';
+  if (rk.includes('kwartalny')) rk = 'kwartalny';
   else if (rk.includes('polroczny') || rk.includes('pol')) rk = 'polroczny';
-  else if (rk.includes('kwartalny')) rk = 'kwartalny';
+  else if (rk.includes('roczny') && !rk.includes('pol')) rk = 'roczny';
   else if (rk.includes('odbiorowy')) rk = 'odbiorowy';
   else if (rk.includes('konserwacja')) rk = 'konserwacja';
   else if (rk.includes('awaryjny')) rk = 'awaryjny';
   var allowed = scopeMap2[rk] || ['all','k','p','r'];
+
+  // Zbierz wszystkie zaznaczone — OK i FAIL, bez filtra scope dla protokołów bez checklistItems
+  var hasNewFormat = !!(p.checklistItems && p.checklistItems.length);
   var okItems = allItems2.filter(function(item){
-    return allowed.includes(item.scope||'all') && p.checklist && p.checklist[item.id]==='ok';
+    var scopeOk = !hasNewFormat || allowed.includes(item.scope||'all');
+    return scopeOk && p.checklist && p.checklist[item.id]==='ok';
   });
   var failItems = allItems2.filter(function(item){
-    return allowed.includes(item.scope||'all') && p.checklist && p.checklist[item.id]==='fail';
+    var scopeOk = !hasNewFormat || allowed.includes(item.scope||'all');
+    return scopeOk && p.checklist && p.checklist[item.id]==='fail';
   });
   doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
   if (!okItems.length && !failItems.length) {
