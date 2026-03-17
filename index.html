@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 61</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 63</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -761,10 +761,16 @@ Content-Type: application/json
         </div>
         <input type="text" id="biuroSearch" placeholder="🔍 Szukaj obiektu..." oninput="biuroRender()"
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:11px 12px;outline:none;box-sizing:border-box;margin-bottom:10px">
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button id="biuroFilter-all"   onclick="biuroSetFilter('all')"   style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--red);background:var(--red);color:#fff;font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer">Wszystkie</button>
-          <button id="biuroFilter-red"   onclick="biuroSetFilter('red')"   style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer">🔴 Przeterminowane</button>
-          <button id="biuroFilter-green" onclick="biuroSetFilter('green')" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer">🟢 OK</button>
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <label style="font-size:12px;color:var(--muted);white-space:nowrap;font-weight:700">Sortuj:</label>
+          <select id="biuroSortSel" onchange="biuroSetFilter(this.value)"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:8px 10px;cursor:pointer;outline:none">
+            <option value="all">Wszystkie — wg terminu</option>
+            <option value="red">🔴 Przeterminowane</option>
+            <option value="green">🟢 OK — aktualne</option>
+            <option value="abc">🔤 Alfabetycznie</option>
+            <option value="next">📅 Najbliższy termin</option>
+          </select>
         </div>
       </div>
       <div id="biuroList" style="padding:0 16px 100px"></div>
@@ -2942,15 +2948,8 @@ function biuroLoadStatus(callback) {
 
 function biuroSetFilter(f) {
   _biuroFilter = f;
-  ['all','red','green'].forEach(function(k) {
-    const btn = document.getElementById('biuroFilter-' + k);
-    if (!btn) return;
-    if (k === f) {
-      btn.style.background = 'var(--red)'; btn.style.color = '#fff'; btn.style.borderColor = 'var(--red)';
-    } else {
-      btn.style.background = 'var(--surface2)'; btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)';
-    }
-  });
+  const sel = document.getElementById('biuroSortSel');
+  if (sel) sel.value = f;
   biuroRender();
 }
 
@@ -3037,7 +3036,7 @@ function _biuroRenderInner() {
     cards = cards.filter(c => !c.isHidden);
   }
 
-  // Filtruj
+  // Filtruj / sortuj
   if (_biuroFilter === 'red')   cards = cards.filter(c => c.colorClass === 'red');
   if (_biuroFilter === 'green') cards = cards.filter(c => c.colorClass === 'green');
   if (q) cards = cards.filter(c => c.obiekt.toLowerCase().includes(q));
@@ -3049,14 +3048,28 @@ function _biuroRenderInner() {
     grupy[c.obiekt].push(c);
   });
 
-  // Sortuj grupy
+  // Sortuj grupy wg wybranej opcji
   const orderC = {red:0,yellow:1,green:2};
-  const sortedGrupy = Object.keys(grupy).sort(function(a,b) {
-    const wa = Math.min(...grupy[a].map(c=>orderC[c.colorClass]));
-    const wb = Math.min(...grupy[b].map(c=>orderC[c.colorClass]));
-    if (wa !== wb) return wa - wb;
-    return a.localeCompare(b,'pl');
-  });
+  let sortedGrupy;
+  if (_biuroFilter === 'abc') {
+    sortedGrupy = Object.keys(grupy).sort(function(a,b){ return a.localeCompare(b,'pl'); });
+  } else if (_biuroFilter === 'next') {
+    // Sortuj wg daty następnego przeglądu (najwcześniejszy pierwszy)
+    sortedGrupy = Object.keys(grupy).sort(function(a,b) {
+      const dA = grupy[a].reduce((m,c) => c.dataNast && (!m||c.dataNast<m) ? c.dataNast : m, null);
+      const dB = grupy[b].reduce((m,c) => c.dataNast && (!m||c.dataNast<m) ? c.dataNast : m, null);
+      if (!dA && !dB) return a.localeCompare(b,'pl');
+      if (!dA) return 1; if (!dB) return -1;
+      return dA < dB ? -1 : dA > dB ? 1 : 0;
+    });
+  } else {
+    sortedGrupy = Object.keys(grupy).sort(function(a,b) {
+      const wa = Math.min(...grupy[a].map(c=>orderC[c.colorClass]));
+      const wb = Math.min(...grupy[b].map(c=>orderC[c.colorClass]));
+      if (wa !== wb) return wa - wb;
+      return a.localeCompare(b,'pl');
+    });
+  }
 
   const el = document.getElementById('biuroList');
   if (!sortedGrupy.length) {
@@ -3506,6 +3519,117 @@ function planerIsDesktop() {
   return window.innerWidth >= 900 && !/Mobi|Android/i.test(navigator.userAgent);
 }
 
+function openPlanerSerwisAssign(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const h = (_harmCache || []).find(function(x){ return x.k === k; });
+  if (!h) { toast('Nie znaleziono serwisu'); return; }
+
+  const osoby  = plGetOsoby();
+  const auta   = plGetAuta();
+  const kats   = plGetKat();
+
+  // Domyślna data = zaplanowana data serwisu lub dziś
+  const defaultDate = h.data || plDateKey(new Date());
+  // Domyślna kategoria — Przeglądy/Serwis jeśli istnieje
+  const defKat = kats.find(function(k2){ return k2.id === 'przeglady'; }) || kats[0] || {id:'', nazwa:''};
+
+  const osobyHtml = osoby.map(function(o){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">'
+      + '<input type="checkbox" value="' + o + '" style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">'
+      + '<span style="font-size:14px;font-weight:600">' + o + '</span></label>';
+  }).join('') || '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak osób — dodaj w ⚙️ Ustawieniach harmonogramu</div>';
+
+  const autaOpts = auta.map(function(a){
+    return '<option value="' + a + '">' + a + '</option>';
+  }).join('');
+
+  const katOpts = kats.filter(function(k2){ return !k2.noObiekt; }).map(function(k2){
+    return '<option value="' + k2.id + '"' + (k2.id === defKat.id ? ' selected' : '') + '>' + k2.nazwa + '</option>';
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'planerAssignModal';
+  modal.className = 'modal-overlay';
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+  modal.innerHTML = '<div class="modal" style="max-height:92vh;overflow-y:auto">'
+    + '<div class="modal-hd">'
+    + '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800">📅 Wstaw do harmonogramu</div>'
+    + '<button class="close-btn" onclick="document.getElementById(\'planerAssignModal\').remove()">✕</button>'
+    + '</div>'
+    + '<div style="padding:0 4px 8px">'
+
+    // Info o serwisie
+    + '<div style="background:var(--surface2);border-radius:10px;padding:10px 14px;margin-bottom:14px">'
+    + '<div style="font-size:14px;font-weight:700">' + (h.obiekt||'—') + '</div>'
+    + '<div style="font-size:12px;color:var(--muted)">🔧 ' + (h.typ||'') + '</div>'
+    + (h.uwagi ? '<div style="font-size:12px;color:var(--text);margin-top:4px">📝 ' + h.uwagi + '</div>' : '')
+    + (h.usterki && h.usterki.trim() && h.usterki.trim()!=='-' ? '<div style="font-size:11px;color:#e74c3c;margin-top:4px">⚠️ ' + h.usterki + '</div>' : '')
+    + '</div>'
+
+    // Kategoria
+    + '<div class="field"><label>📂 Kategoria w harmonogramie</label>'
+    + '<select id="passKat" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%">'
+    + katOpts + '</select></div>'
+
+    // Data
+    + '<div class="field"><label>📅 Data serwisu</label>'
+    + '<input type="date" id="passDate" value="' + defaultDate + '" style="font-size:16px;padding:10px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box"></div>'
+
+    // Osoby
+    + '<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">👷 Osoby</div>'
+    + '<div id="passOsoby">' + osobyHtml + '</div></div>'
+
+    // Auto
+    + '<div class="field"><label>🚗 Samochód</label>'
+    + '<select id="passAuto" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%">'
+    + '<option value="">— wybierz —</option>' + autaOpts
+    + '<option value="__reczny__">✏️ Wpisz ręcznie...</option></select></div>'
+    + '<div class="field" id="passAutoRecznyField" style="display:none"><label>Nazwa auta</label>'
+    + '<input type="text" id="passAutoReczny" placeholder="Np. Ford Transit"></div>'
+
+    // Uwagi
+    + '<div class="field"><label>📝 Uwagi do wyjazdu</label>'
+    + '<textarea id="passUwagi" placeholder="Co zabrać, kogo poinformować..." style="min-height:60px">' + (h.uwagi||'') + '</textarea></div>'
+
+    + '<button class="btn btn-red" style="margin:6px 0 0" onclick="planerSerwisDoAssign(' + JSON.stringify(kEnc) + ')">📅 Dodaj do harmonogramu</button>'
+    + '</div></div>';
+
+  // Auto select toggle
+  modal.querySelector('#passAuto').addEventListener('change', function(){
+    modal.querySelector('#passAutoRecznyField').style.display = this.value === '__reczny__' ? '' : 'none';
+  });
+
+  document.body.appendChild(modal);
+  modal.classList.add('open');
+}
+
+function planerSerwisDoAssign(kEnc) {
+  const date = document.getElementById('passDate').value;
+  if (!date) { toast('⚠️ Wybierz datę!', 1); return; }
+
+  const katId   = document.getElementById('passKat').value;
+  const osobyEl = document.querySelectorAll('#passOsoby input[type=checkbox]:checked');
+  const osoby   = Array.from(osobyEl).map(function(el){ return el.value; });
+  let   auto    = document.getElementById('passAuto').value;
+  if (auto === '__reczny__') auto = document.getElementById('passAutoReczny').value.trim();
+  const uwagi   = document.getElementById('passUwagi').value.trim();
+
+  const wpisy = plGetWpisy();
+  if (!wpisy[date]) wpisy[date] = [];
+  wpisy[date].push({ katId: katId, osoby: osoby, auto: auto, obiekt: '', uwagi: uwagi, godziny: 8 });
+  plSaveWpisy(wpisy);
+  plSyncDzien(date);
+
+  document.getElementById('planerAssignModal').remove();
+  toast('✅ Dodano do harmonogramu ' + date);
+
+  // Odśwież harmonogram jeśli otwarty
+  if (document.getElementById('s-planer').classList.contains('active')) {
+    _plDate = new Date(date); _plDate.setHours(0,0,0,0);
+    planerRender();
+  }
+}
+
 function planerSerwisyHtml() {
   const lista = (_harmCache || []).slice().sort(function(a, b) {
     return (a.data || '') > (b.data || '') ? 1 : -1;
@@ -3540,8 +3664,8 @@ function planerSerwisyHtml() {
       rows += '<div style="font-size:11px;color:#e74c3c;margin-top:4px">⚠️ ' + h.usterki + '</div>';
     }
     rows += '</div>';
-    // Przycisk edycji
-    rows += '<button onclick="openSerwisModal(' + JSON.stringify(encodeURIComponent(h.k)) + ')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer">✏️</button>';
+    // Przycisk przypisz do harmonogramu
+    rows += '<button onclick="openPlanerSerwisAssign(' + JSON.stringify(encodeURIComponent(h.k)) + ')" style="flex-shrink:0;background:none;border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:11px;padding:4px 8px;cursor:pointer" title="Przypisz do harmonogramu">📅</button>';
     rows += '</div>';
   });
 
