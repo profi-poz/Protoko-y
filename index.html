@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 64</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 65</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3559,6 +3559,22 @@ function planerIsDesktop() {
   return window.innerWidth >= 900 && !/Mobi|Android/i.test(navigator.userAgent);
 }
 
+function _planerBindSerwisyBtns() {
+  var body = document.getElementById('planerBody');
+  if (!body) return;
+  body.addEventListener('click', function(e) {
+    var btn = e.target.closest('button[data-fn]');
+    if (!btn) return;
+    e.stopPropagation();
+    var fn = btn.getAttribute('data-fn');
+    var k  = btn.getAttribute('data-k');
+    if (fn === 'assign')    planerSerwisAssignDay(k);
+    if (fn === 'usun')      planerSerwisUsun(k);
+    if (fn === 'assignharm') planerSerwisAssignDayFromHarm(k);
+    if (fn === 'usunharm')  planerSerwisUsunHarm(k);
+  }, { once: true });
+}
+
 function planerSerwisyHtml() {
   const wpisy = plGetWpisy();
   const serwisy = wpisy['__serwisy__'] || [];
@@ -3571,7 +3587,7 @@ function planerSerwisyHtml() {
   if (!serwisy.length && !harmList.length) return '';
 
   const today = plDateKey(new Date());
-  let html = '<div style="margin:16px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">'
+  let html = '<div style="margin:16px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px">'
     + '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
     + '<div style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px">📋 Zaplanowane serwisy</div>'
     + '<div style="font-size:11px;color:var(--muted)">' + (serwisy.length + harmList.length) + ' pozycji</div>'
@@ -3591,8 +3607,8 @@ function planerSerwisyHtml() {
     if (s.uwagi) html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">📝 ' + s.uwagi + '</div>';
     html += '</div>';
     html += '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">';
-    html += '<button onclick="planerSerwisAssignDay(' + JSON.stringify(kEnc) + ')" style="background:rgba(100,149,237,.15);border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:13px;padding:4px 8px;cursor:pointer" title="Wyznacz dzień">➕</button>';
-    html += '<button onclick="planerSerwisUsun(' + JSON.stringify(kEnc) + ')" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:13px;padding:4px 8px;cursor:pointer" title="Usuń z harmonogramu">🗑️</button>';
+    html += '<button data-fn="assign" data-k="' + kEnc + '" style="background:rgba(100,149,237,.15);border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:16px;padding:5px 10px;cursor:pointer;line-height:1" title="Wyznacz dzień">➕</button>';
+    html += '<button data-fn="usun" data-k="' + kEnc + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:16px;padding:5px 10px;cursor:pointer;line-height:1" title="Usuń">🗑️</button>';
     html += '</div></div>';
   });
 
@@ -3618,8 +3634,8 @@ function planerSerwisyHtml() {
     if (h.usterki && h.usterki.trim() && h.usterki.trim()!=='-') html += '<div style="font-size:11px;color:#e74c3c;margin-top:2px">⚠️ ' + h.usterki + '</div>';
     html += '</div>';
     html += '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">';
-    html += '<button onclick="planerSerwisAssignDayFromHarm(' + JSON.stringify(kEnc) + ')" style="background:rgba(100,149,237,.15);border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:13px;padding:4px 8px;cursor:pointer" title="Wyznacz dzień">➕</button>';
-    html += '<button onclick="planerSerwisUsunHarm(' + JSON.stringify(kEnc) + ')" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:13px;padding:4px 8px;cursor:pointer" title="Usuń">🗑️</button>';
+    html += '<button data-fn="assignharm" data-k="' + kEnc + '" style="background:rgba(100,149,237,.15);border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:16px;padding:5px 10px;cursor:pointer;line-height:1" title="Wyznacz dzień">➕</button>';
+    html += '<button data-fn="usunharm" data-k="' + kEnc + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:16px;padding:5px 10px;cursor:pointer;line-height:1" title="Usuń">🗑️</button>';
     html += '</div></div>';
   });
 
@@ -3732,7 +3748,8 @@ function planerRender() {
       _plDate.getDate() + ' ' + MN[_plDate.getMonth()] + ' ' + _plDate.getFullYear();
     document.getElementById('planerDayLabel').textContent = DN[_plDate.getDay()];
     document.getElementById('planerTodayBtn').style.display = key === today ? 'none' : '';
-    document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key) + planerSerwisyHtml();
+  document.getElementById('planerBody').innerHTML = planerDayColumnHtml(key) + planerSerwisyHtml();
+  _planerBindSerwisyBtns();
     return;
   }
 
@@ -3857,6 +3874,7 @@ function planerRender() {
   }
 
   document.getElementById('planerBody').innerHTML = '<div style="overflow-x:auto;padding-bottom:20px">' + html + '</div>' + planerSerwisyHtml();
+  _planerBindSerwisyBtns();
 }
 function planerSelectDay(dk) {
   _plDate = new Date(dk);
