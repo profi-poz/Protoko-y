@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 63</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 64</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3292,7 +3292,6 @@ function zapiszSerwis(kEnc, obiektEnc, typEnc) {
   const typ = decodeURIComponent(typEnc);
   const uwagi = document.getElementById('serwisUwagi').value;
 
-  // Pobierz usterki z ostatniego protokołu
   const src = allProtokoly.length ? allProtokoly : protokoly;
   const last = src.filter(p => (p.obiekt||'').trim() === obiekt && (p.typ||'') === typ)
     .sort((a,b) => (b.data||'') > (a.data||'') ? 1 : -1)[0];
@@ -3302,7 +3301,8 @@ function zapiszSerwis(kEnc, obiektEnc, typEnc) {
     usterki: (last && last.usterki) || '',
     nieprawidlowosci: (last && last.nieprawidlowosci) || '',
     ostatniPrzeglad: (last && last.data) || '',
-    ts: new Date().toISOString()
+    ts: new Date().toISOString(),
+    wHarmonogramie: false  // czy dodano do harmonogramu
   };
 
   const arr = _harmCache.filter(h => h.k !== k);
@@ -3310,7 +3310,47 @@ function zapiszSerwis(kEnc, obiektEnc, typEnc) {
   arr.sort((a,b) => a.data > b.data ? 1 : -1);
   harmSave(arr);
   closeSerwisModal();
-  toast('✅ Serwis zaplanowany na ' + data);
+
+  // Pytanie czy dodać do harmonogramu
+  _serwisAskHarmonogram(k, obiekt, typ, uwagi, data);
+}
+
+function _serwisAskHarmonogram(k, obiekt, typ, uwagi, data) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center">
+      <div style="font-size:32px;margin-bottom:10px">📅</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px">Dodać do harmonogramu?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px">${obiekt}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">🔧 ${typ}</div>
+      <div style="display:flex;gap:10px">
+        <button onclick="this.closest('div[style]').remove()" 
+          style="flex:1;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:15px;font-weight:700;cursor:pointer">NIE</button>
+        <button onclick="this.closest('div[style]').remove();_serwisAddToHarmonogram(${JSON.stringify(k)},${JSON.stringify(obiekt)},${JSON.stringify(typ)},${JSON.stringify(uwagi||'')})"
+          style="flex:1;padding:14px;background:var(--red);border:1px solid var(--red);border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">TAK</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function _serwisAddToHarmonogram(k, obiekt, typ, uwagi) {
+  // Dodaj do harmonogramu jako pozycja "oczekująca" (bez daty/osób)
+  const wpisy = plGetWpisy();
+  const SERWIS_KEY = '__serwisy__';
+  if (!wpisy[SERWIS_KEY]) wpisy[SERWIS_KEY] = [];
+  // Usuń poprzednią pozycję tego serwisu jeśli istnieje
+  wpisy[SERWIS_KEY] = wpisy[SERWIS_KEY].filter(function(s){ return s.serwisK !== k; });
+  wpisy[SERWIS_KEY].push({ serwisK: k, obiekt: obiekt, typ: typ, uwagi: uwagi, ts: new Date().toISOString() });
+  plSaveWpisy(wpisy);
+
+  // Zaktualizuj flagę w harmCache
+  const arr = _harmCache.map(function(h){
+    return h.k === k ? Object.assign({}, h, {wHarmonogramie: true}) : h;
+  });
+  harmSave(arr);
+
+  toast('✅ Dodano do harmonogramu — wyznacz dzień w zakładce 📅');
 }
 
 function usunSerwis(kEnc) {
@@ -3519,163 +3559,165 @@ function planerIsDesktop() {
   return window.innerWidth >= 900 && !/Mobi|Android/i.test(navigator.userAgent);
 }
 
-function openPlanerSerwisAssign(kEnc) {
-  const k = decodeURIComponent(kEnc);
-  const h = (_harmCache || []).find(function(x){ return x.k === k; });
-  if (!h) { toast('Nie znaleziono serwisu'); return; }
-
-  const osoby  = plGetOsoby();
-  const auta   = plGetAuta();
-  const kats   = plGetKat();
-
-  // Domyślna data = zaplanowana data serwisu lub dziś
-  const defaultDate = h.data || plDateKey(new Date());
-  // Domyślna kategoria — Przeglądy/Serwis jeśli istnieje
-  const defKat = kats.find(function(k2){ return k2.id === 'przeglady'; }) || kats[0] || {id:'', nazwa:''};
-
-  const osobyHtml = osoby.map(function(o){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">'
-      + '<input type="checkbox" value="' + o + '" style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">'
-      + '<span style="font-size:14px;font-weight:600">' + o + '</span></label>';
-  }).join('') || '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak osób — dodaj w ⚙️ Ustawieniach harmonogramu</div>';
-
-  const autaOpts = auta.map(function(a){
-    return '<option value="' + a + '">' + a + '</option>';
-  }).join('');
-
-  const katOpts = kats.filter(function(k2){ return !k2.noObiekt; }).map(function(k2){
-    return '<option value="' + k2.id + '"' + (k2.id === defKat.id ? ' selected' : '') + '>' + k2.nazwa + '</option>';
-  }).join('');
-
-  const modal = document.createElement('div');
-  modal.id = 'planerAssignModal';
-  modal.className = 'modal-overlay';
-  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
-  modal.innerHTML = '<div class="modal" style="max-height:92vh;overflow-y:auto">'
-    + '<div class="modal-hd">'
-    + '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800">📅 Wstaw do harmonogramu</div>'
-    + '<button class="close-btn" onclick="document.getElementById(\'planerAssignModal\').remove()">✕</button>'
-    + '</div>'
-    + '<div style="padding:0 4px 8px">'
-
-    // Info o serwisie
-    + '<div style="background:var(--surface2);border-radius:10px;padding:10px 14px;margin-bottom:14px">'
-    + '<div style="font-size:14px;font-weight:700">' + (h.obiekt||'—') + '</div>'
-    + '<div style="font-size:12px;color:var(--muted)">🔧 ' + (h.typ||'') + '</div>'
-    + (h.uwagi ? '<div style="font-size:12px;color:var(--text);margin-top:4px">📝 ' + h.uwagi + '</div>' : '')
-    + (h.usterki && h.usterki.trim() && h.usterki.trim()!=='-' ? '<div style="font-size:11px;color:#e74c3c;margin-top:4px">⚠️ ' + h.usterki + '</div>' : '')
-    + '</div>'
-
-    // Kategoria
-    + '<div class="field"><label>📂 Kategoria w harmonogramie</label>'
-    + '<select id="passKat" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%">'
-    + katOpts + '</select></div>'
-
-    // Data
-    + '<div class="field"><label>📅 Data serwisu</label>'
-    + '<input type="date" id="passDate" value="' + defaultDate + '" style="font-size:16px;padding:10px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box"></div>'
-
-    // Osoby
-    + '<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">👷 Osoby</div>'
-    + '<div id="passOsoby">' + osobyHtml + '</div></div>'
-
-    // Auto
-    + '<div class="field"><label>🚗 Samochód</label>'
-    + '<select id="passAuto" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%">'
-    + '<option value="">— wybierz —</option>' + autaOpts
-    + '<option value="__reczny__">✏️ Wpisz ręcznie...</option></select></div>'
-    + '<div class="field" id="passAutoRecznyField" style="display:none"><label>Nazwa auta</label>'
-    + '<input type="text" id="passAutoReczny" placeholder="Np. Ford Transit"></div>'
-
-    // Uwagi
-    + '<div class="field"><label>📝 Uwagi do wyjazdu</label>'
-    + '<textarea id="passUwagi" placeholder="Co zabrać, kogo poinformować..." style="min-height:60px">' + (h.uwagi||'') + '</textarea></div>'
-
-    + '<button class="btn btn-red" style="margin:6px 0 0" onclick="planerSerwisDoAssign(' + JSON.stringify(kEnc) + ')">📅 Dodaj do harmonogramu</button>'
-    + '</div></div>';
-
-  // Auto select toggle
-  modal.querySelector('#passAuto').addEventListener('change', function(){
-    modal.querySelector('#passAutoRecznyField').style.display = this.value === '__reczny__' ? '' : 'none';
-  });
-
-  document.body.appendChild(modal);
-  modal.classList.add('open');
-}
-
-function planerSerwisDoAssign(kEnc) {
-  const date = document.getElementById('passDate').value;
-  if (!date) { toast('⚠️ Wybierz datę!', 1); return; }
-
-  const katId   = document.getElementById('passKat').value;
-  const osobyEl = document.querySelectorAll('#passOsoby input[type=checkbox]:checked');
-  const osoby   = Array.from(osobyEl).map(function(el){ return el.value; });
-  let   auto    = document.getElementById('passAuto').value;
-  if (auto === '__reczny__') auto = document.getElementById('passAutoReczny').value.trim();
-  const uwagi   = document.getElementById('passUwagi').value.trim();
-
-  const wpisy = plGetWpisy();
-  if (!wpisy[date]) wpisy[date] = [];
-  wpisy[date].push({ katId: katId, osoby: osoby, auto: auto, obiekt: '', uwagi: uwagi, godziny: 8 });
-  plSaveWpisy(wpisy);
-  plSyncDzien(date);
-
-  document.getElementById('planerAssignModal').remove();
-  toast('✅ Dodano do harmonogramu ' + date);
-
-  // Odśwież harmonogram jeśli otwarty
-  if (document.getElementById('s-planer').classList.contains('active')) {
-    _plDate = new Date(date); _plDate.setHours(0,0,0,0);
-    planerRender();
-  }
-}
-
 function planerSerwisyHtml() {
-  const lista = (_harmCache || []).slice().sort(function(a, b) {
-    return (a.data || '') > (b.data || '') ? 1 : -1;
+  const wpisy = plGetWpisy();
+  const serwisy = wpisy['__serwisy__'] || [];
+
+  // Zaplanowane serwisy z harmCache (z datą)
+  const harmList = (_harmCache || []).slice().sort(function(a,b){
+    return (a.data||'') > (b.data||'') ? 1 : -1;
   });
-  if (!lista.length) return '';
+
+  if (!serwisy.length && !harmList.length) return '';
 
   const today = plDateKey(new Date());
-
-  let rows = '';
-  lista.forEach(function(h) {
-    const isPast    = h.data && h.data < today;
-    const isToday2  = h.data === today;
-    const isSoon    = h.data && h.data > today && h.data <= plDateKey(new Date(Date.now() + 7*86400000));
-    const dotColor  = isPast ? '#e74c3c' : isToday2 ? '#f39c12' : isSoon ? '#f39c12' : '#2ecc71';
-    const dateLabel = h.data ? (function(){
-      const d = new Date(h.data);
-      return d.getDate() + ' ' + MN[d.getMonth()] + ' ' + d.getFullYear();
-    })() : '—';
-
-    rows += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">';
-    // Data + kolorowy indicator
-    rows += '<div style="flex-shrink:0;text-align:center;min-width:54px">';
-    rows += '<div style="width:10px;height:10px;border-radius:50%;background:' + dotColor + ';margin:0 auto 4px"></div>';
-    rows += '<div style="font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:800;color:' + (isPast ? '#e74c3c' : isToday2 ? '#f39c12' : 'var(--text)') + ';line-height:1.2">' + dateLabel + '</div>';
-    rows += '</div>';
-    // Treść
-    rows += '<div style="flex:1;min-width:0">';
-    rows += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (h.obiekt || '—') + '</div>';
-    rows += '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">🔧 ' + (h.typ || '') + '</div>';
-    if (h.uwagi) rows += '<div style="font-size:12px;color:var(--text);background:var(--surface2);border-radius:6px;padding:5px 8px;margin-top:3px">📝 ' + h.uwagi + '</div>';
-    if (h.usterki && h.usterki.trim() && h.usterki.trim() !== '-') {
-      rows += '<div style="font-size:11px;color:#e74c3c;margin-top:4px">⚠️ ' + h.usterki + '</div>';
-    }
-    rows += '</div>';
-    // Przycisk przypisz do harmonogramu
-    rows += '<button onclick="openPlanerSerwisAssign(' + JSON.stringify(encodeURIComponent(h.k)) + ')" style="flex-shrink:0;background:none;border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:11px;padding:4px 8px;cursor:pointer" title="Przypisz do harmonogramu">📅</button>';
-    rows += '</div>';
-  });
-
-  return '<div style="margin:16px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">'
+  let html = '<div style="margin:16px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">'
     + '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
     + '<div style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px">📋 Zaplanowane serwisy</div>'
-    + '<div style="font-size:11px;color:var(--muted)">' + lista.length + ' pozycji</div>'
-    + '</div>'
-    + '<div style="padding:0 14px">' + rows + '</div>'
-    + '</div>';
+    + '<div style="font-size:11px;color:var(--muted)">' + (serwisy.length + harmList.length) + ' pozycji</div>'
+    + '</div><div style="padding:0 14px">';
+
+  // --- Pozycje oczekujące na przypisanie do dnia ---
+  serwisy.forEach(function(s) {
+    const kEnc = encodeURIComponent(s.serwisK || '');
+    html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">';
+    html += '<div style="flex-shrink:0;text-align:center;min-width:54px;padding-top:4px">';
+    html += '<div style="font-size:18px">🕐</div>';
+    html += '<div style="font-size:9px;color:var(--muted);margin-top:2px">bez daty</div>';
+    html += '</div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.obiekt||'—') + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted)">🔧 ' + (s.typ||'') + '</div>';
+    if (s.uwagi) html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">📝 ' + s.uwagi + '</div>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">';
+    html += '<button onclick="planerSerwisAssignDay(' + JSON.stringify(kEnc) + ')" style="background:rgba(100,149,237,.15);border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:13px;padding:4px 8px;cursor:pointer" title="Wyznacz dzień">➕</button>';
+    html += '<button onclick="planerSerwisUsun(' + JSON.stringify(kEnc) + ')" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:13px;padding:4px 8px;cursor:pointer" title="Usuń z harmonogramu">🗑️</button>';
+    html += '</div></div>';
+  });
+
+  // --- Zaplanowane serwisy z datą (z harmCache) ---
+  harmList.forEach(function(h) {
+    const isPast   = h.data && h.data < today;
+    const isToday2 = h.data === today;
+    const isSoon   = h.data && h.data > today && h.data <= plDateKey(new Date(Date.now() + 7*86400000));
+    const dotColor = isPast ? '#e74c3c' : (isToday2||isSoon) ? '#f39c12' : '#2ecc71';
+    const d = new Date(h.data);
+    const dateLabel = d.getDate() + ' ' + MN[d.getMonth()] + ' ' + d.getFullYear();
+    const kEnc = encodeURIComponent(h.k);
+
+    html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">';
+    html += '<div style="flex-shrink:0;text-align:center;min-width:54px">';
+    html += '<div style="width:10px;height:10px;border-radius:50%;background:' + dotColor + ';margin:0 auto 4px"></div>';
+    html += '<div style="font-family:Barlow Condensed,sans-serif;font-size:12px;font-weight:800;color:' + (isPast?'#e74c3c':isToday2?'#f39c12':'var(--text)') + ';line-height:1.2">' + dateLabel + '</div>';
+    html += '</div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:13px;font-weight:700">' + (h.obiekt||'—') + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted)">🔧 ' + (h.typ||'') + '</div>';
+    if (h.uwagi) html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">📝 ' + h.uwagi + '</div>';
+    if (h.usterki && h.usterki.trim() && h.usterki.trim()!=='-') html += '<div style="font-size:11px;color:#e74c3c;margin-top:2px">⚠️ ' + h.usterki + '</div>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">';
+    html += '<button onclick="planerSerwisAssignDayFromHarm(' + JSON.stringify(kEnc) + ')" style="background:rgba(100,149,237,.15);border:1px solid rgba(100,149,237,.4);border-radius:6px;color:#6495ed;font-size:13px;padding:4px 8px;cursor:pointer" title="Wyznacz dzień">➕</button>';
+    html += '<button onclick="planerSerwisUsunHarm(' + JSON.stringify(kEnc) + ')" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:6px;color:#e74c3c;font-size:13px;padding:4px 8px;cursor:pointer" title="Usuń">🗑️</button>';
+    html += '</div></div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+// Przypisz pozycję oczekującą do konkretnego dnia
+function planerSerwisAssignDay(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const wpisy = plGetWpisy();
+  const s = (wpisy['__serwisy__'] || []).find(function(x){ return x.serwisK === k; });
+  if (!s) return;
+
+  _planerPickDay(function(date) {
+    // Usuń z oczekujących
+    wpisy['__serwisy__'] = (wpisy['__serwisy__'] || []).filter(function(x){ return x.serwisK !== k; });
+    // Dodaj wpis do harmonogramu pod Przeglądy/Serwis
+    const katId = 'przeglady';
+    if (!wpisy[date]) wpisy[date] = [];
+    const idx = wpisy[date].length;
+    wpisy[date].push({ katId: katId, osoby: [], auto: '', obiekt: s.obiekt, uwagi: s.uwagi || '', godziny: 8 });
+    plSaveWpisy(wpisy);
+    plSyncDzien(date);
+    toast('✅ Dodano do ' + date + ' — uzupełnij szczegóły');
+    // Nawiguj do dnia i otwórz edycję
+    _plDate = new Date(date); _plDate.setHours(0,0,0,0);
+    planerRender();
+    setTimeout(function(){ planerEdytujWpis(date, idx); }, 300);
+  });
+}
+
+// Przypisz serwis z harmCache do konkretnego dnia
+function planerSerwisAssignDayFromHarm(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const h = (_harmCache || []).find(function(x){ return x.k === k; });
+  if (!h) return;
+
+  _planerPickDay(function(date) {
+    const wpisy = plGetWpisy();
+    if (!wpisy[date]) wpisy[date] = [];
+    const idx = wpisy[date].length;
+    wpisy[date].push({ katId: 'przeglady', osoby: [], auto: '', obiekt: h.obiekt, uwagi: h.uwagi || '', godziny: 8 });
+    plSaveWpisy(wpisy);
+    plSyncDzien(date);
+    toast('✅ Dodano do ' + date + ' — uzupełnij szczegóły');
+    _plDate = new Date(date); _plDate.setHours(0,0,0,0);
+    planerRender();
+    setTimeout(function(){ planerEdytujWpis(date, idx); }, 300);
+  });
+}
+
+// Usuń pozycję oczekującą z harmonogramu
+function planerSerwisUsun(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const wpisy = plGetWpisy();
+  wpisy['__serwisy__'] = (wpisy['__serwisy__'] || []).filter(function(x){ return x.serwisK !== k; });
+  plSaveWpisy(wpisy);
+  // Odznacz flagę w harmCache
+  const arr = _harmCache.map(function(h){ return h.k===k ? Object.assign({},h,{wHarmonogramie:false}) : h; });
+  harmSave(arr);
+  planerRender();
+  toast('🗑️ Usunięto z harmonogramu');
+}
+
+// Usuń pozycję z harmCache z harmonogramu
+function planerSerwisUsunHarm(kEnc) {
+  const k = decodeURIComponent(kEnc);
+  const arr = _harmCache.filter(function(h){ return h.k !== k; });
+  harmSave(arr);
+  planerRender();
+  toast('🗑️ Usunięto zaplanowany serwis');
+}
+
+// Mini modal wyboru dnia
+function _planerPickDay(callback) {
+  const today = plDateKey(new Date());
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;margin-bottom:16px;text-align:center">📅 W jaki dzień?</div>
+      <div class="field">
+        <label>Wybierz datę</label>
+        <input type="date" id="pickDayInput" value="${today}" style="font-size:18px;padding:12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer">Anuluj</button>
+        <button id="pickDayOk" style="flex:2;padding:13px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Wyznacz dzień</button>
+      </div>
+    </div>`;
+  modal.querySelector('#pickDayOk').onclick = function() {
+    const date = modal.querySelector('#pickDayInput').value;
+    if (!date) return;
+    modal.remove();
+    callback(date);
+  };
+  document.body.appendChild(modal);
 }
 
 function planerRender() {
