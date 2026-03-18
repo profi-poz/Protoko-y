@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 66</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 67</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3662,7 +3662,7 @@ function planerSerwisAssignDay(kEnc) {
     // Usuń też z harmCache
     const arr = _harmCache.filter(function(h){ return h.k !== k; });
     harmSave(arr);
-    toast('✅ Wpisano do harmonogramu ' + date);
+    toast('📅 Dokończ planowanie tego wyjazdu w harmonogramie!', 3);
     if (document.getElementById('s-planer').classList.contains('active')) {
       _plDate = new Date(date); _plDate.setHours(0,0,0,0);
       planerRender();
@@ -3685,7 +3685,7 @@ function planerSerwisAssignDayFromHarm(kEnc) {
     // Usuń z harmCache po przypisaniu
     const arr = _harmCache.filter(function(x){ return x.k !== k; });
     harmSave(arr);
-    toast('✅ Wpisano do harmonogramu ' + date);
+    toast('📅 Dokończ planowanie tego wyjazdu w harmonogramie!', 3);
     if (document.getElementById('s-planer').classList.contains('active')) {
       _plDate = new Date(date); _plDate.setHours(0,0,0,0);
       planerRender();
@@ -3715,67 +3715,27 @@ function planerSerwisUsunHarm(kEnc) {
   toast('🗑️ Usunięto zaplanowany serwis');
 }
 
-// Modal wyboru dnia + osób + auta — wszystko w jednym
 function _planerPickDay(callback) {
-  const today    = plDateKey(new Date());
-  const osoby    = plGetOsoby();
-  const auta     = plGetAuta();
-
-  const osobyHtml = osoby.map(function(o){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--dark);border-radius:8px;margin-bottom:4px;cursor:pointer">'
-      + '<input type="checkbox" value="' + o + '" style="width:18px;height:18px;accent-color:var(--red)">'
-      + '<span style="font-size:14px;font-weight:600">' + o + '</span></label>';
-  }).join('') || '<div style="font-size:12px;color:var(--muted);padding:6px 0">Dodaj osoby w Ustawieniach harmonogramu</div>';
-
-  const autaOpts = ['<option value="">— bez auta —</option>']
-    .concat(auta.map(function(a){ return '<option value="' + a + '">' + a + '</option>'; }))
-    .join('');
-
+  const today = plDateKey(new Date());
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:18px 18px 0 0;padding:24px 20px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:16px">📅 Wyznacz dzień wyjazdu</div>
-
-      <div class="field">
-        <label>Data</label>
-        <input type="date" id="_pickDate" value="${today}"
-          style="font-size:18px;padding:11px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box">
-      </div>
-
-      <div style="margin-bottom:14px">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">👷 Kto jedzie</div>
-        <div id="_pickOsoby">${osobyHtml}</div>
-      </div>
-
-      <div class="field">
-        <label>🚗 Samochód</label>
-        <select id="_pickAuto" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%">
-          ${autaOpts}
-        </select>
-      </div>
-
-      <div class="field">
-        <label>📝 Uwagi</label>
-        <textarea id="_pickUwagi" placeholder="Co zabrać, co zrobić..." style="min-height:60px"></textarea>
-      </div>
-
-      <div style="display:flex;gap:10px;margin-top:6px">
+    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:16px;text-align:center">📅 W jaki dzień?</div>
+      <input type="date" id="_pickDate" value="${today}"
+        style="font-size:18px;padding:12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box;margin-bottom:16px">
+      <div style="display:flex;gap:10px">
         <button onclick="this.closest('div[style]').remove()"
           style="flex:1;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:15px;font-weight:700;cursor:pointer">Anuluj</button>
         <button id="_pickOk"
-          style="flex:2;padding:14px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ Zapisz</button>
+          style="flex:2;padding:14px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Dodaj</button>
       </div>
     </div>`;
-
   modal.querySelector('#_pickOk').onclick = function() {
-    const date  = modal.querySelector('#_pickDate').value;
-    if (!date) { return; }
-    const sel   = Array.from(modal.querySelectorAll('#_pickOsoby input:checked')).map(function(el){ return el.value; });
-    const auto  = modal.querySelector('#_pickAuto').value;
-    const uwagi = modal.querySelector('#_pickUwagi').value.trim();
+    const date = modal.querySelector('#_pickDate').value;
+    if (!date) return;
     modal.remove();
-    callback(date, sel, auto, uwagi);
+    callback(date, [], '', '');
   };
   document.body.appendChild(modal);
 }
