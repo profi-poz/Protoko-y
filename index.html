@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 65</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 66</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3224,59 +3224,62 @@ function harmLoad(callback) {
 
 function openSerwisModal(kEnc) {
   const k = decodeURIComponent(kEnc);
-  const src = allProtokoly.length ? allProtokoly : protokoly;
-
-  // Znajdź ostatni protokół dla tego klucza
   const parts = k.split('|');
   const obiekt = parts[0] || '';
-  const typ = parts[1] || '';
+  const typ    = parts[1] || '';
+
+  // Pobierz usterki z ostatniego protokołu
+  const src  = allProtokoly.length ? allProtokoly : protokoly;
   const last = src.filter(p => (p.obiekt||'').trim() === obiekt && (p.typ||'') === typ)
     .sort((a,b) => (b.data||'') > (a.data||'') ? 1 : -1)[0];
-
   const usterki = (last && last.usterki && last.usterki.trim() && last.usterki.trim() !== '-') ? last.usterki : '';
   const nieprawidl = (last && last.nieprawidlowosci && last.nieprawidlowosci.trim() && last.nieprawidlowosci.trim() !== '-') ? last.nieprawidlowosci : '';
 
-  // Sprawdź czy jest już zaplanowany
   harmLoad(function() {
     const existing = _harmCache.find(h => h.k === k);
-    const dataVal = existing ? existing.data : '';
-    const uwagiVal = existing ? (existing.uwagi||'') : '';
 
-    document.getElementById('serwisModalBody').innerHTML = `
-      <div style="padding:0 4px 16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:4px">${obiekt}</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:20px">🔧 ${typ}</div>
+    // Jeśli już zaplanowany — pokaż info z opcją usunięcia
+    if (existing) {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+      modal.innerHTML = `
+        <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">${obiekt}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">🔧 ${typ}</div>
+          <div style="padding:12px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.25);border-radius:8px;font-size:13px;color:#2ecc71;margin-bottom:16px">
+            ✅ Już dodano do harmonogramu
+          </div>
+          <div style="display:flex;gap:10px">
+            <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer">Zamknij</button>
+            <button onclick="usunSerwis('${kEnc}');this.closest('div[style]').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid rgba(231,76,60,.4);border-radius:10px;color:#e74c3c;font-size:14px;font-weight:700;cursor:pointer">🗑️ Usuń plan</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      return;
+    }
 
-        <div class="field">
-          <label>📅 Planowana data serwisu</label>
-          <input type="date" id="serwisData" value="${dataVal}" style="font-size:16px">
-        </div>
+    // Nie zaplanowany — od razu dodaj do harmonogramu bez pytania
+    const entry = {
+      k, obiekt, typ,
+      data: '',
+      uwagi: '',
+      usterki: usterki,
+      nieprawidlowosci: nieprawidl,
+      ostatniPrzeglad: (last && last.data) || '',
+      ts: new Date().toISOString(),
+      wHarmonogramie: true
+    };
+    const arr = [..._harmCache.filter(h => h.k !== k), entry];
+    harmSave(arr);
 
-        <div class="field">
-          <label>📝 Uwagi do wyjazdu</label>
-          <textarea id="serwisUwagi" placeholder="Co trzeba zrobić, co zabrać, kogo poinformować..."
-            style="min-height:80px">${uwagiVal}</textarea>
-        </div>
+    // Dodaj do oczekujących w harmonogramie
+    const wpisy = plGetWpisy();
+    if (!wpisy['__serwisy__']) wpisy['__serwisy__'] = [];
+    wpisy['__serwisy__'] = wpisy['__serwisy__'].filter(function(s){ return s.serwisK !== k; });
+    wpisy['__serwisy__'].push({ serwisK: k, obiekt: obiekt, typ: typ, uwagi: usterki || '', ts: new Date().toISOString() });
+    plSaveWpisy(wpisy);
 
-        ${usterki ? `<div style="margin-bottom:14px;padding:12px;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.25);border-radius:8px">
-          <div style="font-size:11px;color:#e74c3c;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">⚠️ Usterki z ostatniego przeglądu</div>
-          <div style="font-size:13px;line-height:1.6;color:var(--text)">${usterki.replace(/\n/g,'<br>')}</div>
-        </div>` : ''}
-
-        ${nieprawidl ? `<div style="margin-bottom:14px;padding:12px;background:rgba(241,196,15,.08);border:1px solid rgba(241,196,15,.25);border-radius:8px">
-          <div style="font-size:11px;color:#f1c40f;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">🔶 Nieprawidłowości z ostatniego przeglądu</div>
-          <div style="font-size:13px;line-height:1.6;color:var(--text)">${nieprawidl.replace(/\n/g,'<br>')}</div>
-        </div>` : ''}
-
-        ${(!usterki && !nieprawidl) ? `<div style="margin-bottom:14px;padding:10px 12px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:8px;font-size:13px;color:#2ecc71">✅ Brak usterek i nieprawidłowości z ostatniego przeglądu</div>` : ''}
-
-        <div style="display:flex;gap:10px;margin-top:6px">
-          ${existing ? `<button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="usunSerwis('${kEnc}')">🗑️ Usuń plan</button>` : ''}
-          <button class="btn btn-red" style="flex:2;margin:0" onclick="zapiszSerwis('${kEnc}','${encodeURIComponent(obiekt)}','${encodeURIComponent(typ)}')">💾 Zapisz</button>
-        </div>
-      </div>`;
-
-    document.getElementById('serwisModal').classList.add('open');
+    toast('✅ Dodano do harmonogramu — wyznacz dzień w zakładce 📅');
   });
 }
 
@@ -3650,21 +3653,20 @@ function planerSerwisAssignDay(kEnc) {
   const s = (wpisy['__serwisy__'] || []).find(function(x){ return x.serwisK === k; });
   if (!s) return;
 
-  _planerPickDay(function(date) {
-    // Usuń z oczekujących
+  _planerPickDay(function(date, osoby, auto, uwagi) {
     wpisy['__serwisy__'] = (wpisy['__serwisy__'] || []).filter(function(x){ return x.serwisK !== k; });
-    // Dodaj wpis do harmonogramu pod Przeglądy/Serwis
-    const katId = 'przeglady';
     if (!wpisy[date]) wpisy[date] = [];
-    const idx = wpisy[date].length;
-    wpisy[date].push({ katId: katId, osoby: [], auto: '', obiekt: s.obiekt, uwagi: s.uwagi || '', godziny: 8 });
+    wpisy[date].push({ katId: 'przeglady', osoby: osoby, auto: auto, obiekt: s.obiekt, uwagi: uwagi || s.uwagi || '', godziny: 8 });
     plSaveWpisy(wpisy);
     plSyncDzien(date);
-    toast('✅ Dodano do ' + date + ' — uzupełnij szczegóły');
-    // Nawiguj do dnia i otwórz edycję
-    _plDate = new Date(date); _plDate.setHours(0,0,0,0);
-    planerRender();
-    setTimeout(function(){ planerEdytujWpis(date, idx); }, 300);
+    // Usuń też z harmCache
+    const arr = _harmCache.filter(function(h){ return h.k !== k; });
+    harmSave(arr);
+    toast('✅ Wpisano do harmonogramu ' + date);
+    if (document.getElementById('s-planer').classList.contains('active')) {
+      _plDate = new Date(date); _plDate.setHours(0,0,0,0);
+      planerRender();
+    }
   });
 }
 
@@ -3674,17 +3676,20 @@ function planerSerwisAssignDayFromHarm(kEnc) {
   const h = (_harmCache || []).find(function(x){ return x.k === k; });
   if (!h) return;
 
-  _planerPickDay(function(date) {
+  _planerPickDay(function(date, osoby, auto, uwagi) {
     const wpisy = plGetWpisy();
     if (!wpisy[date]) wpisy[date] = [];
-    const idx = wpisy[date].length;
-    wpisy[date].push({ katId: 'przeglady', osoby: [], auto: '', obiekt: h.obiekt, uwagi: h.uwagi || '', godziny: 8 });
+    wpisy[date].push({ katId: 'przeglady', osoby: osoby, auto: auto, obiekt: h.obiekt, uwagi: uwagi || h.uwagi || '', godziny: 8 });
     plSaveWpisy(wpisy);
     plSyncDzien(date);
-    toast('✅ Dodano do ' + date + ' — uzupełnij szczegóły');
-    _plDate = new Date(date); _plDate.setHours(0,0,0,0);
-    planerRender();
-    setTimeout(function(){ planerEdytujWpis(date, idx); }, 300);
+    // Usuń z harmCache po przypisaniu
+    const arr = _harmCache.filter(function(x){ return x.k !== k; });
+    harmSave(arr);
+    toast('✅ Wpisano do harmonogramu ' + date);
+    if (document.getElementById('s-planer').classList.contains('active')) {
+      _plDate = new Date(date); _plDate.setHours(0,0,0,0);
+      planerRender();
+    }
   });
 }
 
@@ -3710,28 +3715,67 @@ function planerSerwisUsunHarm(kEnc) {
   toast('🗑️ Usunięto zaplanowany serwis');
 }
 
-// Mini modal wyboru dnia
+// Modal wyboru dnia + osób + auta — wszystko w jednym
 function _planerPickDay(callback) {
-  const today = plDateKey(new Date());
+  const today    = plDateKey(new Date());
+  const osoby    = plGetOsoby();
+  const auta     = plGetAuta();
+
+  const osobyHtml = osoby.map(function(o){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--dark);border-radius:8px;margin-bottom:4px;cursor:pointer">'
+      + '<input type="checkbox" value="' + o + '" style="width:18px;height:18px;accent-color:var(--red)">'
+      + '<span style="font-size:14px;font-weight:600">' + o + '</span></label>';
+  }).join('') || '<div style="font-size:12px;color:var(--muted);padding:6px 0">Dodaj osoby w Ustawieniach harmonogramu</div>';
+
+  const autaOpts = ['<option value="">— bez auta —</option>']
+    .concat(auta.map(function(a){ return '<option value="' + a + '">' + a + '</option>'; }))
+    .join('');
+
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0';
   modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;margin-bottom:16px;text-align:center">📅 W jaki dzień?</div>
+    <div style="background:var(--surface);border-radius:18px 18px 0 0;padding:24px 20px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:16px">📅 Wyznacz dzień wyjazdu</div>
+
       <div class="field">
-        <label>Wybierz datę</label>
-        <input type="date" id="pickDayInput" value="${today}" style="font-size:18px;padding:12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box">
+        <label>Data</label>
+        <input type="date" id="_pickDate" value="${today}"
+          style="font-size:18px;padding:11px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box">
       </div>
-      <div style="display:flex;gap:10px;margin-top:8px">
-        <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer">Anuluj</button>
-        <button id="pickDayOk" style="flex:2;padding:13px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Wyznacz dzień</button>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">👷 Kto jedzie</div>
+        <div id="_pickOsoby">${osobyHtml}</div>
+      </div>
+
+      <div class="field">
+        <label>🚗 Samochód</label>
+        <select id="_pickAuto" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%">
+          ${autaOpts}
+        </select>
+      </div>
+
+      <div class="field">
+        <label>📝 Uwagi</label>
+        <textarea id="_pickUwagi" placeholder="Co zabrać, co zrobić..." style="min-height:60px"></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button onclick="this.closest('div[style]').remove()"
+          style="flex:1;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:15px;font-weight:700;cursor:pointer">Anuluj</button>
+        <button id="_pickOk"
+          style="flex:2;padding:14px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ Zapisz</button>
       </div>
     </div>`;
-  modal.querySelector('#pickDayOk').onclick = function() {
-    const date = modal.querySelector('#pickDayInput').value;
-    if (!date) return;
+
+  modal.querySelector('#_pickOk').onclick = function() {
+    const date  = modal.querySelector('#_pickDate').value;
+    if (!date) { return; }
+    const sel   = Array.from(modal.querySelectorAll('#_pickOsoby input:checked')).map(function(el){ return el.value; });
+    const auto  = modal.querySelector('#_pickAuto').value;
+    const uwagi = modal.querySelector('#_pickUwagi').value.trim();
     modal.remove();
-    callback(date);
+    callback(date, sel, auto, uwagi);
   };
   document.body.appendChild(modal);
 }
