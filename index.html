@@ -653,7 +653,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 67</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 68</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3238,23 +3238,9 @@ function openSerwisModal(kEnc) {
   harmLoad(function() {
     const existing = _harmCache.find(h => h.k === k);
 
-    // Jeśli już zaplanowany — pokaż info z opcją usunięcia
+    // Jeśli już zaplanowany — tylko toast, bez modala
     if (existing) {
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-      modal.innerHTML = `
-        <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%">
-          <div style="font-size:13px;font-weight:700;margin-bottom:4px">${obiekt}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">🔧 ${typ}</div>
-          <div style="padding:12px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.25);border-radius:8px;font-size:13px;color:#2ecc71;margin-bottom:16px">
-            ✅ Już dodano do harmonogramu
-          </div>
-          <div style="display:flex;gap:10px">
-            <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer">Zamknij</button>
-            <button onclick="usunSerwis('${kEnc}');this.closest('div[style]').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid rgba(231,76,60,.4);border-radius:10px;color:#e74c3c;font-size:14px;font-weight:700;cursor:pointer">🗑️ Usuń plan</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
+      toast('ℹ️ Serwis jest już do zaplanowania w harmonogramie');
       return;
     }
 
@@ -3272,7 +3258,7 @@ function openSerwisModal(kEnc) {
     const arr = [..._harmCache.filter(h => h.k !== k), entry];
     harmSave(arr);
 
-    // Dodaj do oczekujących w harmonogramie
+    // Dodaj do oczekujących w harmonogramie (tylko jeden wpis)
     const wpisy = plGetWpisy();
     if (!wpisy['__serwisy__']) wpisy['__serwisy__'] = [];
     wpisy['__serwisy__'] = wpisy['__serwisy__'].filter(function(s){ return s.serwisK !== k; });
@@ -3587,13 +3573,17 @@ function planerSerwisyHtml() {
     return (a.data||'') > (b.data||'') ? 1 : -1;
   });
 
-  if (!serwisy.length && !harmList.length) return '';
+  // harmCache pokazuj tylko te które mają datę i nie są już w __serwisy__
+  const serwisyKeys = new Set(serwisy.map(function(s){ return s.serwisK; }));
+  const harmListFiltered = harmList.filter(function(h){ return h.data && !serwisyKeys.has(h.k); });
+
+  if (!serwisy.length && !harmListFiltered.length) return '';
 
   const today = plDateKey(new Date());
   let html = '<div style="margin:16px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px">'
     + '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
     + '<div style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px">📋 Zaplanowane serwisy</div>'
-    + '<div style="font-size:11px;color:var(--muted)">' + (serwisy.length + harmList.length) + ' pozycji</div>'
+    + '<div style="font-size:11px;color:var(--muted)">' + (serwisy.length + harmListFiltered.length) + ' pozycji</div>'
     + '</div><div style="padding:0 14px">';
 
   // --- Pozycje oczekujące na przypisanie do dnia ---
@@ -3615,8 +3605,8 @@ function planerSerwisyHtml() {
     html += '</div></div>';
   });
 
-  // --- Zaplanowane serwisy z datą (z harmCache) ---
-  harmList.forEach(function(h) {
+  // --- Zaplanowane serwisy z datą (z harmCache, bez duplikatów) ---
+  harmListFiltered.forEach(function(h) {
     const isPast   = h.data && h.data < today;
     const isToday2 = h.data === today;
     const isSoon   = h.data && h.data > today && h.data <= plDateKey(new Date(Date.now() + 7*86400000));
@@ -3716,28 +3706,46 @@ function planerSerwisUsunHarm(kEnc) {
 }
 
 function _planerPickDay(callback) {
+  // Usuń poprzedni modal jeśli istnieje
+  var prev = document.getElementById('_pickDayModal');
+  if (prev) prev.remove();
+
   const today = plDateKey(new Date());
   const modal = document.createElement('div');
+  modal.id = '_pickDayModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML = `
     <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:320px;width:100%">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:16px;text-align:center">📅 W jaki dzień?</div>
-      <input type="date" id="_pickDate" value="${today}"
+      <input type="date" id="_pickDateInput" value="${today}"
         style="font-size:18px;padding:12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box;margin-bottom:16px">
       <div style="display:flex;gap:10px">
-        <button onclick="this.closest('div[style]').remove()"
+        <button id="_pickCancelBtn"
           style="flex:1;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:15px;font-weight:700;cursor:pointer">Anuluj</button>
-        <button id="_pickOk"
+        <button id="_pickOkBtn"
           style="flex:2;padding:14px;background:var(--red);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Dodaj</button>
       </div>
     </div>`;
-  modal.querySelector('#_pickOk').onclick = function() {
-    const date = modal.querySelector('#_pickDate').value;
-    if (!date) return;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('#_pickCancelBtn').addEventListener('click', function() {
+    modal.remove();
+  });
+
+  modal.querySelector('#_pickOkBtn').addEventListener('click', function() {
+    // Blokada wielokrotnego kliknięcia
+    if (this.disabled) return;
+    this.disabled = true;
+    const raw = modal.querySelector('#_pickDateInput').value;
+    if (!raw) { this.disabled = false; return; }
+    // Napraw przesunięcie strefy czasowej — parsuj jako lokalną datę
+    const parts = raw.split('-');
+    const localDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    const date = plDateKey(localDate);
     modal.remove();
     callback(date, [], '', '');
-  };
-  document.body.appendChild(modal);
+  });
 }
 
 function planerRender() {
