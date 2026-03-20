@@ -1666,7 +1666,11 @@ async function zapiszIPrzeslij() {
   toast('📤 Wysyłanie na Google Drive...');
   try {
     // Usuń zdjęcia przed wysłaniem - za duże dla URL
+    // dsgDetektory serializujemy do JSON stringa żeby GAS nie dostał [object Object]
     const dSend = {...d, photos:[]};
+    if (dSend.dsgDetektory && Array.isArray(dSend.dsgDetektory)) {
+      dSend.dsgDetektory = JSON.stringify(dSend.dsgDetektory);
+    }
     const dataStr = encodeURIComponent(JSON.stringify(dSend));
     const sendUrl = url + '?data=' + dataStr;
     const r = await fetch(sendUrl, {method:'GET', mode:'cors'});
@@ -5201,14 +5205,20 @@ function _doGeneratePDF(p) {
 
     function dsgTableHeader() {
       checkY(dHDR_H + 4);
-      doc.setFillColor(MGRAY[0], MGRAY[1], MGRAY[2]);
-      doc.setFont(FONT,'bold'); doc.setFontSize(dFS); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
       var hdrs = ['Lp.', pl('Urz\u0105dzenie'), pl('Wykrywany gaz'), pl('Miejsce instalacji'), 'Wynik'];
       dCW.forEach(function(w,i){
+        // Fill szary + obramowanie — kolor ustawiany tuż przed rect
+        doc.setFillColor(230, 230, 230);
+        doc.setDrawColor(150, 150, 150);
         doc.rect(dCX[i], y, w, dHDR_H, 'FD');
+        doc.setFont(FONT,'bold');
+        doc.setFontSize(dFS);
+        doc.setTextColor(40, 40, 40);
         var textLines = doc.splitTextToSize(hdrs[i], w - dPAD*2);
         doc.text(textLines, dCX[i] + dPAD, y + 5.5);
       });
+      // Przywróć domyślny kolor obramowania
+      doc.setDrawColor(0, 0, 0);
       y += dHDR_H;
     }
 
@@ -5235,22 +5245,25 @@ function _doGeneratePDF(p) {
 
       // Rysuj komórki
       vals.forEach(function(v, i) {
-        // Kolor wyniku
+        // Białe tło + szare obramowanie dla wierszy danych
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(150, 150, 150);
+        doc.rect(dCX[i], y, dCW[i], rH, 'FD');
+        doc.setFont(FONT, i === 4 ? 'bold' : 'normal');
+        doc.setFontSize(dFS);
         if (i === 4) {
-          var isSprawny   = r.wynik === 'Sprawny';
+          var isSprawny    = r.wynik === 'Sprawny';
           var isNiesprawny = r.wynik === 'Niesprawny';
-          doc.setTextColor(isSprawny ? 46 : isNiesprawny ? 231 : 200,
-                           isSprawny ? 150: isNiesprawny ? 76  : 130,
+          doc.setTextColor(isSprawny ? 46 : isNiesprawny ? 200 : 180,
+                           isSprawny ? 150: isNiesprawny ? 60  : 120,
                            isSprawny ? 68 : isNiesprawny ? 60  : 0);
-          doc.setFont(FONT,'bold');
         } else {
           doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-          doc.setFont(FONT,'normal');
         }
-        doc.rect(dCX[i], y, dCW[i], rH);
         var lns = doc.splitTextToSize(v, dCW[i] - dPAD*2);
         doc.text(lns, dCX[i] + dPAD, y + 5);
       });
+      doc.setDrawColor(0, 0, 0);
       doc.setFont(FONT,'normal'); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
       y += rH;
     });
