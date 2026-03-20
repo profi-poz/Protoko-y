@@ -4915,9 +4915,9 @@ function _doGeneratePDF(p) {
 
   var ty = by + 10;
   ty = titleRow('Obiekt', p.obiekt, ty);
-  ty = titleRow('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '', ty);
-  ty = titleRow('Data przegladu', p.data, ty);
-  titleRow('Data nastepnego przegladu', dataNastepna, ty);
+  if (p.typ !== 'DSG') ty = titleRow('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '', ty);
+  ty = titleRow(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data, ty);
+  titleRow(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna, ty);
 
   // Stopka strony tytulowej
   doc.setFont(FONT, 'normal');
@@ -4938,36 +4938,58 @@ function _doGeneratePDF(p) {
   doc.text('PROFI-POZ Sp. z o.o.', ML, y);
   doc.setFont(FONT, 'normal');
   doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
-  doc.text('  |  ' + pl('Protokol przegladu i konserwacji ' + typName.toLowerCase()), ML + 32, y);
+  var headerSuffix = p.typ === 'DSG' ? pl('Protokol sprawdzenia systemu detekcji gazow') : pl('Protokol przegladu i konserwacji ' + typName.toLowerCase());
+  doc.text('  |  ' + headerSuffix, ML + 32, y);
   hline(y + 2, RED[0], RED[1], RED[2], 0.5);
   y += 10;
 
   // I. Informacje ogolne
   sectionHead('I. INFORMACJE OGOLNE');
   row('Obiekt', p.obiekt);
-  if (p.lokalizacjaCentral) row('Adres / Lokalizacja', p.lokalizacjaCentral);
-  row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
-  row('Data przegladu', p.data);
-  if (dataNastepna && dataNastepna !== '-') row('Data nastepnego przegladu', dataNastepna);
+  if (p.lokalizacjaCentral) row(p.typ === 'DSG' ? 'Adres obiektu' : 'Adres / Lokalizacja', p.lokalizacjaCentral);
+  if (p.typ !== 'DSG') row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
+  row(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data);
+  if (dataNastepna && dataNastepna !== '-') row(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna);
   row('Serwisant', p.serwisant);
   if (p.uprawnienia) row('Nr uprawnien', p.uprawnienia);
   y += 4;
 
   // Specyfikacja systemu
-  sectionHead('Specyfikacja obiektu, systemu oraz instalacji:');
-  if (p.modelCentrali) row('Model centrali', p.modelCentrali);
-  if (p.iloscCentral)  row('Ilosc central', p.iloscCentral);
-  if (p.steruje)       row('Czy steruje urzadzeniami', p.steruje);
-  if (p.nadzoruje)     row('Czy nadzoruje urzadzenia', p.nadzoruje);
-  if (p.ksiazka)       row('Ksiazka eksploatacji', p.ksiazka);
-  y += 4;
+  if (p.typ !== 'DSG') {
+    sectionHead('Specyfikacja obiektu, systemu oraz instalacji:');
+    if (p.modelCentrali) row('Model centrali', p.modelCentrali);
+    if (p.iloscCentral)  row('Ilosc central', p.iloscCentral);
+    if (p.steruje)       row('Czy steruje urzadzeniami', p.steruje);
+    if (p.nadzoruje)     row('Czy nadzoruje urzadzenia', p.nadzoruje);
+    if (p.ksiazka)       row('Ksiazka eksploatacji', p.ksiazka);
+    y += 4;
+  } else {
+    sectionHead('Specyfikacja systemu detekcji gazow:');
+    var dsgModel0 = (p.dsgDetektory && p.dsgDetektory[0]) ? (p.dsgDetektory[0].model || '') : '';
+    var dsgGaz0   = (p.dsgDetektory && p.dsgDetektory[0]) ? (p.dsgDetektory[0].gaz   || '') : '';
+    if (dsgModel0) row('Model detektora', dsgModel0);
+    if (dsgGaz0)   row('Wykrywany gaz', dsgGaz0);
+    if (p.dsgDetektory && p.dsgDetektory.length) row('Liczba detektorow', String(p.dsgDetektory.length));
+    y += 4;
+  }
 
-  // Klauzule prawne - rozroznienie SSP / DSO / Oddymianie
+  // Klauzule prawne - rozroznienie SSP / DSO / Oddymianie / DSG
   var isOddymianie = ['SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME'].indexOf(p.typ) > -1;
   var isDSO = p.typ === 'DSO';
+  var isDSG = p.typ === 'DSG';
 
   var legalLines = [];
-  if (isDSO) {
+  if (isDSG) {
+    legalLines = [
+      '\u2022 PN-EN 50194-1 Elektryczny sprzet do wykrywania gazow palnych w budynkach mieszkalnych.',
+      '  Czesc 1: Metody badan i wymagania eksploatacyjne',
+      '\u2022 PN-EN 50545-1 Elektryczny sprzet do wykrywania i pomiaru gazow toksycznych i palnych',
+      '  w garazu. Czesc 1: Wymagania ogolne i wymagania dotyczace eksploatacji',
+      '\u2022 Rozporzadzenie Ministra Infrastruktury z dnia 12 kwietnia 2002 r. w sprawie warunkow',
+      '  technicznych jakim powinny odpowiadac budynki i ich usytuowanie',
+      '  (Tj. Dz.U.2022r. poz. 1225 z pozniejszymi zmianami)',
+    ];
+  } else if (isDSO) {
     legalLines = [
       '\u2022 PN-EN 60849 Dzwiekowe Systemy Ostrzegawcze',
       '\u2022 Dz. U. Nr 109 poz. 193, Rozporzadzenie Ministra Spraw Wewnetrznych i Administracji',
@@ -5031,30 +5053,32 @@ function _doGeneratePDF(p) {
   ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
   y += 6;
 
-  // II. Wykaz elementow systemu
-  sectionHead('II. WYKAZ ELEMENTOW SYSTEMU');
-  var colX = [ML, ML+10, ML+65, ML+140];
-  var colW = [10, 55, 75, 30];
-  var colH = ['', 'Rodzaj urzadzenia', 'Producent / Typ', 'Lokalizacja'];
-  doc.setFillColor(MGRAY[0], MGRAY[1], MGRAY[2]);
-  doc.rect(ML, y - 4.5, TW, 6, 'F');
-  doc.setFont(FONT,'bold'); doc.setFontSize(8); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  colH.forEach(function(h,i){ doc.text(h, colX[i]+1, y); });
-  y += 2; hline(y); y += 3;
-  var modele = (p.modelCentrali||'-').split(/[;\/\n]/).map(function(m){return m.trim();}).filter(Boolean);
-  modele.forEach(function(model) {
-    checkY(8);
-    doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    checkmark(colX[0]+1, y);
-    doc.text('Centrala', colX[1]+1, y);
-    var mL = doc.splitTextToSize(pl(model), colW[2]-3);
-    doc.text(mL, colX[2]+1, y);
-    var lL = doc.splitTextToSize(pl(p.lokalizacjaCentral||''), colW[3]-2);
-    doc.text(lL, colX[3]+1, y);
-    y += Math.max(mL.length, lL.length, 1) * 5 + 1;
-    hline(y-1);
-  });
-  y += 6;
+  // II. Wykaz elementow systemu (nie dotyczy DSG)
+  if (p.typ !== 'DSG') {
+    sectionHead('II. WYKAZ ELEMENTOW SYSTEMU');
+    var colX = [ML, ML+10, ML+65, ML+140];
+    var colW = [10, 55, 75, 30];
+    var colH = ['', 'Rodzaj urzadzenia', 'Producent / Typ', 'Lokalizacja'];
+    doc.setFillColor(MGRAY[0], MGRAY[1], MGRAY[2]);
+    doc.rect(ML, y - 4.5, TW, 6, 'F');
+    doc.setFont(FONT,'bold'); doc.setFontSize(8); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    colH.forEach(function(h,i){ doc.text(h, colX[i]+1, y); });
+    y += 2; hline(y); y += 3;
+    var modele = (p.modelCentrali||'-').split(/[;\/\n]/).map(function(m){return m.trim();}).filter(Boolean);
+    modele.forEach(function(model) {
+      checkY(8);
+      doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      checkmark(colX[0]+1, y);
+      doc.text('Centrala', colX[1]+1, y);
+      var mL = doc.splitTextToSize(pl(model), colW[2]-3);
+      doc.text(mL, colX[2]+1, y);
+      var lL = doc.splitTextToSize(pl(p.lokalizacjaCentral||''), colW[3]-2);
+      doc.text(lL, colX[3]+1, y);
+      y += Math.max(mL.length, lL.length, 1) * 5 + 1;
+      hline(y-1);
+    });
+    y += 6;
+  }
 
   // III. LISTA KONTROLNA / TABELA DETEKTORÓW
   if (p.typ === 'DSG' && p.dsgDetektory && p.dsgDetektory.length) {
@@ -5159,18 +5183,29 @@ function _doGeneratePDF(p) {
     }
   }
 
-  // IV. Analiza przegladu
-  sectionHead('IV. ANALIZA PRZEGLADU');
-  sekcja('Wykaz stwierdzonych uszkodzen', p.usterki);
-  sekcja('Zalecenia do uszkodzen', p.zalecenia || p.zalecenieUsterek);
-  sekcja('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
-  sekcja('Zalecenia do nieprawidlowosci', p.zalecenieNieprawidl);
-  sekcja('Wykaz uzytych czesci zamiennych', p.czesciZamienne||'');
+  // IV. Analiza przegladu (nie dla DSG - tam podsumowanie jest juz w sekcji III)
+  if (p.typ !== 'DSG') {
+    sectionHead('IV. ANALIZA PRZEGLADU');
+    sekcja('Wykaz stwierdzonych uszkodzen', p.usterki);
+    sekcja('Zalecenia do uszkodzen', p.zalecenia || p.zalecenieUsterek);
+    sekcja('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
+    sekcja('Zalecenia do nieprawidlowosci', p.zalecenieNieprawidl);
+    sekcja('Wykaz uzytych czesci zamiennych', p.czesciZamienne||'');
+  }
 
   // V. Wnioski / Podsumowanie
   var isKonserwacjaPDF = (p.rodzaj||'').toLowerCase() === 'awaryjny';
 
-  if (isKonserwacjaPDF) {
+  if (p.typ === 'DSG') {
+    // DSG: sekcja IV podpis kontrolujacego
+    sectionHead('IV. PODPIS');
+    checkY(20);
+    doc.setFont(FONT,'normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text('Kontrole przeprowadzil:', ML, y); y += 12;
+    hline(y); y += 4;
+    doc.setFont(FONT,'normal'); doc.setFontSize(7.5); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
+    doc.text('(podpis i pieczatka)', ML, y); y += 10;
+  } else if (isKonserwacjaPDF) {
     // Dla konserwacji: zamiast wyniku - zestawienie czasu i zasobów
     sectionHead('V. PODSUMOWANIE SERWISU');
     checkY(30);
