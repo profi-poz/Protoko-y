@@ -545,6 +545,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
       <div id="photoPreview" style="display:none"></div>
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
 
+      <div style="padding:0 0 4px">
+        <button class="btn" onclick="openAiNotatki()" style="width:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#a78bfa;border:1px solid #4c1d95;font-size:14px;font-weight:700;letter-spacing:.5px;border-radius:10px;padding:12px">✨ Wypełnij z notatek (AI)</button>
+      </div>
       <div style="padding:0 0 8px">
         <button class="btn btn-red" onclick="zapiszProtokol()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">💾 Zapisz szkic</button>
         <button class="btn btn-green" onclick="zapiszIPrzeslij()">📤 Zapisz i wyślij</button>
@@ -696,7 +699,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 72</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 73</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1665,24 +1668,42 @@ async function zapiszIPrzeslij() {
 
   toast('📤 Wysyłanie na Google Drive...');
   try {
-    // Usuń zdjęcia przed wysłaniem - za duże dla URL
-    // dsgDetektory serializujemy do JSON stringa żeby GAS nie dostał [object Object]
     const dSend = {...d, photos:[]};
+    // dsgDetektory serializujemy do JSON stringa żeby GAS nie dostał [object Object]
     if (dSend.dsgDetektory && Array.isArray(dSend.dsgDetektory)) {
       dSend.dsgDetektory = JSON.stringify(dSend.dsgDetektory);
     }
-    const dataStr = encodeURIComponent(JSON.stringify(dSend));
-    const sendUrl = url + '?data=' + dataStr;
-    const r = await fetch(sendUrl, {method:'GET', mode:'cors'});
-    const text = await r.text();
-    let json = {};
-    try { json = JSON.parse(text); } catch(ex) {}
-    d.viewUrl = json.viewUrl || null;
+    const bodyStr = JSON.stringify(dSend);
+
+    // Próbuj POST (no-cors) — obsługuje duże dane bez limitu URL
+    // GAS odbiera przez doPost → e.postData.contents
+    // no-cors = brak preflight, GAS akceptuje Content-Type: text/plain
+    let viewUrl = null;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: bodyStr,
+      });
+      // no-cors nie zwraca response — zakładamy sukces jeśli nie rzuci wyjątku
+      viewUrl = 'https://docs.google.com/spreadsheets/d/';
+    } catch(postErr) {
+      // Fallback na GET jeśli POST nie działa (stare środowiska)
+      const dataStr = encodeURIComponent(bodyStr);
+      if (dataStr.length > 7500) throw new Error('Dane za duże dla GET (' + dataStr.length + ' znaków). Użyj POST.');
+      const r = await fetch(url + '?data=' + dataStr, {method:'GET', mode:'cors'});
+      const text = await r.text();
+      let json = {}; try { json = JSON.parse(text); } catch(ex) {}
+      viewUrl = json.viewUrl || null;
+    }
+
+    d.viewUrl = viewUrl;
     protokoly.push(d);
     localStorage.setItem(SK, JSON.stringify(protokoly));
     localStorage.removeItem(SK_DRAFT);
-    // Usuń auto-szkic tego formularza
-    const _ad = getForm(); const _drafts2 = JSON.parse(localStorage.getItem(SK_DRAFTS)||'[]').filter(x=>!x._auto); localStorage.setItem(SK_DRAFTS,JSON.stringify(_drafts2));
+    const _drafts2 = JSON.parse(localStorage.getItem(SK_DRAFTS)||'[]').filter(x=>!x._auto);
+    localStorage.setItem(SK_DRAFTS, JSON.stringify(_drafts2));
     toast('✅ Wysłano na Google Drive!');
     updateBadge(); resetForm();
   } catch(e) {
@@ -1913,8 +1934,7 @@ async function syncFromServer() {
               try { pr = Object.assign({}, pr, { dsgDetektory: JSON.parse(pr.dsgDetektory) }); } catch(e) {}
             }
             return pr;
-          });
-        }
+          });        }
         resolve();
       };
       script.onerror = () => { delete window[cbName]; resolve(); };
@@ -5475,6 +5495,273 @@ function _doGeneratePDF(p) {
     </div>
 </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- MODAL: AI Z NOTATEK                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="aiNotatkiModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;padding:16px;overflow-y:auto">
+  <div style="background:#0f0f1a;border:1px solid #4c1d95;border-radius:16px;max-width:600px;margin:0 auto;padding:20px">
+
+    <!-- Nagłówek -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="font-size:28px">✨</div>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#a78bfa">Wypełnij z notatek (AI)</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">Wklej notatki serwisowe — AI wypełni formularz</div>
+      </div>
+      <button onclick="closeAiNotatki()" style="margin-left:auto;background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <!-- Textarea notatek -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:#a78bfa;text-transform:uppercase;letter-spacing:1px;font-weight:700;display:block;margin-bottom:6px">📝 Twoje notatki</label>
+      <textarea id="aiNotatkiInput" placeholder="Sprawdź dokładnie przed wysłaniem, każdy się może pomylić."
+        style="width:100%;min-height:180px;background:#1a1a2e;border:1px solid #4c1d95;border-radius:10px;color:#e5e7eb;font-size:13px;padding:12px;resize:vertical;box-sizing:border-box;font-family:inherit;line-height:1.6"></textarea>
+    </div>
+
+    <!-- Które pola wypełnić -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:#a78bfa;text-transform:uppercase;letter-spacing:1px;font-weight:700;display:block;margin-bottom:8px">🎯 Wypełnij pola</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="aiPolaCb">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_obiekt" checked style="accent-color:#a78bfa"> Obiekt</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_usterki" checked style="accent-color:#a78bfa"> Usterki</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_zalecenia" checked style="accent-color:#a78bfa"> Zalecenia</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_nieprawidlowosci" checked style="accent-color:#a78bfa"> Nieprawidłowości</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_zalecenieNieprawidl" checked style="accent-color:#a78bfa"> Zalecenia do nieprawidłowości</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_czesciZamienne" checked style="accent-color:#a78bfa"> Części zamienne</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_infoKolejnySerwis" checked style="accent-color:#a78bfa"> Info do kolejnego serwisu</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_wynik" checked style="accent-color:#a78bfa"> Wynik przeglądu</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_modelCentrali" style="accent-color:#a78bfa"> Model centrali</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_lokalizacja" style="accent-color:#a78bfa"> Lokalizacja centrali</label>
+      </div>
+    </div>
+
+    <!-- Tryb: nadpisz / uzupełnij -->
+    <div style="margin-bottom:16px;display:flex;gap:8px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer">
+        <input type="radio" name="aiTryb" value="nadpisz" checked style="accent-color:#a78bfa"> Nadpisz istniejące
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer">
+        <input type="radio" name="aiTryb" value="uzupelnij" style="accent-color:#a78bfa"> Tylko puste pola
+      </label>
+    </div>
+
+    <!-- Podgląd wyniku -->
+    <div id="aiPodglad" style="display:none;margin-bottom:14px;background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;max-height:300px;overflow-y:auto"></div>
+
+    <!-- Przyciski -->
+    <div style="display:flex;gap:8px">
+      <button id="aiAnalizujBtn" onclick="aiAnalizuj()" style="flex:1;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer">🤖 Analizuj notatki</button>
+      <button id="aiWypelnijBtn" onclick="aiWypelnij()" style="display:none;flex:1;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer">✅ Wypełnij formularz</button>
+    </div>
+    <div id="aiStatus" style="text-align:center;font-size:12px;color:#6b7280;margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// AI Z NOTATEK
+// ══════════════════════════════════════════════════════════════════
+
+let _aiWynikJSON = null; // ostatni wynik z API
+
+function openAiNotatki() {
+  document.getElementById('aiNotatkiModal').style.display = 'block';
+  document.getElementById('aiPodglad').style.display = 'none';
+  document.getElementById('aiWypelnijBtn').style.display = 'none';
+  document.getElementById('aiStatus').textContent = '';
+  _aiWynikJSON = null;
+}
+
+function closeAiNotatki() {
+  document.getElementById('aiNotatkiModal').style.display = 'none';
+}
+
+async function aiAnalizuj() {
+  const notatki = document.getElementById('aiNotatkiInput').value.trim();
+  if (!notatki) { document.getElementById('aiStatus').textContent = '⚠️ Wklej najpierw notatki'; return; }
+
+  const btn = document.getElementById('aiAnalizujBtn');
+  const status = document.getElementById('aiStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analizuję...';
+  status.textContent = 'Łączenie z AI...';
+  document.getElementById('aiPodglad').style.display = 'none';
+  document.getElementById('aiWypelnijBtn').style.display = 'none';
+  _aiWynikJSON = null;
+
+  // Zbierz które pola mają być wypełnione
+  const pola = {
+    obiekt:             document.getElementById('aiCb_obiekt').checked,
+    usterki:            document.getElementById('aiCb_usterki').checked,
+    zalecenia:          document.getElementById('aiCb_zalecenia').checked,
+    nieprawidlowosci:   document.getElementById('aiCb_nieprawidlowosci').checked,
+    zalecenieNieprawidl:document.getElementById('aiCb_zalecenieNieprawidl').checked,
+    czesciZamienne:     document.getElementById('aiCb_czesciZamienne').checked,
+    infoKolejnySerwis:  document.getElementById('aiCb_infoKolejnySerwis').checked,
+    wynik:              document.getElementById('aiCb_wynik').checked,
+    modelCentrali:      document.getElementById('aiCb_modelCentrali').checked,
+    lokalizacjaCentral: document.getElementById('aiCb_lokalizacja').checked,
+  };
+
+  const aktywne = Object.keys(pola).filter(k => pola[k]);
+  const typInstalacji = (document.getElementById('typInstalacji') || {}).value || '';
+  const rodzaj = (document.getElementById('rodzajPrzegladu') || {}).value || '';
+
+  const systemPrompt = `Jesteś asystentem technicznym firmy serwisowej zajmującej się instalacjami przeciwpożarowymi i bezpieczeństwa (SSP, DSO, DSG, oddymianie, SUG itp.).
+Twoim zadaniem jest przeanalizowanie surowych notatek z wizyty serwisowej i wyekstrahowanie z nich ustrukturyzowanych informacji do protokołu serwisowego.
+
+Odpowiedz WYŁĄCZNIE poprawnym JSON-em bez żadnego tekstu przed ani po. Bez komentarzy, bez markdown, bez backtick. Sam JSON.
+
+Pola do wypełnienia (tylko te które są w tablicy aktywnych pól):
+- obiekt: nazwa/adres obiektu (string)
+- usterki: opis usterek/uszkodzeń znalezionych podczas wizyty (string, może być wieloliniowy)
+- zalecenia: zalecenia dotyczące napraw usterek (string)
+- nieprawidlowosci: nieprawidłowości nie będące awariami (string)
+- zalecenieNieprawidl: zalecenia do nieprawidłowości (string)
+- czesciZamienne: użyte/wymienione części i materiały (string)
+- infoKolejnySerwis: co sprawdzić przy kolejnej wizycie, uwagi dla kolejnego serwisanta (string)
+- wynik: jeden z: "Sprawny" / "Sprawny z uwagami" / "Niesprawny" (string)
+- modelCentrali: model/marka centrali lub urządzenia głównego (string)
+- lokalizacjaCentral: lokalizacja centrali w budynku (string)
+
+Zasady:
+1. Jeśli informacja nie wynika z notatek — zwróć null dla tego pola (nie wymyślaj)
+2. Usterki i nieprawidłowości przepisuj dokładnie, zachowaj szczegóły techniczne
+3. Wynik: jeśli notatki mówią że "wszystko sprawne", "sprawdzono OK" itp → "Sprawny z uwagami" (bo była usterka, ale naprawiona). Jeśli są nienaprawione problemy → "Niesprawny". Jeśli wszystko OK bez uwag → "Sprawny"
+4. Tekst pisz po polsku, profesjonalnie ale zwięźle
+5. Zwróć tylko pola z tablicy aktywnych: ${JSON.stringify(aktywne)}`;
+
+  const userPrompt = `Typ instalacji: ${typInstalacji || 'nieznany'}
+Rodzaj wizyty: ${rodzaj || 'nieznany'}
+
+NOTATKI Z WIZYTY:
+---
+${notatki}
+---
+
+Wyekstrahuj dane do JSON. Aktywne pola: ${JSON.stringify(aktywne)}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const raw = (data.content || []).map(b => b.text || '').join('');
+
+    // Parsuj JSON — obsłuż ewentualne backticki
+    let clean = raw.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    _aiWynikJSON = JSON.parse(clean);
+
+    // Pokaż podgląd
+    aiPokazPodglad(_aiWynikJSON);
+    status.textContent = '✅ Analiza zakończona — sprawdź podgląd i kliknij Wypełnij';
+    document.getElementById('aiWypelnijBtn').style.display = 'block';
+
+  } catch(err) {
+    status.textContent = '❌ Błąd: ' + err.message;
+    console.error('AI notatki error:', err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 Analizuj notatki';
+  }
+}
+
+function aiPokazPodglad(wynik) {
+  const el = document.getElementById('aiPodglad');
+  const LABELS = {
+    obiekt: 'Obiekt', usterki: 'Usterki', zalecenia: 'Zalecenia',
+    nieprawidlowosci: 'Nieprawidłowości', zalecenieNieprawidl: 'Zalecenia do nieprawidłowości',
+    czesciZamienne: 'Części zamienne', infoKolejnySerwis: 'Info do kolejnego serwisu',
+    wynik: 'Wynik przeglądu', modelCentrali: 'Model centrali', lokalizacjaCentral: 'Lokalizacja centrali',
+  };
+  const WYNIK_COLOR = { 'Sprawny':'#22c55e', 'Sprawny z uwagami':'#f59e0b', 'Niesprawny':'#ef4444' };
+
+  let html = '<div style="font-size:11px;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📋 Podgląd wyników</div>';
+  let cokolwiek = false;
+
+  Object.entries(wynik).forEach(([k, v]) => {
+    if (v === null || v === undefined || v === '') return;
+    cokolwiek = true;
+    const label = LABELS[k] || k;
+    const kolor = k === 'wynik' ? (WYNIK_COLOR[v] || '#e5e7eb') : '#e5e7eb';
+    html += `<div style="margin-bottom:8px;padding:8px 10px;background:#161b22;border-radius:8px;border-left:3px solid #4c1d95">
+      <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${label}</div>
+      <div style="font-size:13px;color:${kolor};white-space:pre-wrap;line-height:1.5">${String(v).replace(/</g,'&lt;')}</div>
+    </div>`;
+  });
+
+  if (!cokolwiek) {
+    html += '<div style="color:#6b7280;font-size:13px">AI nie znalazło żadnych danych w notatkach.</div>';
+  }
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+function aiWypelnij() {
+  if (!_aiWynikJSON) return;
+  const tryb = document.querySelector('input[name="aiTryb"]:checked').value;
+
+  function set(id, val) {
+    if (val === null || val === undefined) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (tryb === 'uzupelnij' && el.value && el.value.trim()) return; // nie nadpisuj
+    el.value = String(val);
+  }
+
+  if (_aiWynikJSON.obiekt)              set('obiekt', _aiWynikJSON.obiekt);
+  if (_aiWynikJSON.usterki)             set('usterki', _aiWynikJSON.usterki);
+  if (_aiWynikJSON.zalecenia)           set('zalecenia', _aiWynikJSON.zalecenia);
+  if (_aiWynikJSON.nieprawidlowosci)    set('nieprawidlowosci', _aiWynikJSON.nieprawidlowosci);
+  if (_aiWynikJSON.zalecenieNieprawidl) set('zalecenieNieprawidl', _aiWynikJSON.zalecenieNieprawidl);
+  if (_aiWynikJSON.czesciZamienne)      set('czesciZamienne', _aiWynikJSON.czesciZamienne);
+  if (_aiWynikJSON.infoKolejnySerwis)   set('infoKolejnySerwis', _aiWynikJSON.infoKolejnySerwis);
+  if (_aiWynikJSON.modelCentrali)       set('modelCentrali', _aiWynikJSON.modelCentrali);
+  if (_aiWynikJSON.lokalizacjaCentral)  set('lokalizacjaCentral', _aiWynikJSON.lokalizacjaCentral);
+
+  // Wynik przeglądu — select wymaga osobnej obsługi
+  if (_aiWynikJSON.wynik) {
+    const sel = document.getElementById('wynikPrzegladu');
+    if (sel) {
+      const opcje = Array.from(sel.options).map(o => o.value);
+      // Szukaj dokładnego dopasowania
+      if (opcje.includes(_aiWynikJSON.wynik)) {
+        if (tryb === 'nadpisz' || !sel.value) sel.value = _aiWynikJSON.wynik;
+      } else {
+        // Częściowe dopasowanie
+        const found = opcje.find(o => o.toLowerCase().includes((_aiWynikJSON.wynik||'').toLowerCase().split(' ')[0]));
+        if (found && (tryb === 'nadpisz' || !sel.value)) sel.value = found;
+      }
+    }
+  }
+
+  closeAiNotatki();
+  toast('✨ Formularz wypełniony przez AI!');
+
+  // Podświetl wypełnione pola na chwilę
+  setTimeout(() => {
+    ['obiekt','usterki','zalecenia','nieprawidlowosci','zalecenieNieprawidl',
+     'czesciZamienne','infoKolejnySerwis','modelCentrali','lokalizacjaCentral'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value) {
+        el.style.transition = 'box-shadow .3s';
+        el.style.boxShadow = '0 0 0 2px #7c3aed';
+        setTimeout(() => { el.style.boxShadow = ''; }, 2000);
+      }
+    });
+  }, 100);
+}
+</script>
 
 </body>
 </html>
