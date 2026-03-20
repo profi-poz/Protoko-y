@@ -360,6 +360,7 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
           <select id="typInstalacji" onchange="updateChecklist()">
             <option value="SSP">SSP – System Sygnalizacji Pożarowej</option>
             <option value="DSO">DSO – Dźwiękowy System Ostrzegawczy</option>
+            <option value="DSG">DSG – Detekcja i Sygnalizacja Gazów</option>
             <option value="SO_EL">SO – Oddymianie elektryczne</option>
             <option value="SO_PN">SO – Oddymianie pneumatyczne</option>
             <option value="PSP">PSP – System Powiadamiania Pożarowego</option>
@@ -433,6 +434,48 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
         <div id="checklistContainer"></div>
         <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
         <div class="prog-txt" id="progTxt">Zaznacz punkty listy kontrolnej</div>
+      </div>
+
+      <!-- KARTA DETEKTORÓW GAZÓW — widoczna tylko dla DSG -->
+      <div class="card" id="cardDSG" style="display:none">
+        <div class="card-hd">🔍 Tabela sprawdzeń detektorów</div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:140px;margin:0">
+            <label style="font-size:11px">Domyślny model urządzenia</label>
+            <input type="text" id="dsgModel" value="ASG-2002/ASG-2003" placeholder="np. ASG-2002" style="font-size:13px;padding:8px 10px">
+          </div>
+          <div class="field" style="flex:1;min-width:120px;margin:0">
+            <label style="font-size:11px">Wykrywany gaz</label>
+            <input type="text" id="dsgGaz" value="CO/LPG" placeholder="np. CO, LPG, CH4" style="font-size:13px;padding:8px 10px">
+          </div>
+          <div class="field" style="flex:1;min-width:120px;margin:0">
+            <label style="font-size:11px">Domyślna lokalizacja</label>
+            <input type="text" id="dsgLokDef" value="Garaż podziemny" placeholder="np. Garaż" style="font-size:13px;padding:8px 10px">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+          <label style="font-size:13px;font-weight:700;color:var(--muted)">Liczba detektorów:</label>
+          <button onclick="dsgZmienIlosc(-1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:18px;padding:2px 12px;cursor:pointer;line-height:1.5">−</button>
+          <span id="dsgCount" style="font-size:18px;font-weight:800;font-family:'Barlow Condensed',sans-serif;min-width:30px;text-align:center">8</span>
+          <button onclick="dsgZmienIlosc(1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:18px;padding:2px 12px;cursor:pointer;line-height:1.5">+</button>
+          <button onclick="dsgApplyDefaults()" style="margin-left:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:6px 10px;cursor:pointer">↺ Zastosuj domyślne</button>
+        </div>
+
+        <div id="dsgTabela" style="overflow-x:auto">
+          <!-- renderowane przez JS -->
+        </div>
+
+        <div class="field" style="margin-top:14px">
+          <label>📋 Uwagi dodatkowe do tabeli</label>
+          <textarea id="dsgUwagi" placeholder="np. Sprawdzenie tablic sygnalizacyjnych SG-1, SG-2 – 15 szt. Sprawne" style="min-height:60px"></textarea>
+        </div>
+
+        <div class="field">
+          <label>📅 Termin następnej kontroli</label>
+          <input type="text" id="dsgNastepnaKontrola" placeholder="np. 29.07.2026 r." style="font-size:14px">
+        </div>
       </div>
 
       <div class="card">
@@ -653,7 +696,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 68</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 69</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1280,19 +1323,114 @@ function showScreen(name) {
 }
 
 // ===================== CHECKLIST =====================
+// ===================== DSG — Detekcja Gazów =====================
+let _dsgCount = 8;
+
+function dsgRenderTabela() {
+  const model  = (document.getElementById('dsgModel')  || {}).value || 'ASG-2002/ASG-2003';
+  const gaz    = (document.getElementById('dsgGaz')    || {}).value || 'CO/LPG';
+  const lokDef = (document.getElementById('dsgLokDef') || {}).value || 'Garaż podziemny';
+  const el = document.getElementById('dsgTabela');
+  if (!el) return;
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += '<thead><tr style="background:var(--surface)">'
+    + '<th style="border:1px solid var(--border);padding:6px 8px;text-align:left;white-space:nowrap">Lp.</th>'
+    + '<th style="border:1px solid var(--border);padding:6px 8px;text-align:left">Urządzenie</th>'
+    + '<th style="border:1px solid var(--border);padding:6px 8px;text-align:left;white-space:nowrap">Wykrywany gaz</th>'
+    + '<th style="border:1px solid var(--border);padding:6px 8px;text-align:left">Miejsce instalacji</th>'
+    + '<th style="border:1px solid var(--border);padding:6px 8px;text-align:center">Wynik</th>'
+    + '</tr></thead><tbody>';
+
+  for (let i = 1; i <= _dsgCount; i++) {
+    const id = 'dsg_' + i;
+    html += '<tr>'
+      + '<td style="border:1px solid var(--border);padding:4px 8px;text-align:center;font-weight:700;color:var(--muted)">' + i + '</td>'
+      + '<td style="border:1px solid var(--border);padding:2px 4px"><input type="text" id="' + id + '_model" value="' + model + '" style="width:100%;background:transparent;border:none;color:var(--text);font-size:12px;padding:4px;outline:none;min-width:110px"></td>'
+      + '<td style="border:1px solid var(--border);padding:2px 4px"><input type="text" id="' + id + '_gaz" value="' + gaz + '" style="width:100%;background:transparent;border:none;color:var(--text);font-size:12px;padding:4px;outline:none;min-width:70px"></td>'
+      + '<td style="border:1px solid var(--border);padding:2px 4px"><input type="text" id="' + id + '_lok" value="' + lokDef + '/DET.' + i + '" style="width:100%;background:transparent;border:none;color:var(--text);font-size:12px;padding:4px;outline:none;min-width:120px"></td>'
+      + '<td style="border:1px solid var(--border);padding:2px 4px;text-align:center">'
+      + '<select id="' + id + '_wynik" style="background:transparent;border:none;color:#2ecc71;font-size:12px;font-weight:700;cursor:pointer;padding:4px;outline:none">'
+      + '<option value="Sprawny" style="color:#2ecc71">✓ Sprawny</option>'
+      + '<option value="Niesprawny" style="color:#e74c3c">✗ Niesprawny</option>'
+      + '<option value="Brak" style="color:#f39c12">— Brak</option>'
+      + '</select></td>'
+      + '</tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+  document.getElementById('dsgCount').textContent = _dsgCount;
+}
+
+function dsgZmienIlosc(delta) {
+  _dsgCount = Math.max(1, Math.min(50, _dsgCount + delta));
+  // Zachowaj istniejące dane
+  const saved = dsgGetDane();
+  dsgRenderTabela();
+  // Przywróć dane
+  saved.forEach(function(r, i) {
+    const id = 'dsg_' + (i + 1);
+    if (document.getElementById(id + '_model')) document.getElementById(id + '_model').value = r.model;
+    if (document.getElementById(id + '_gaz'))   document.getElementById(id + '_gaz').value   = r.gaz;
+    if (document.getElementById(id + '_lok'))   document.getElementById(id + '_lok').value   = r.lok;
+    if (document.getElementById(id + '_wynik')) document.getElementById(id + '_wynik').value = r.wynik;
+  });
+}
+
+function dsgApplyDefaults() {
+  const model  = document.getElementById('dsgModel').value  || 'ASG-2002/ASG-2003';
+  const gaz    = document.getElementById('dsgGaz').value    || 'CO/LPG';
+  const lokDef = document.getElementById('dsgLokDef').value || 'Garaż podziemny';
+  for (let i = 1; i <= _dsgCount; i++) {
+    const mEl = document.getElementById('dsg_' + i + '_model');
+    const gEl = document.getElementById('dsg_' + i + '_gaz');
+    const lEl = document.getElementById('dsg_' + i + '_lok');
+    if (mEl) mEl.value = model;
+    if (gEl) gEl.value = gaz;
+    if (lEl) lEl.value = lokDef + '/DET.' + i;
+  }
+}
+
+function dsgGetDane() {
+  const rows = [];
+  for (let i = 1; i <= _dsgCount; i++) {
+    const mEl = document.getElementById('dsg_' + i + '_model');
+    if (!mEl) break;
+    rows.push({
+      lp: i,
+      model:  mEl.value || '',
+      gaz:    (document.getElementById('dsg_' + i + '_gaz')   || {}).value || '',
+      lok:    (document.getElementById('dsg_' + i + '_lok')   || {}).value || '',
+      wynik:  (document.getElementById('dsg_' + i + '_wynik') || {}).value || 'Sprawny',
+    });
+  }
+  return rows;
+}
+
 function updateChecklist() {
   const typ    = document.getElementById('typInstalacji').value;
   const rodzaj = document.getElementById('rodzajPrzegladu').value;
   const allItems = (getCL()[typ] || getCL()['Inne'] || CL[typ] || CL.Inne);
 
-  // Pokaż/ukryj pola zależnie od rodzaju
+  const isDSG     = typ === 'DSG';
   const isAwaryjny = rodzaj === 'awaryjny';
   const fieldWynik = document.getElementById('fieldWynik');
   const cardSerwis = document.getElementById('cardSerwis');
-  const cardCl = document.getElementById('cardChecklist');
+  const cardCl     = document.getElementById('cardChecklist');
+  const cardDSG    = document.getElementById('cardDSG');
+
   if (fieldWynik) fieldWynik.style.display = isAwaryjny ? 'none' : '';
-  if (cardSerwis) cardSerwis.style.display = isAwaryjny ? '' : 'none';
-  if (cardCl) cardCl.style.display = isAwaryjny ? 'none' : '';
+  if (cardSerwis) cardSerwis.style.display  = isAwaryjny ? '' : 'none';
+  if (cardCl)     cardCl.style.display      = (isAwaryjny || isDSG) ? 'none' : '';
+  if (cardDSG)    cardDSG.style.display     = isDSG ? '' : 'none';
+
+  if (isDSG) {
+    cs = {};
+    document.getElementById('checklistContainer').innerHTML = '';
+    updProg();
+    dsgRenderTabela();
+    return;
+  }
 
   // Które zakresy pokazać dla danego rodzaju przeglądu
   const scopeMap = {
@@ -1405,6 +1543,10 @@ function getForm() {
     firmaObiektu: (document.getElementById('firmaObiektu')||{}).value||'',
     uprawnieniaPrzedst: (document.getElementById('uprawnieniaPrzedst')||{}).value||'',
     ts: new Date().toISOString(),
+    // DSG — Detekcja Gazów
+    dsgDetektory: document.getElementById('typInstalacji').value === 'DSG' ? dsgGetDane() : null,
+    dsgUwagi: (document.getElementById('dsgUwagi')||{}).value || '',
+    dsgNastepnaKontrola: (document.getElementById('dsgNastepnaKontrola')||{}).value || '',
   };
 }
 
@@ -1594,6 +1736,9 @@ function resetForm() {
   const so = document.getElementById('serwisOsoby'); if(so) so.value = '';
   const sc = document.getElementById('serwisCzas');  if(sc) sc.value = '';
   const sd = document.getElementById('serwisDojazd'); if(sd) sd.value = '';
+  const dsgU = document.getElementById('dsgUwagi'); if(dsgU) dsgU.value = '';
+  const dsgN = document.getElementById('dsgNastepnaKontrola'); if(dsgN) dsgN.value = '';
+  _dsgCount = 8;
   updateChecklist();
 }
 
@@ -4685,6 +4830,7 @@ function _doGeneratePDF(p) {
   var TYP_NAMES = {
     SSP:   'SYSTEMU SYGNALIZACJI POZARU',
     DSO:   'DZWIEKOWEGO SYSTEMU OSTRZEGAWCZEGO',
+    DSG:   'SYSTEMU DETEKCJI GAZOW',
     SO_EL: 'SYSTEMU ODDYMIANIA ELEKTRYCZNEGO',
     SO_PN: 'SYSTEMU ODDYMIANIA PNEUMATYCZNEGO'
   };
@@ -4717,8 +4863,13 @@ function _doGeneratePDF(p) {
   doc.setFont(FONT, 'bold');
   doc.setFontSize(16);
   doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-  doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
-  doc.text('I KONSERWACJI', W/2, 127, { align: 'center' });
+  if (p.typ === 'DSG') {
+    doc.text(pl('PROTOKOL Z SPRAWDZENIA DZIALANIA'), W/2, 115, { align: 'center' });
+    doc.text(pl('SYSTEMU DETEKCJI GAZOW'), W/2, 127, { align: 'center' });
+  } else {
+    doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
+    doc.text('I KONSERWACJI', W/2, 127, { align: 'center' });
+  }
   doc.setFontSize(13);
   doc.setTextColor(RED[0], RED[1], RED[2]);
   doc.text(typName, W/2, 140, { align: 'center' });
@@ -4889,37 +5040,107 @@ function _doGeneratePDF(p) {
   });
   y += 6;
 
-  // III. LISTA KONTROLNA - tylko pozycje OK
-  sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
+  // III. LISTA KONTROLNA / TABELA DETEKTORÓW
+  if (p.typ === 'DSG' && p.dsgDetektory && p.dsgDetektory.length) {
+    sectionHead('III. CZYNNOSCI SPRAWDZAJACE - TABELA DETEKTOROW');
 
-  // Etykiety z globalnego CL (wbudowany w kod — dostępny u wszystkich)
-  var itemLabels = {};
-  var clSource = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
-  clSource.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
+    // Nagłówek tabeli
+    const colW = [10, 52, 24, 54, 26]; // szerokości kolumn w mm
+    const colX2 = [ML];
+    colW.forEach(function(w,i){ if(i>0) colX2.push(colX2[i-1]+colW[i-1]); });
+    const rowH = 7;
 
-  // Wszystkie zaznaczone jako OK
-  var okIds = [];
-  if (p.checklist) {
-    Object.keys(p.checklist).forEach(function(id){
-      if (p.checklist[id] === 'ok') okIds.push(id);
+    function tableHeader() {
+      checkY(rowH + 2);
+      doc.setFillColor(LGRAY[0], LGRAY[1], LGRAY[2]);
+      doc.setFont(FONT,'bold'); doc.setFontSize(7.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      const hdrs = ['Lp.','Urządzenie','Wykrywany gaz','Miejsce instalacji','Wynik'];
+      hdrs.forEach(function(h,i){
+        doc.rect(colX2[i], y-4, colW[i], rowH, 'F');
+        doc.rect(colX2[i], y-4, colW[i], rowH);
+        doc.text(pl(h), colX2[i]+1.5, y);
+      });
+      y += rowH - 3;
+    }
+    tableHeader();
+
+    p.dsgDetektory.forEach(function(r) {
+      checkY(rowH);
+      if (y > 260) { newPage(); tableHeader(); }
+      doc.setFont(FONT,'normal'); doc.setFontSize(7.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      const vals = [String(r.lp), pl(r.model||''), pl(r.gaz||''), pl(r.lok||''), pl(r.wynik||'')];
+      vals.forEach(function(v,i){
+        doc.rect(colX2[i], y-4, colW[i], rowH);
+        if (i === 4) {
+          doc.setTextColor(r.wynik==='Sprawny'?46:r.wynik==='Niesprawny'?231:200,
+                           r.wynik==='Sprawny'?204:r.wynik==='Niesprawny'?76:130,
+                           r.wynik==='Sprawny'?113:r.wynik==='Niesprawny'?60:0);
+          doc.setFont(FONT,'bold');
+        }
+        const lines2 = doc.splitTextToSize(v, colW[i]-3);
+        doc.text(lines2, colX2[i]+1.5, y);
+        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+        doc.setFont(FONT,'normal');
+      });
+      y += rowH - 3;
     });
-  }
+    y += 4;
 
-  doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-
-  if (!okIds.length) {
-    doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
-    doc.text('Brak zaznaczonych pozycji (OK) listy kontrolnej', ML, y); y += 7;
-  } else {
-    okIds.forEach(function(id) {
-      var label = itemLabels[id] || id;
-      checkY(8);
-      checkmark(ML, y);
-      var lines2 = doc.splitTextToSize(pl(label), TW - 8);
+    if (p.dsgUwagi && p.dsgUwagi.trim()) {
+      checkY(10);
       doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      doc.text(lines2, ML + 5.5, y);
-      y += lines2.length * 5 + 1;
-    });
+      var uwLns = doc.splitTextToSize(pl(p.dsgUwagi), TW);
+      doc.text(uwLns, ML, y);
+      y += uwLns.length * 5 + 2;
+    }
+
+    // Podsumowanie
+    const sprawne = p.dsgDetektory.filter(function(r){ return r.wynik==='Sprawny'; }).length;
+    const total   = p.dsgDetektory.length;
+    checkY(10);
+    doc.setFont(FONT,'bold'); doc.setFontSize(9); doc.setTextColor(46,204,113);
+    doc.text(pl('System detekcji gazow znajduje sie w ') + (sprawne===total ? pl('pelnej sprawnosci technicznej.') : pl('czesciowej sprawnosci ('+ sprawne +' z '+total+' sprawnych).')), ML, y);
+    y += 7;
+
+    if (p.dsgNastepnaKontrola && p.dsgNastepnaKontrola.trim()) {
+      checkY(8);
+      doc.setFont(FONT,'normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      doc.text(pl('Termin nastepnej kontroli: ') + pl(p.dsgNastepnaKontrola), ML, y);
+      y += 8;
+    }
+    y += 4;
+
+  } else {
+    // Standardowa lista kontrolna
+    sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
+
+    var itemLabels = {};
+    var clSource = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
+    clSource.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
+
+    var okIds = [];
+    if (p.checklist) {
+      Object.keys(p.checklist).forEach(function(id){
+        if (p.checklist[id] === 'ok') okIds.push(id);
+      });
+    }
+
+    doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+
+    if (!okIds.length) {
+      doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
+      doc.text('Brak zaznaczonych pozycji (OK) listy kontrolnej', ML, y); y += 7;
+    } else {
+      okIds.forEach(function(id) {
+        var label = itemLabels[id] || id;
+        checkY(8);
+        checkmark(ML, y);
+        var lines2 = doc.splitTextToSize(pl(label), TW - 8);
+        doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+        doc.text(lines2, ML + 5.5, y);
+        y += lines2.length * 5 + 1;
+      });
+    }
   }
 
   // IV. Analiza przegladu
