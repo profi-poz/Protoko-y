@@ -3107,7 +3107,19 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS
 // Polskie znaki — jsPDF z wbudowanym UTF-8 (przez standardowy font)
 function pl(s) {
   if (!s) return '';
-  return String(s); // zwracamy bez konwersji — font obsługuje UTF-8
+  var str = String(s);
+  if (!window._jspdfNeedsPl) return str; // PTSans zaladowany — UTF-8 dziala
+  // Transliteracja dla helvetica fallback
+  return str
+    .replace(/ą/g,'a').replace(/Ą/g,'A')
+    .replace(/ć/g,'c').replace(/Ć/g,'C')
+    .replace(/ę/g,'e').replace(/Ę/g,'E')
+    .replace(/ł/g,'l').replace(/Ł/g,'L')
+    .replace(/ń/g,'n').replace(/Ń/g,'N')
+    .replace(/ó/g,'o').replace(/Ó/g,'O')
+    .replace(/ś/g,'s').replace(/Ś/g,'S')
+    .replace(/ź/g,'z').replace(/Ź/g,'Z')
+    .replace(/ż/g,'z').replace(/Ż/g,'Z');
 }
 
 // Laduje jsPDF dynamicznie on-demand jesli nie jest jeszcze dostepny
@@ -4665,53 +4677,54 @@ function loadJsPDF(callback) {
 
 function _loadPolishFont(callback) {
   if (window._jspdfFontReady) { callback(null); return; }
-  // Pobierz font PTSans (wspiera polskie znaki) z Google Fonts jako ArrayBuffer
-  // Alternatywnie użyj NotoSans który ma pełne wsparcie Unicode
-  fetch('https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0aExcOPIDU.woff2')
-    .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject(); })
-    .then(function(buf) {
-      var { jsPDF } = window.jspdf;
-      var arr = new Uint8Array(buf);
-      var b64 = '';
-      var chunk = 8192;
-      for (var i = 0; i < arr.length; i += chunk) {
-        b64 += String.fromCharCode.apply(null, arr.subarray(i, i + chunk));
-      }
-      b64 = btoa(b64);
-      var callAddFont = function() {
-        this.addFileToVFS('PTSans-normal.ttf', b64);
-        this.addFont('PTSans-normal.ttf', 'PTSans', 'normal');
-      };
-      jsPDF.API.events.push(['addFonts', callAddFont]);
-      window._jspdfFontNormal = b64;
-      // Zaladuj bold
-      return fetch('https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OkWcQ.woff2');
-    })
-    .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject(); })
-    .then(function(buf) {
-      var { jsPDF } = window.jspdf;
-      var arr = new Uint8Array(buf);
-      var b64 = '';
-      var chunk = 8192;
-      for (var i = 0; i < arr.length; i += chunk) {
-        b64 += String.fromCharCode.apply(null, arr.subarray(i, i + chunk));
-      }
-      b64 = btoa(b64);
-      var callAddFontBold = function() {
-        this.addFileToVFS('PTSans-bold.ttf', b64);
-        this.addFont('PTSans-bold.ttf', 'PTSans', 'bold');
-      };
-      jsPDF.API.events.push(['addFonts', callAddFontBold]);
+
+  // Próbuj załadować PTSans z Google Fonts (woff2, potem woff jako fallback)
+  var fontSources = [
+    { normal: 'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0aExcOPIDU.woff2',
+      bold:   'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OkWcQ.woff2' },
+    { normal: 'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0aExcOPIDU.woff',
+      bold:   'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OkWcQ.woff' },
+  ];
+
+  function bufToB64(buf) {
+    var arr = new Uint8Array(buf), b64 = '', chunk = 8192;
+    for (var i = 0; i < arr.length; i += chunk)
+      b64 += String.fromCharCode.apply(null, arr.subarray(i, i + chunk));
+    return btoa(b64);
+  }
+
+  function trySource(idx) {
+    if (idx >= fontSources.length) {
+      // Fallback — helvetica z transliteracją polskich znaków
       window._jspdfFontReady = true;
-      window._jspdfFontName = 'PTSans';
+      window._jspdfFontName  = 'helvetica';
+      window._jspdfNeedsPl   = true; // sygnał dla pl() żeby transliterować
       callback(null);
-    })
-    .catch(function() {
-      // Fallback — helvetica bez polskich znakow ale dziala offline
-      window._jspdfFontReady = true;
-      window._jspdfFontName = 'helvetica';
-      callback(null);
-    });
+      return;
+    }
+    var src = fontSources[idx];
+    fetch(src.normal)
+      .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('normal'); })
+      .then(function(buf) {
+        var b64 = bufToB64(buf);
+        var { jsPDF } = window.jspdf;
+        jsPDF.API.events.push(['addFonts', function(){ this.addFileToVFS('PTSans-normal.ttf',b64); this.addFont('PTSans-normal.ttf','PTSans','normal'); }]);
+        window._jspdfFontNormal = b64;
+        return fetch(src.bold);
+      })
+      .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('bold'); })
+      .then(function(buf) {
+        var b64 = bufToB64(buf);
+        var { jsPDF } = window.jspdf;
+        jsPDF.API.events.push(['addFonts', function(){ this.addFileToVFS('PTSans-bold.ttf',b64); this.addFont('PTSans-bold.ttf','PTSans','bold'); }]);
+        window._jspdfFontReady = true;
+        window._jspdfFontName  = 'PTSans';
+        window._jspdfNeedsPl   = false;
+        callback(null);
+      })
+      .catch(function() { trySource(idx + 1); });
+  }
+  trySource(0);
 }
 
 function generatePDF(id) {
@@ -5177,47 +5190,71 @@ function _doGeneratePDF(p) {
   if (p.typ === 'DSG' && p.dsgDetektory && p.dsgDetektory.length) {
     sectionHead('III. CZYNNOSCI SPRAWDZAJACE - TABELA DETEKTOROW');
 
-    // Nagłówek tabeli
-    const colW = [10, 52, 24, 54, 26]; // szerokości kolumn w mm
-    const colX2 = [ML];
-    colW.forEach(function(w,i){ if(i>0) colX2.push(colX2[i-1]+colW[i-1]); });
-    const rowH = 7;
+    // Kolumny: Lp | Urządzenie | Wykrywany gaz | Miejsce instalacji | Wynik
+    var dCW = [10, 48, 26, 56, 26]; // suma = 166mm = TW
+    var dCX = [ML];
+    dCW.forEach(function(w,i){ if(i>0) dCX.push(dCX[i-1]+dCW[i-1]); });
+    var dHDR_H = 8; // wysokość nagłówka
+    var dROW_H = 8; // bazowa wysokość wiersza danych
+    var dPAD   = 1.8; // padding wewnętrzny
+    var dFS    = 7.5; // font size
 
-    function tableHeader() {
-      checkY(rowH + 2);
-      doc.setFillColor(LGRAY[0], LGRAY[1], LGRAY[2]);
-      doc.setFont(FONT,'bold'); doc.setFontSize(7.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      const hdrs = ['Lp.','Urządzenie','Wykrywany gaz','Miejsce instalacji','Wynik'];
-      hdrs.forEach(function(h,i){
-        doc.rect(colX2[i], y-4, colW[i], rowH, 'F');
-        doc.rect(colX2[i], y-4, colW[i], rowH);
-        doc.text(pl(h), colX2[i]+1.5, y);
+    function dsgTableHeader() {
+      checkY(dHDR_H + 4);
+      doc.setFillColor(MGRAY[0], MGRAY[1], MGRAY[2]);
+      doc.setFont(FONT,'bold'); doc.setFontSize(dFS); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      var hdrs = ['Lp.', pl('Urz\u0105dzenie'), pl('Wykrywany gaz'), pl('Miejsce instalacji'), 'Wynik'];
+      dCW.forEach(function(w,i){
+        doc.rect(dCX[i], y, w, dHDR_H, 'FD');
+        var textLines = doc.splitTextToSize(hdrs[i], w - dPAD*2);
+        doc.text(textLines, dCX[i] + dPAD, y + 5.5);
       });
-      y += rowH - 3;
+      y += dHDR_H;
     }
-    tableHeader();
+
+    dsgTableHeader();
 
     p.dsgDetektory.forEach(function(r) {
-      checkY(rowH);
-      if (y > 260) { newPage(); tableHeader(); }
-      doc.setFont(FONT,'normal'); doc.setFontSize(7.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      const vals = [String(r.lp), pl(r.model||''), pl(r.gaz||''), pl(r.lok||''), pl(r.wynik||'')];
-      vals.forEach(function(v,i){
-        doc.rect(colX2[i], y-4, colW[i], rowH);
-        if (i === 4) {
-          doc.setTextColor(r.wynik==='Sprawny'?46:r.wynik==='Niesprawny'?231:200,
-                           r.wynik==='Sprawny'?204:r.wynik==='Niesprawny'?76:130,
-                           r.wynik==='Sprawny'?113:r.wynik==='Niesprawny'?60:0);
-          doc.setFont(FONT,'bold');
-        }
-        const lines2 = doc.splitTextToSize(v, colW[i]-3);
-        doc.text(lines2, colX2[i]+1.5, y);
-        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-        doc.setFont(FONT,'normal');
+      // Oblicz potrzebną wysokość wiersza (max z wszystkich kolumn)
+      doc.setFont(FONT,'normal'); doc.setFontSize(dFS);
+      var vals = [
+        String(r.lp || ''),
+        pl(r.model || ''),
+        pl(r.gaz   || ''),
+        pl(r.lok   || ''),
+        pl(r.wynik || 'Sprawny')
+      ];
+      var maxLines = 1;
+      vals.forEach(function(v, i) {
+        var lns = doc.splitTextToSize(v, dCW[i] - dPAD*2);
+        if (lns.length > maxLines) maxLines = lns.length;
       });
-      y += rowH - 3;
+      var rH = Math.max(dROW_H, maxLines * 4.5 + 3);
+
+      if (y + rH > 272) { newPage(); dsgTableHeader(); }
+
+      // Rysuj komórki
+      vals.forEach(function(v, i) {
+        // Kolor wyniku
+        if (i === 4) {
+          var isSprawny   = r.wynik === 'Sprawny';
+          var isNiesprawny = r.wynik === 'Niesprawny';
+          doc.setTextColor(isSprawny ? 46 : isNiesprawny ? 231 : 200,
+                           isSprawny ? 150: isNiesprawny ? 76  : 130,
+                           isSprawny ? 68 : isNiesprawny ? 60  : 0);
+          doc.setFont(FONT,'bold');
+        } else {
+          doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+          doc.setFont(FONT,'normal');
+        }
+        doc.rect(dCX[i], y, dCW[i], rH);
+        var lns = doc.splitTextToSize(v, dCW[i] - dPAD*2);
+        doc.text(lns, dCX[i] + dPAD, y + 5);
+      });
+      doc.setFont(FONT,'normal'); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      y += rH;
     });
-    y += 4;
+    y += 5;
 
     if (p.dsgUwagi && p.dsgUwagi.trim()) {
       checkY(10);
