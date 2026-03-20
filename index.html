@@ -696,7 +696,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 71</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 72</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2127,6 +2127,7 @@ const TYP_DEFAULT_KEY = 'profipoz_typ_v1';
 const DEFAULT_TYPES = [
   {key:'SSP',    label:'SSP – System Sygnalizacji Pożarowej'},
   {key:'DSO',    label:'DSO – Dźwiękowy System Ostrzegawczy'},
+  {key:'DSG',    label:'DSG – Detekcja i Sygnalizacja Gazów'},
   {key:'SO_EL',  label:'SO – Oddymianie elektryczne'},
   {key:'SO_PN',  label:'SO – Oddymianie pneumatyczne'},
   {key:'PSP',    label:'PSP – System Powiadamiania Pożarowego'},
@@ -2390,6 +2391,23 @@ function initAdmin() {
   if (saved) {
     const cl = JSON.parse(saved);
     Object.keys(cl).forEach(k => CL[k] = cl[k]);
+  }
+  // Migracja typów — dodaj brakujące typy z DEFAULT_TYPES do zapisanych
+  const savedTypes = localStorage.getItem(TYP_DEFAULT_KEY);
+  if (savedTypes) {
+    const stored = JSON.parse(savedTypes);
+    const storedKeys = new Set(stored.map(t => t.key));
+    let changed = false;
+    DEFAULT_TYPES.forEach(function(dt, idx) {
+      if (!storedKeys.has(dt.key)) {
+        // Wstaw w odpowiednim miejscu (po poprzednim elemencie DEFAULT)
+        const prevKey = idx > 0 ? DEFAULT_TYPES[idx-1].key : null;
+        const prevIdx = prevKey ? stored.findIndex(t => t.key === prevKey) : -1;
+        stored.splice(prevIdx + 1, 0, dt);
+        changed = true;
+      }
+    });
+    if (changed) localStorage.setItem(TYP_DEFAULT_KEY, JSON.stringify(stored));
   }
   // Przebuduj select typów
   rebuildTypSelect();
