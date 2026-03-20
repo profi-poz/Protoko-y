@@ -1904,7 +1904,12 @@ async function syncFromServer() {
         delete window[cbName];
         document.head.removeChild(script);
         if (json.status === 'ok' && Array.isArray(json.protokoly)) {
-          serverProtokoly = json.protokoly;
+          serverProtokoly = json.protokoly.map(function(pr) {
+            if (pr.typ === 'DSG' && typeof pr.dsgDetektory === 'string' && pr.dsgDetektory) {
+              try { pr = Object.assign({}, pr, { dsgDetektory: JSON.parse(pr.dsgDetektory) }); } catch(e) {}
+            }
+            return pr;
+          });
         }
         resolve();
       };
@@ -1937,8 +1942,53 @@ function delProto(id) {
 // ===================== EXCEL =====================
 function buildWS(p) {
   const typ = p.typ;
-  const items = CL[typ] || CL.Inne;
   const rows = [];
+
+  // ── DSG — Detekcja i Sygnalizacja Gazów ──────────────────────────────
+  if (typ === 'DSG') {
+    rows.push(['PROTOKÓŁ Z SPRAWDZENIA DZIAŁANIA SYSTEMU DETEKCJI GAZÓW','','','','']);
+    rows.push(['Profi-Poż  |  www.profi-poz.pl','','','','']);
+    rows.push(['']);
+    rows.push(['Nr protokołu:', p.nr||'-', 'Data sprawdzenia:', p.data, '']);
+    rows.push(['Obiekt:', p.obiekt,'','','']);
+    rows.push(['Adres:', p.lokalizacjaCentral||'-','','','']);
+    rows.push(['Serwisant:', p.serwisant, 'Nr uprawnień:', p.uprawnienia||'-', '']);
+    rows.push(['']);
+    rows.push(['CZYNNOŚCI SPRAWDZAJĄCE — TABELA DETEKTORÓW','','','','']);
+    rows.push(['Lp.', 'Urządzenie', 'Wykrywany gaz', 'Miejsce instalacji', 'Wynik sprawdzenia']);
+
+    // Parsuj dsgDetektory — może być tablicą lub JSON-stringiem (z GAS)
+    let detektory = p.dsgDetektory;
+    if (typeof detektory === 'string') {
+      try { detektory = JSON.parse(detektory); } catch(e) { detektory = []; }
+    }
+    if (!Array.isArray(detektory)) detektory = [];
+
+    detektory.forEach(function(r) {
+      rows.push([r.lp||'', r.model||'', r.gaz||'', r.lok||'', r.wynik||'Sprawny']);
+    });
+
+    rows.push(['']);
+    if (p.dsgUwagi && p.dsgUwagi.trim()) {
+      rows.push(['Uwagi:', p.dsgUwagi,'','','']);
+      rows.push(['']);
+    }
+
+    const sprawne = detektory.filter(function(r){ return r.wynik === 'Sprawny'; }).length;
+    const total   = detektory.length;
+    rows.push(['Stan systemu:', total > 0 ? (sprawne === total ? 'System detekcji gazów znajduje się w pełnej sprawności technicznej.' : 'Część detektorów niesprawna (' + sprawne + ' z ' + total + ' sprawnych).') : '-', '', '', '']);
+    rows.push(['Termin następnej kontroli:', p.dsgNastepnaKontrola||'-','','','']);
+    rows.push(['']);
+    rows.push(['Adnotacje do biura:', p.adnotacjeBiuro||'-','','','']);
+    rows.push(['Info do kolejnego serwisu:', p.infoKolejnySerwis||'-','','','']);
+    rows.push(['Data zapisu:', p.ts ? new Date(p.ts).toLocaleString('pl-PL') : '-','','','']);
+    // Zapisz surowe dane detektorów jako JSON w ukrytym polu — do odczytu przez serwer
+    rows.push(['__dsgDetektory_json__', JSON.stringify(detektory),'','','']);
+    return rows;
+  }
+
+  // ── Pozostałe typy instalacji ─────────────────────────────────────────
+  const items = CL[typ] || CL.Inne;
   rows.push(['PROTOKÓŁ PRZEGLĄDU INSTALACJI PRZECIWPOŻAROWEJ','','','']);
   rows.push(['Profi-Poż','','','']);
   rows.push(['']);
@@ -2639,7 +2689,12 @@ function panelShowObiekt(nazwa) {
 }
 
 function renderObiektProtos(nazwa, protos) {
-  _panelProtosCache = protos; // zapisz do cache żeby showDetail mogło znaleźć
+  _panelProtosCache = protos.map(function(pr) {
+    if (pr.typ === 'DSG' && typeof pr.dsgDetektory === 'string' && pr.dsgDetektory) {
+      try { pr = Object.assign({}, pr, { dsgDetektory: JSON.parse(pr.dsgDetektory) }); } catch(e) {}
+    }
+    return pr;
+  }); // zapisz do cache żeby showDetail mogło znaleźć
   const el = document.getElementById('panelProtoView');
   const sprawne = protos.filter(p => (p.wynik||'').startsWith('Sprawny') && !(p.wynik||'').includes('uwag')).length;
   const uwagi = protos.filter(p => (p.wynik||'').includes('uwag')).length;
@@ -4693,6 +4748,36 @@ function showNextReviewPicker(p, callback) {
   modal.id = 'nextReviewModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
 
+  // DSG — uproszczony dialog: tylko termin następnej kontroli
+  if (p.typ === 'DSG') {
+    modal.innerHTML = `
+      <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:340px;width:100%">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:28px;margin-bottom:6px">📄</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">Generuj protokół PDF</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Detekcja i Sygnalizacja Gazów</div>
+        </div>
+        <div class="field" style="margin-bottom:20px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">📅 Następna kontrola za</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <button data-m="6"  style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">6 miesięcy</button>
+            <button data-m="12" style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">12 miesięcy</button>
+            <button data-m="0"  style="grid-column:1/-1;padding:11px 6px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">Pomiń</button>
+          </div>
+        </div>
+      </div>`;
+    modal.querySelectorAll('button[data-m]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        modal.remove();
+        callback(parseInt(btn.getAttribute('data-m')), 'sprawdzenie');
+      });
+      btn.addEventListener('mouseenter', function() { btn.style.background='rgba(220,53,69,.15)'; btn.style.borderColor='var(--red2)'; btn.style.color='var(--red2)'; });
+      btn.addEventListener('mouseleave', function() { btn.style.background=btn.getAttribute('data-m')==='0'?'transparent':'var(--surface2)'; btn.style.borderColor='var(--border)'; btn.style.color=btn.getAttribute('data-m')==='0'?'var(--muted)':'var(--text)'; });
+    });
+    document.body.appendChild(modal);
+    return;
+  }
+
   const rodzajOpcje = [
     {v:'przeglad',   l:'Przegląd (pełna lista)'},
     {v:'kwartalny',  l:'Kwartalny'},
@@ -4765,6 +4850,14 @@ function showNextReviewPicker(p, callback) {
 }
 
 function _doGeneratePDF(p) {
+  // Normalizuj dsgDetektory — może być JSON-stringiem gdy pochodzi z serwera GAS
+  if (p.typ === 'DSG') {
+    if (typeof p.dsgDetektory === 'string') {
+      try { p = Object.assign({}, p, { dsgDetektory: JSON.parse(p.dsgDetektory) }); } catch(e) { p = Object.assign({}, p, { dsgDetektory: [] }); }
+    }
+    if (!Array.isArray(p.dsgDetektory)) p = Object.assign({}, p, { dsgDetektory: [] });
+  }
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', putOnlyUsedFonts: true });
   const FONT = window._jspdfFontName || 'helvetica';
