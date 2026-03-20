@@ -696,7 +696,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 70</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 71</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1198,23 +1198,21 @@ window.onload = () => {
   // Service Worker z auto-aktualizacją
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      // Sprawdzaj aktualizacje co 60 minut
-      setInterval(() => reg.update(), 60 * 60 * 1000);
-      // Gdy nowa wersja gotowa — poinformuj użytkownika
+      // Sprawdzaj aktualizacje co 5 minut
+      setInterval(() => reg.update(), 5 * 60 * 1000);
+      // Gdy nowa wersja gotowa — zainstaluj automatycznie
       reg.addEventListener('updatefound', () => {
         const newSW = reg.installing;
         newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            if (confirm('🔄 Dostępna nowa wersja aplikacji! Zaktualizować teraz?')) {
-              // Czekamy na controllerchange — nie reload() od razu
-              newSW.postMessage({ type: 'SKIP_WAITING' });
-            }
+          if (newSW.state === 'installed') {
+            // Aktywuj od razu — nie czekaj na zamknięcie karty
+            newSW.postMessage({ type: 'SKIP_WAITING' });
           }
         });
       });
     }).catch(()=>{});
 
-    // Przeładuj DOPIERO gdy nowy SW faktycznie przejął kontrolę
+    // Przeładuj gdy nowy SW przejął kontrolę
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!refreshing) { refreshing = true; window.location.reload(); }
