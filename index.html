@@ -243,6 +243,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
   padding:10px 8px;text-align:center;}
 .stat-box-v{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;}
 .stat-box-l{font-size:10px;color:var(--muted);margin-top:2px;}
+.dash-tile{background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center;}
+.dash-v{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;line-height:1;}
+.dash-l{font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
 .adm-typ-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
 .adm-typ-key{font-family:"JetBrains Mono",monospace;font-size:11px;background:rgba(232,54,10,.15);color:var(--red2);padding:3px 8px;border-radius:4px;flex-shrink:0;}
 .adm-typ-label{flex:1;font-size:13px;font-weight:600;}
@@ -346,10 +349,16 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
     <div class="screen active" id="s-nowy">
       <div class="page-hd">
         <h1>📋 Nowy protokół</h1>
-        <button onclick="wczytajSzkic()" style="font-size:11px;padding:5px 10px;background:var(--surface2);
-          border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer">
-          📂 Wczytaj szkic
-        </button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button onclick="wczytajSzkic()" style="font-size:11px;padding:5px 10px;background:var(--surface2);
+            border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer">
+            📂 Wczytaj szkic
+          </button>
+          <button onclick="openAiNotatki()" title="Wypełnij formularz z notatek serwisowych" style="font-size:11px;padding:5px 10px;background:linear-gradient(135deg,#1a1a2e,#2d1b69);border:1px solid #4c1d95;border-radius:8px;color:#a78bfa;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:4px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Z notatek
+          </button>
+        </div>
         <p>Wypełnij formularz przeglądu instalacji</p>
       </div>
 
@@ -545,8 +554,8 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
       <div id="photoPreview" style="display:none"></div>
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(this)">
 
-      <div style="padding:0 0 4px">
-        <button class="btn" onclick="openAiNotatki()" style="width:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#a78bfa;border:1px solid #4c1d95;font-size:14px;font-weight:700;letter-spacing:.5px;border-radius:10px;padding:12px">✨ Wypełnij z notatek (AI)</button>
+      <div style="padding:0 0 4px;display:none">
+        <button class="btn" onclick="openAiNotatki()" style="width:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#a78bfa;border:1px solid #4c1d95;font-size:14px;font-weight:700;letter-spacing:.5px;border-radius:10px;padding:12px">📋 Wypełnij z notatek</button>
       </div>
       <div style="padding:0 0 8px">
         <button class="btn btn-red" onclick="zapiszProtokol()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">💾 Zapisz szkic</button>
@@ -792,7 +801,8 @@ Content-Type: application/json
       <button class="pf-btn" id="pw-uwagi" onclick="panelSetWynik('uwagi')">⚠️ Z uwagami</button>
       <button class="pf-btn" id="pw-zly"  onclick="panelSetWynik('Niesprawny')">❌ Niesprawny</button>
     </div>
-    <div id="panelStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-bottom:12px"></div>
+    <div id="panelStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-bottom:8px"></div>
+    <div id="panelDashboard" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-bottom:12px"></div>
   </div>
   <div id="panelObiektView" style="padding:0 16px 100px"></div>
   <div id="panelProtoView"  style="padding:0 16px 100px;display:none"></div>  </div>
@@ -2619,36 +2629,47 @@ function panelShowLista(lista) {
     return;
   }
 
-  // Normalizuj nazwę do grupowania (lowercase, trim, collapse spaces)
-  function normNazwa(n) {
-    return (n||'').trim().toLowerCase().replace(/\s+/g,' ');
-  }
+  function normNazwa(n) { return (n||'').trim().toLowerCase().replace(/\s+/g,' '); }
 
-  // Grupuj po znormalizowanej nazwie, zachowaj najładniejszą wersję (najdłuższa / Title Case)
+  // Grupuj po znormalizowanej nazwie
   const grupy = {};
-  const nazwyDisplay = {}; // normKey → najlepsza wersja display
+  const nazwyDisplay = {};
   src.forEach(function(o) {
     const raw = (o.obiekt||'Brak nazwy').trim().replace(/\s+/g,' ');
     const k = normNazwa(raw);
     if (!grupy[k]) {
-      grupy[k] = { typy: [], count: 0, ostatnia: '', wynik: '' };
+      grupy[k] = { typy: [], count: 0, ostatnia: '', wynik: '', status: o.status || '' };
       nazwyDisplay[k] = raw;
     } else {
-      // Preferuj wersję z właściwą wielkością liter (nie CAPS i nie lowercase)
       const prev = nazwyDisplay[k];
       const prevScore = (prev === prev.toUpperCase() || prev === prev.toLowerCase()) ? 0 : 1;
-      const rawScore = (raw === raw.toUpperCase() || raw === raw.toLowerCase()) ? 0 : 1;
-      if (rawScore > prevScore || (rawScore === prevScore && raw.length > prev.length)) {
-        nazwyDisplay[k] = raw;
-      }
+      const rawScore  = (raw  === raw.toUpperCase()  || raw  === raw.toLowerCase())  ? 0 : 1;
+      if (rawScore > prevScore || (rawScore === prevScore && raw.length > prev.length)) nazwyDisplay[k] = raw;
+      // Status worst-case: RED > YELLOW > GREEN > GRAY
+      const S = {RED:3, YELLOW:2, GREEN:1, GRAY:0};
+      if ((S[o.status]||0) > (S[grupy[k].status]||0)) grupy[k].status = o.status;
     }
     grupy[k].typy.push(o.typ);
     grupy[k].count += (o.count || 1);
     if (!grupy[k].ostatnia || (o.ostatnia||'') > grupy[k].ostatnia) {
       grupy[k].ostatnia = o.ostatnia || '';
-      grupy[k].wynik = o.wynik || '';
+      grupy[k].wynik    = o.wynik    || '';
     }
   });
+
+  // Mini dashboard — liczniki statusów
+  const dRed    = Object.values(grupy).filter(g => g.status === 'RED').length;
+  const dYellow = Object.values(grupy).filter(g => g.status === 'YELLOW').length;
+  const dGreen  = Object.values(grupy).filter(g => g.status === 'GREEN').length;
+  const dTotal  = Object.keys(grupy).length;
+  const dashEl = document.getElementById('panelDashboard');
+  if (dashEl) {
+    dashEl.innerHTML =
+      '<div class="dash-tile" style="border-color:#4caf50"><div class="dash-v" style="color:#4caf50">'+dGreen+'</div><div class="dash-l">Sprawnych</div></div>'+
+      '<div class="dash-tile" style="border-color:#ff9800"><div class="dash-v" style="color:#ff9800">'+dYellow+'</div><div class="dash-l">Z uwagami</div></div>'+
+      '<div class="dash-tile" style="border-color:#e74c3c"><div class="dash-v" style="color:#e74c3c">'+dRed+'</div><div class="dash-l">Problemów</div></div>'+
+      '<div class="dash-tile" style="border-color:var(--border)"><div class="dash-v">'+dTotal+'</div><div class="dash-l">Obiektów</div></div>';
+  }
 
   let htmlStr = '';
   Object.keys(grupy).sort((a,b) => a.localeCompare(b,'pl')).forEach(function(k) {
@@ -5504,12 +5525,59 @@ function _doGeneratePDF(p) {
 
     <!-- Nagłówek -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <div style="font-size:28px">✨</div>
+      <div style="width:42px;height:42px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
       <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#a78bfa">Wypełnij z notatek (AI)</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">Wklej notatki serwisowe — AI wypełni formularz</div>
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#a78bfa">Wypełnij z notatek</div>
+          <button onclick="toggleAiInfo()" title="Jak pisać notatki?" style="width:20px;height:20px;border-radius:50%;background:#2d1b69;border:1px solid #4c1d95;color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;flex-shrink:0">i</button>
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">Wklej notatki — parser wypełni formularz automatycznie</div>
       </div>
       <button onclick="closeAiNotatki()" style="margin-left:auto;background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <!-- Panel info — wzór notatek -->
+    <div id="aiInfoPanel" style="display:none;margin-bottom:14px;background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px;font-size:12px;line-height:1.8;color:#9ca3af">
+      <div style="font-weight:700;color:#a78bfa;margin-bottom:10px">📖 Jak pisać notatki — zasady parsera</div>
+
+      <div style="margin-bottom:8px;padding:8px;background:#111827;border-radius:6px">
+        <div style="color:#fbbf24;font-weight:700;margin-bottom:2px">Pierwsza linia = nazwa obiektu</div>
+        <code style="color:#6b7280">Plaza wizyta serwisowa</code>
+      </div>
+
+      <div style="margin-bottom:8px;padding:8px;background:#111827;border-radius:6px">
+        <div style="color:#f87171;font-weight:700;margin-bottom:2px">- (myślnik + spacja) = usterka / problem</div>
+        <code style="color:#fca5a5">- Nie działający dialer</code><br>
+        <code style="color:#fca5a5">- uszkodzone wyjście w centrali</code>
+      </div>
+
+      <div style="margin-bottom:8px;padding:8px;background:#111827;border-radius:6px">
+        <div style="color:#4ade80;font-weight:700;margin-bottom:2px">-- (dwa myślniki + spacja) = wykonana czynność / naprawa</div>
+        <code style="color:#86efac">-- zmiana konfiguracji centrali</code><br>
+        <code style="color:#86efac">-- wymieniono rezystory i poprawiono połączenia</code>
+      </div>
+
+      <div style="margin-bottom:8px;padding:8px;background:#111827;border-radius:6px">
+        <div style="color:#60a5fa;font-weight:700;margin-bottom:2px">Zwykła linia z słowem kluczowym = usterka lub czynność</div>
+        <code style="color:#93c5fd">Uszkodzenie klapa zamknięta KPG strefa 3083</code> → usterka<br>
+        <code style="color:#93c5fd">Wymieniono rezystory i poprawiono połączenia</code> → czynność
+      </div>
+
+      <div style="margin-bottom:8px;padding:8px;background:#111827;border-radius:6px">
+        <div style="color:#a78bfa;font-weight:700;margin-bottom:2px">Info do kolejnego serwisu</div>
+        <code style="color:#c4b5fd">następna wizyta — sprawdzić akumulator</code><br>
+        <span style="font-size:11px">Słowa kluczowe: <em>kolejn, następn, monitorowa, do sprawdzenia, uwaga:</em></span>
+      </div>
+
+      <div style="border-top:1px solid #21262d;margin-top:8px;padding-top:8px;font-size:11px;color:#6b7280">
+        💡 <strong style="color:#9ca3af">Wynik przeglądu</strong> jest ustalany automatycznie:<br>
+        usterki + naprawy → <span style="color:#f59e0b">Sprawny z uwagami</span> &nbsp;|&nbsp;
+        usterki bez napraw → <span style="color:#ef4444">Niesprawny</span> &nbsp;|&nbsp;
+        brak usterek → <span style="color:#22c55e">Sprawny</span><br><br>
+        💡 <strong style="color:#9ca3af">Ważne:</strong> myślnik musi mieć spację po sobie: <code style="background:#1f2937;padding:1px 4px;border-radius:3px">- usterka</code> ✅ &nbsp; <code style="background:#1f2937;padding:1px 4px;border-radius:3px">-usterka</code> ❌
+      </div>
     </div>
 
     <!-- Textarea notatek -->
@@ -5528,7 +5596,7 @@ function _doGeneratePDF(p) {
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_zalecenia" checked style="accent-color:#a78bfa"> Zalecenia</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_nieprawidlowosci" checked style="accent-color:#a78bfa"> Nieprawidłowości</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_zalecenieNieprawidl" checked style="accent-color:#a78bfa"> Zalecenia do nieprawidłowości</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_czesciZamienne" checked style="accent-color:#a78bfa"> Części zamienne</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_czesciZamienne" checked style="accent-color:#a78bfa"> Części zamienne → Adnotacje biuro</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_infoKolejnySerwis" checked style="accent-color:#a78bfa"> Info do kolejnego serwisu</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_wynik" checked style="accent-color:#a78bfa"> Wynik przeglądu</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db;cursor:pointer"><input type="checkbox" id="aiCb_modelCentrali" style="accent-color:#a78bfa"> Model centrali</label>
@@ -5570,14 +5638,20 @@ function openAiNotatki() {
   document.getElementById('aiPodglad').style.display = 'none';
   document.getElementById('aiWypelnijBtn').style.display = 'none';
   document.getElementById('aiStatus').textContent = '';
+  document.getElementById('aiInfoPanel').style.display = 'none';
   _aiWynikJSON = null;
+}
+
+function toggleAiInfo() {
+  const p = document.getElementById('aiInfoPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
 }
 
 function closeAiNotatki() {
   document.getElementById('aiNotatkiModal').style.display = 'none';
 }
 
-async function aiAnalizuj() {
+function aiAnalizuj() {
   const notatki = document.getElementById('aiNotatkiInput').value.trim();
   if (!notatki) { document.getElementById('aiStatus').textContent = '⚠️ Wklej najpierw notatki'; return; }
 
@@ -5585,95 +5659,142 @@ async function aiAnalizuj() {
   const status = document.getElementById('aiStatus');
   btn.disabled = true;
   btn.textContent = '⏳ Analizuję...';
-  status.textContent = 'Łączenie z AI...';
+  status.textContent = 'Parsowanie notatek...';
   document.getElementById('aiPodglad').style.display = 'none';
   document.getElementById('aiWypelnijBtn').style.display = 'none';
   _aiWynikJSON = null;
 
   // Zbierz które pola mają być wypełnione
   const pola = {
-    obiekt:             document.getElementById('aiCb_obiekt').checked,
-    usterki:            document.getElementById('aiCb_usterki').checked,
-    zalecenia:          document.getElementById('aiCb_zalecenia').checked,
-    nieprawidlowosci:   document.getElementById('aiCb_nieprawidlowosci').checked,
-    zalecenieNieprawidl:document.getElementById('aiCb_zalecenieNieprawidl').checked,
-    czesciZamienne:     document.getElementById('aiCb_czesciZamienne').checked,
-    infoKolejnySerwis:  document.getElementById('aiCb_infoKolejnySerwis').checked,
-    wynik:              document.getElementById('aiCb_wynik').checked,
-    modelCentrali:      document.getElementById('aiCb_modelCentrali').checked,
-    lokalizacjaCentral: document.getElementById('aiCb_lokalizacja').checked,
+    obiekt:              document.getElementById('aiCb_obiekt').checked,
+    usterki:             document.getElementById('aiCb_usterki').checked,
+    zalecenia:           document.getElementById('aiCb_zalecenia').checked,
+    nieprawidlowosci:    document.getElementById('aiCb_nieprawidlowosci').checked,
+    zalecenieNieprawidl: document.getElementById('aiCb_zalecenieNieprawidl').checked,
+    czesciZamienne:      document.getElementById('aiCb_czesciZamienne').checked,
+    infoKolejnySerwis:   document.getElementById('aiCb_infoKolejnySerwis').checked,
+    wynik:               document.getElementById('aiCb_wynik').checked,
+    modelCentrali:       document.getElementById('aiCb_modelCentrali').checked,
+    lokalizacjaCentral:  document.getElementById('aiCb_lokalizacja').checked,
   };
 
-  const aktywne = Object.keys(pola).filter(k => pola[k]);
-  const typInstalacji = (document.getElementById('typInstalacji') || {}).value || '';
-  const rodzaj = (document.getElementById('rodzajPrzegladu') || {}).value || '';
-
-  const systemPrompt = `Jesteś asystentem technicznym firmy serwisowej zajmującej się instalacjami przeciwpożarowymi i bezpieczeństwa (SSP, DSO, DSG, oddymianie, SUG itp.).
-Twoim zadaniem jest przeanalizowanie surowych notatek z wizyty serwisowej i wyekstrahowanie z nich ustrukturyzowanych informacji do protokołu serwisowego.
-
-Odpowiedz WYŁĄCZNIE poprawnym JSON-em bez żadnego tekstu przed ani po. Bez komentarzy, bez markdown, bez backtick. Sam JSON.
-
-Pola do wypełnienia (tylko te które są w tablicy aktywnych pól):
-- obiekt: nazwa/adres obiektu (string)
-- usterki: opis usterek/uszkodzeń znalezionych podczas wizyty (string, może być wieloliniowy)
-- zalecenia: zalecenia dotyczące napraw usterek (string)
-- nieprawidlowosci: nieprawidłowości nie będące awariami (string)
-- zalecenieNieprawidl: zalecenia do nieprawidłowości (string)
-- czesciZamienne: użyte/wymienione części i materiały (string)
-- infoKolejnySerwis: co sprawdzić przy kolejnej wizycie, uwagi dla kolejnego serwisanta (string)
-- wynik: jeden z: "Sprawny" / "Sprawny z uwagami" / "Niesprawny" (string)
-- modelCentrali: model/marka centrali lub urządzenia głównego (string)
-- lokalizacjaCentral: lokalizacja centrali w budynku (string)
-
-Zasady:
-1. Jeśli informacja nie wynika z notatek — zwróć null dla tego pola (nie wymyślaj)
-2. Usterki i nieprawidłowości przepisuj dokładnie, zachowaj szczegóły techniczne
-3. Wynik: jeśli notatki mówią że "wszystko sprawne", "sprawdzono OK" itp → "Sprawny z uwagami" (bo była usterka, ale naprawiona). Jeśli są nienaprawione problemy → "Niesprawny". Jeśli wszystko OK bez uwag → "Sprawny"
-4. Tekst pisz po polsku, profesjonalnie ale zwięźle
-5. Zwróć tylko pola z tablicy aktywnych: ${JSON.stringify(aktywne)}`;
-
-  const userPrompt = `Typ instalacji: ${typInstalacji || 'nieznany'}
-Rodzaj wizyty: ${rodzaj || 'nieznany'}
-
-NOTATKI Z WIZYTY:
----
-${notatki}
----
-
-Wyekstrahuj dane do JSON. Aktywne pola: ${JSON.stringify(aktywne)}`;
-
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    });
-
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const raw = (data.content || []).map(b => b.text || '').join('');
-
-    // Parsuj JSON — obsłuż ewentualne backticki
-    let clean = raw.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-    _aiWynikJSON = JSON.parse(clean);
-
-    // Pokaż podgląd
+    _aiWynikJSON = parseNotatkiLokalnie(notatki, pola);
     aiPokazPodglad(_aiWynikJSON);
-    status.textContent = '✅ Analiza zakończona — sprawdź podgląd i kliknij Wypełnij';
+    status.textContent = '✅ Gotowe — sprawdź podgląd i kliknij Wypełnij';
     document.getElementById('aiWypelnijBtn').style.display = 'block';
-
   } catch(err) {
-    status.textContent = '❌ Błąd: ' + err.message;
-    console.error('AI notatki error:', err);
+    status.textContent = '❌ Błąd parsowania: ' + err.message;
   } finally {
     btn.disabled = false;
-    btn.textContent = '🤖 Analizuj notatki';
+    btn.textContent = '🔍 Analizuj notatki';
   }
+}
+
+// ─── PARSER NOTATEK SERWISOWYCH (lokalny, bez API) ───────────────────────────
+function parseNotatkiLokalnie(tekst, pola) {
+  const linie = tekst.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const wynik = {};
+
+  const RE_USTERKA     = /uszkodz|usterka|awaria|nie dzia[łl]a|niesprawny|zwarcie|brak zasil|przepal|defekt|fault|nie reaguje|brak sygnału|brak sygnalu|nie świeci|nie swieci|nie otwiera|nie zamyka|blokada|zwart|nie wykrywa/i;
+  const RE_NAPRAWA     = /wymienion|naprawion|poprawion|wyczyszczon|skonfigurowa|zaprogramowan|uruchomion|uzupełnion|dokręcon|dokrecono|usunięto|usunieto|zainstalowa|wymienio|wyregulowa|zresetowa|przeprogramowa|zaktualizowa|skalibrowa/i;
+  const RE_WYKONANO    = /sprawdzono|przetestowano|zweryfikowano|skontrolowano|wykonano|przeprowadzono/i;
+  const RE_CZESC       = /rezystor|bezpiecznik|akumulator|baterię|baterie|czujk[aęi]|moduł|modul|kabel|przewód|przewod|złącze|zlacze|diod|kondensator|przekaźnik|przekaznik|zawór|zawor|przycisk|głośnik|glosnik|mikrofon|zasilacz|transformator|gniazdo|listwa|płyta|plyta/i;
+  const RE_MODEL       = /\b(satel|polon|bosch|esser|notifier|honeywell|siemens|texecom|paradox|ajax|jablotron|aritech|hochiki|apollo|kidde|fike|cerberus|gazex|asg|senco|detektofon|compur|ropam|DSC|visonic|pyronix|bentel|inim|morley|kentec|advanced|haes|zeta)\b/i;
+  const RE_LOKALIZACJA = /piwnic|serwerown|klatk|portierni|recepcj|centrali|rozdzielni|techniczn|garaż|garazu|dach|piętro|pietro|kondygn|korytarz|hol\b|hall|magazyn|kotłown|kotlown/i;
+  const RE_INFO_KOLEJNY= /kolejn|następn|nastepn|monitorowa|obserwowa|uwaga:|pilnow|do sprawdzenia|przypomn|wymaga uwagi/i;
+  const RE_PREFIKS     = /^[-–—•*]\s+/;
+  const RE_PODPUNKT    = /^[-–—]{2}\s+/;
+
+  // Sklasyfikuj każdą linię
+  const sklasyfikowane = linie.map(function(linia, idx) {
+    const jestPodpunkt = RE_PODPUNKT.test(linia);
+    const jestPunkt    = !jestPodpunkt && RE_PREFIKS.test(linia);
+    const bezPref      = linia.replace(/^[-–—•*]+\s*/, '');
+    let typ = 'info';
+
+    if (jestPodpunkt) {
+      // -- linie to zazwyczaj wykonane czynności / szczegóły naprawy
+      if (RE_USTERKA.test(bezPref) && !RE_NAPRAWA.test(bezPref) && !RE_WYKONANO.test(bezPref)) typ = 'usterka';
+      else typ = 'czynnosc';
+    } else if (jestPunkt) {
+      // - linie to zazwyczaj problemy / usterki
+      if (RE_NAPRAWA.test(bezPref) || RE_WYKONANO.test(bezPref)) typ = 'czynnosc';
+      else typ = 'usterka';
+    } else {
+      // zwykłe linie
+      if (idx === 0) typ = 'naglowek';
+      else if (RE_INFO_KOLEJNY.test(bezPref)) typ = 'kolejny';
+      else if (RE_USTERKA.test(bezPref) && !RE_NAPRAWA.test(bezPref)) typ = 'usterka';
+      else if (RE_NAPRAWA.test(bezPref) || RE_WYKONANO.test(bezPref)) typ = 'czynnosc';
+      else typ = 'info';
+    }
+    return { typ: typ, tekst: bezPref };
+  });
+
+  if (pola.obiekt) {
+    var nagl = sklasyfikowane.find(function(l){ return l.typ === 'naglowek'; });
+    if (nagl) wynik.obiekt = nagl.tekst;
+  }
+
+  if (pola.usterki) {
+    var us = sklasyfikowane.filter(function(l){ return l.typ === 'usterka'; }).map(function(l){ return l.tekst; });
+    if (us.length) wynik.usterki = us.join('\n');
+  }
+
+  if (pola.zalecenia) {
+    var czyn = sklasyfikowane.filter(function(l){
+      return l.typ === 'czynnosc' && !/wszystko sprawne|wszystko ok|sprawdzone ok/i.test(l.tekst);
+    }).map(function(l){ return l.tekst; });
+    if (czyn.length) wynik.zalecenia = czyn.map(function(t,i){ return (i+1)+'. '+t; }).join('\n');
+  }
+
+  if (pola.nieprawidlowosci) {
+    var niepraw = sklasyfikowane.filter(function(l){
+      return /nieprawidłow|niezgodność|brak dokument|nie posiada|wymaga regulacji|źle|zle|niepoprawnie|nieprawidl/i.test(l.tekst);
+    }).map(function(l){ return l.tekst; });
+    if (niepraw.length) wynik.nieprawidlowosci = niepraw.join('\n');
+  }
+
+  if (pola.czesciZamienne) {
+    var cz = sklasyfikowane.filter(function(l){
+      return RE_CZESC.test(l.tekst) && (RE_NAPRAWA.test(l.tekst) || l.typ === 'czynnosc');
+    }).map(function(l){ return l.tekst; });
+    if (cz.length) wynik.czesciZamienne = cz.join('\n');
+  }
+
+  if (pola.infoKolejnySerwis) {
+    var kol = sklasyfikowane.filter(function(l){ return l.typ === 'kolejny'; }).map(function(l){ return l.tekst; });
+    if (kol.length) wynik.infoKolejnySerwis = kol.join('\n');
+  }
+
+  if (pola.modelCentrali) {
+    for (var mi = 0; mi < sklasyfikowane.length; mi++) {
+      var mm = sklasyfikowane[mi].tekst.match(RE_MODEL);
+      if (mm) { wynik.modelCentrali = mm[0]; break; }
+    }
+  }
+
+  if (pola.lokalizacjaCentral) {
+    var lok = sklasyfikowane.find(function(l){ return RE_LOKALIZACJA.test(l.tekst) && l.typ !== 'naglowek'; });
+    if (lok) wynik.lokalizacjaCentral = lok.tekst;
+  }
+
+  if (pola.wynik) {
+    var tekstL = tekst.toLowerCase();
+    var maNiesprawne   = sklasyfikowane.some(function(l){ return l.typ === 'usterka'; });
+    var maNaprawy      = sklasyfikowane.some(function(l){ return l.typ === 'czynnosc'; });
+    var maOK           = /wszystko sprawne|wszystko ok|sprawdzone ok|bez usterek|brak usterek|system sprawny/i.test(tekstL);
+    var maNienaprawione= /nie naprawion|czeka na część|czeka na czesc|oczekuje na|brak części|brak czesci/i.test(tekstL);
+
+    if (maNienaprawione) wynik.wynik = 'Niesprawny';
+    else if (maNiesprawne && (maNaprawy || maOK)) wynik.wynik = 'Sprawny z uwagami';
+    else if (maNiesprawne) wynik.wynik = 'Niesprawny';
+    else if (maOK || maNaprawy) wynik.wynik = 'Sprawny z uwagami';
+    else wynik.wynik = 'Sprawny';
+  }
+
+  return wynik;
 }
 
 function aiPokazPodglad(wynik) {
@@ -5681,7 +5802,7 @@ function aiPokazPodglad(wynik) {
   const LABELS = {
     obiekt: 'Obiekt', usterki: 'Usterki', zalecenia: 'Zalecenia',
     nieprawidlowosci: 'Nieprawidłowości', zalecenieNieprawidl: 'Zalecenia do nieprawidłowości',
-    czesciZamienne: 'Części zamienne', infoKolejnySerwis: 'Info do kolejnego serwisu',
+    czesciZamienne: 'Części zamienne → Adnotacje biuro', infoKolejnySerwis: 'Info do kolejnego serwisu',
     wynik: 'Wynik przeglądu', modelCentrali: 'Model centrali', lokalizacjaCentral: 'Lokalizacja centrali',
   };
   const WYNIK_COLOR = { 'Sprawny':'#22c55e', 'Sprawny z uwagami':'#f59e0b', 'Niesprawny':'#ef4444' };
@@ -5724,10 +5845,23 @@ function aiWypelnij() {
   if (_aiWynikJSON.zalecenia)           set('zalecenia', _aiWynikJSON.zalecenia);
   if (_aiWynikJSON.nieprawidlowosci)    set('nieprawidlowosci', _aiWynikJSON.nieprawidlowosci);
   if (_aiWynikJSON.zalecenieNieprawidl) set('zalecenieNieprawidl', _aiWynikJSON.zalecenieNieprawidl);
-  if (_aiWynikJSON.czesciZamienne)      set('czesciZamienne', _aiWynikJSON.czesciZamienne);
   if (_aiWynikJSON.infoKolejnySerwis)   set('infoKolejnySerwis', _aiWynikJSON.infoKolejnySerwis);
   if (_aiWynikJSON.modelCentrali)       set('modelCentrali', _aiWynikJSON.modelCentrali);
   if (_aiWynikJSON.lokalizacjaCentral)  set('lokalizacjaCentral', _aiWynikJSON.lokalizacjaCentral);
+
+  // Części zamienne → adnotacje do biura z dopiskiem
+  if (_aiWynikJSON.czesciZamienne) {
+    const el = document.getElementById('adnotacjeBiuro');
+    if (el) {
+      const prefix = 'Użyte części zamienne: ' + _aiWynikJSON.czesciZamienne;
+      if (tryb === 'uzupelnij' && el.value && el.value.trim()) {
+        // Dopisz do istniejących adnotacji
+        el.value = el.value.trim() + '\n' + prefix;
+      } else if (tryb === 'nadpisz' || !el.value.trim()) {
+        el.value = prefix;
+      }
+    }
+  }
 
   // Wynik przeglądu — select wymaga osobnej obsługi
   if (_aiWynikJSON.wynik) {
