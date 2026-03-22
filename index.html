@@ -1325,14 +1325,16 @@ function showScreen(name) {
   if(name==='biuro'){ biuroRender(); }
   if(name==='planer'){
     planerMigrateWpisy();
-    // Załaduj harmCache i od razu renderuj
-    harmLoad(function() {
-      planerRender();
-      // Synchronizuj wpisy planera w tle
-      const url = localStorage.getItem('serverUrl');
-      if (url) {
-        planerLoadFromServer(function() { planerRender(); });
-      }
+    // Załaduj osoby/auta/kategorie z serwera (jeśli są nowsze), potem harmCache i wpisy
+    planerLoadKonfigFromServer(function() {
+      harmLoad(function() {
+        planerRender();
+        // Synchronizuj wpisy planera w tle
+        const url = localStorage.getItem('serverUrl');
+        if (url) {
+          planerLoadFromServer(function() { planerRender(); });
+        }
+      });
     });
     // Auto-refresh co 60s na desktopie
     if (planerIsDesktop()) {
@@ -3695,11 +3697,43 @@ function planerMigrateWpisy() {
   if (changed) plSaveWpisy(wpisy);
 }
 
-function plSaveKat(v)   { localStorage.setItem(PL_SK_KAT, JSON.stringify(v)); }
-function plSaveOsoby(v) { localStorage.setItem(PL_SK_OSOBY, JSON.stringify(v)); }
-function plSaveAuta(v)  { localStorage.setItem(PL_SK_AUTA, JSON.stringify(v)); }
+function plSaveKat(v)   { localStorage.setItem(PL_SK_KAT, JSON.stringify(v));   plSyncKonfig('pl_kategorie', v); }
+function plSaveOsoby(v) { localStorage.setItem(PL_SK_OSOBY, JSON.stringify(v)); plSyncKonfig('pl_osoby', v); }
+function plSaveAuta(v)  { localStorage.setItem(PL_SK_AUTA, JSON.stringify(v));  plSyncKonfig('pl_auta', v); }
 function plSaveWpisy(v) {
   localStorage.setItem(PL_SK_WPISY, JSON.stringify(v));
+}
+
+// Generyczny zapis klucza do GAS _KONFIGURACJA
+function plSyncKonfig(klucz, wartość) {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  const cbName = 'cb_konf_' + Date.now();
+  window[cbName] = function() { delete window[cbName]; };
+  const s = document.createElement('script');
+  s.src = url + '?saveKonfig=' + encodeURIComponent(klucz) + '&val=' + encodeURIComponent(JSON.stringify(wartość)) + '&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
+// Załaduj osoby/auta/kategorie z serwera przy starcie planera
+function planerLoadKonfigFromServer(callback) {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) { if (callback) callback(); return; }
+  const cbName = 'cb_konfload_' + Date.now();
+  const timer = setTimeout(function() { delete window[cbName]; if (callback) callback(); }, 6000);
+  window[cbName] = function(res) {
+    clearTimeout(timer);
+    delete window[cbName];
+    if (res && res.status === 'ok' && res.data) {
+      if (res.data.pl_osoby    && Array.isArray(res.data.pl_osoby))    localStorage.setItem(PL_SK_OSOBY, JSON.stringify(res.data.pl_osoby));
+      if (res.data.pl_auta     && Array.isArray(res.data.pl_auta))     localStorage.setItem(PL_SK_AUTA,  JSON.stringify(res.data.pl_auta));
+      if (res.data.pl_kategorie && Array.isArray(res.data.pl_kategorie)) localStorage.setItem(PL_SK_KAT, JSON.stringify(res.data.pl_kategorie));
+    }
+    if (callback) callback();
+  };
+  const s = document.createElement('script');
+  s.src = url + '?getKonfig=pl_osoby,pl_auta,pl_kategorie&callback=' + cbName;
+  document.body.appendChild(s);
 }
 
 // Zapisz jeden dzień na serwer (merge — nie nadpisuje innych dni)
