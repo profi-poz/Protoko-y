@@ -1000,26 +1000,26 @@ const CL = {
     {id:'ssp_uta',       l:'Czy jest UTA',                                               n:'Urządzenie transmisji alarmu – obecność',                 scope:'all'},
     {id:'ssp_ksiazka',   l:'Czy jest książka eksploatacji',                              n:'Obecność i aktualność książki eksploatacji',              scope:'all'},
 
-    {id:'ssp_k1',  l:'Zapisy w książce eksploatacji / dzienniku pracy',                  n:'Sprawdzono wszystkie zapisy',                             scope:'k'},
-    {id:'ssp_k2',  l:'Sprawdzono zadziałanie co najmniej jednej czujki i ręcznego ostrzegacza pożarowego w każdej strefie',                    n:'Co najmniej jedna czujka i ROP na strefę',                scope:'k'},
-    {id:'ssp_k3',  l:'Poprawność zadziałania scenariusza pożarowego',                    n:'Dla zadziałania czujki i ROP',                            scope:'k'},
-    {id:'ssp_k4',  l:'Sygnalizowanie uszkodzeń centrali',                                n:'Sprawdzono poprawność działania',                         scope:'k'},
-    {id:'ssp_k5',  l:'Uaktywnianie wszystkich funkcji wykonawczych',                     n:'Sprawdzono zdolność centrali',                            scope:'k'},
-    {id:'ssp_k6',  l:'Powiadamianie PSP / centrum powiadamiania',                        n:'Sprawdzono poprawność powiadamiania',                     scope:'k'},
-    {id:'ssp_k7',  l:'Test automatyczny / załączenie ręczne urządzenia',                 n:'Sprawdzono poprawność pracy',                             scope:'k'},
-    {id:'ssp_k8',  l:'Kontrola ROP – wyzwolenie ręczne',                                 n:'Kontrola wszystkich przycisków ROP',                      scope:'k'},
-    {id:'ssp_k9',  l:'Kontrola czujek dymu – gaz testowy',                               n:'Wyzwolenie gazem testowym',                               scope:'k'},
-    {id:'ssp_k10', l:'Test wszystkich pętli funkcją testowania w centrali',              n:'Wykonano test',                                           scope:'k'},
-    {id:'ssp_k11', l:'Inne kontrole zlecone przez wykonawcę / producenta',               n:'Przeprowadzono wszystkie inne próby',                     scope:'k'},
-    {id:'ssp_k12', l:'Zapis w książce eksploatacji',                                     n:'Dokonano wpisu',                                          scope:'k'},
+    {id:'ssp_k1',  l:'Sprawdzono zapisy w książce eksploatacji / dzienniku pracy systemu',                                                             n:'Sprawdzono wszystkie zapisy',                             scope:'k'},
+    {id:'ssp_k2',  l:'Sprawdzono zadziałanie co najmniej jednej czujki i ROP w każdej strefie',                                                        n:'Co najmniej jedna czujka i ROP na strefę',                scope:'k'},
+    {id:'ssp_k3',  l:'Sprawdzono poprawność zadziałania scenariusza pożarowego dla zadziałania czujki i ROP',                                          n:'Dla zadziałania czujki i ROP',                            scope:'k'},
+    {id:'ssp_k4',  l:'Sprawdzono czy sygnalizowanie uszkodzeń centrali działa poprawnie',                                                              n:'Sprawdzono poprawność działania',                         scope:'k'},
+    {id:'ssp_k5',  l:'Sprawdzono zdolności centrali do uaktywniania wszystkich funkcji wykonawczych systemu',                                          n:'Sprawdzono zdolność centrali',                            scope:'k'},
+    {id:'ssp_k6',  l:'Sprawdzono poprawność powiadamiania PSP lub centrum powiadamiania o zaistniałym zagrożeniu',                                     n:'Sprawdzono poprawność powiadamiania',                     scope:'k'},
+    {id:'ssp_k7',  l:'Sprawdzono poprawność pracy urządzenia poprzez załączenie ręczne lub test automatyczny',                                         n:'Sprawdzono poprawność pracy',                             scope:'k'},
+    {id:'ssp_k8',  l:'Kontrola przycisków ROP przez wyzwolenie ręczne',                                                                               n:'Kontrola wszystkich przycisków ROP',                      scope:'k'},
+    {id:'ssp_k9',  l:'Kontrola czujek dymu przez wyzwolenie gazem testowym',                                                                          n:'Wyzwolenie gazem testowym',                               scope:'k'},
+    {id:'ssp_k10', l:'Wykonano test wszystkich pętli za pomocą funkcji testowania w centrali',                                                         n:'Wykonano test',                                           scope:'k'},
+    {id:'ssp_k11', l:'Przeprowadzono wszystkie inne kontrole i próby zlecone przez wykonawcę, dostawcę lub producenta',                                n:'Przeprowadzono wszystkie inne próby',                     scope:'k'},
+    {id:'ssp_k12', l:'Dokonano zapisu w książce eksploatacji',                                                                                         n:'Dokonano wpisu',                                          scope:'k'},
 
-    {id:'ssp_p1',  l:'Test wskaźników optycznych i akustycznych centrali',               n:'Przeprowadzono test',                                     scope:'p'},
-    {id:'ssp_p2',  l:'Nadzorowanie uszkodzeń linii dozorowych i zasilania',              n:'Sprawdzono reakcję na uszkodzenia',                       scope:'p'},
-    {id:'ssp_p3',  l:'Rozpoznanie zmian budowlanych wpływających na rozmieszczenie czujek', n:'Dokonano rozpoznania',                                 scope:'p'},
+    {id:'ssp_p1',  l:'Przeprowadzono test wskaźników optycznych i akustycznych w centrali',                                                            n:'Przeprowadzono test',                                     scope:'p'},
+    {id:'ssp_p2',  l:'Sprawdzono czy nadzorowanie uszkodzeń centrali działa poprawnie, czy centrala reaguje na uszkodzenia linii dozorowych i zasilania', n:'Sprawdzono reakcję na uszkodzenia',                    scope:'p'},
+    {id:'ssp_p3',  l:'Dokonano rozpoznania czy nastąpiły zmiany budowlane mogące wpłynąć na poprawność rozmieszczenia czujek i ROP',                   n:'Dokonano rozpoznania',                                    scope:'p'},
 
-    {id:'ssp_r1',  l:'Połączenia kablowe i stan mechaniczny urządzeń centrali',          n:'Sprawdzono poprawność połączeń',                          scope:'r'},
-    {id:'ssp_r2',  l:'Badanie wszystkich baterii i akumulatorów',                        n:'Sprawdzono i przeprowadzono badanie',                     scope:'r'},
-    {id:'ssp_r3',  l:'Próby sprawności systemu na zasilaniu awaryjnym',                  n:'Przeprowadzono próby',                                    scope:'r'},
+    {id:'ssp_r1',  l:'Sprawdzono poprawność połączeń kablowych oraz czy urządzenia centrali nie są uszkodzone mechanicznie',                           n:'Sprawdzono poprawność połączeń',                          scope:'r'},
+    {id:'ssp_r2',  l:'Sprawdzono i przeprowadzono badanie wszystkich baterii i akumulatorów',                                                          n:'Sprawdzono i przeprowadzono badanie',                     scope:'r'},
+    {id:'ssp_r3',  l:'Przeprowadzono próby sprawności działania systemu na zasilaniu awaryjnym',                                                       n:'Przeprowadzono próby',                                    scope:'r'},
   ],
 
   DSO: [
@@ -1028,79 +1028,79 @@ const CL = {
     {id:'dso_uta',       l:'Czy jest UTA',                                               n:'Urządzenie transmisji alarmu – obecność',                 scope:'all'},
     {id:'dso_ksiazka',   l:'Czy jest książka eksploatacji',                              n:'Obecność i aktualność książki eksploatacji',              scope:'all'},
 
-    {id:'dso_k1',  l:'Zapisy w książce eksploatacji / dzienniku pracy',                  n:'Sprawdzono zapisy',                                       scope:'k'},
-    {id:'dso_k2',  l:'Wywiad z obsługą – uwagi co do pracy systemu',                     n:'Przeprowadzono wywiad',                                   scope:'k'},
-    {id:'dso_k3',  l:'Stan elementów szafy sterującej – uszkodzenia mechaniczne',        n:'Sprawdzono mechanicznie',                                 scope:'k'},
-    {id:'dso_k4',  l:'Sygnalizowanie stanu pracy na urządzeniach w szafie rack',         n:'Sprawdzono stan sygnalizacji',                            scope:'k'},
-    {id:'dso_k5',  l:'Poprawność połączeń DSO z SSP',                                    n:'Sprawdzono integrację',                                   scope:'k'},
-    {id:'dso_k6',  l:'Komunikat słowny słyszalny w deklarowanej strefie',                n:'Wszystkie strefy sprawdzone',                             scope:'k'},
-    {id:'dso_k7',  l:'Zdolność systemu do włączania elementów obocznych',                n:'Sprawdzono',                                             scope:'k'},
-    {id:'dso_k8',  l:'Wzmacniacz rezerwowy przy wyłączeniu podstawowego',                n:'Sprawdzono poprawność zadziałania',                       scope:'k'},
-    {id:'dso_k9',  l:'Sygnalizowanie uszkodzeń na liniach głośnikowych',                 n:'Sprawdzono poprawność',                                   scope:'k'},
-    {id:'dso_k10', l:'Poprawność działania 25% głośników w obiekcie',                   n:'Sprawdzono',                                             scope:'k'},
-    {id:'dso_k11', l:'Inne kontrole zlecone przez wykonawcę / producenta',               n:'Przeprowadzono wszystkie inne próby',                     scope:'k'},
+    {id:'dso_k1',  l:'Sprawdzono zapisy w książce eksploatacji / dzienniku pracy systemu',                                                                         n:'Sprawdzono zapisy',                                       scope:'k'},
+    {id:'dso_k2',  l:'Przeprowadzono wywiad z obsługą na temat uwag co do pracy systemu',                                                                          n:'Przeprowadzono wywiad',                                   scope:'k'},
+    {id:'dso_k3',  l:'Sprawdzono stan elementów w szafie sterującej pod kątem uszkodzeń mechanicznych',                                                            n:'Sprawdzono mechanicznie',                                 scope:'k'},
+    {id:'dso_k4',  l:'Sprawdzono stan sygnalizowania stanu pracy systemu na urządzeniach sygnalizacyjnych w szafie rack',                                           n:'Sprawdzono stan sygnalizacji',                            scope:'k'},
+    {id:'dso_k5',  l:'Sprawdzono poprawność połączeń DSO z SSP',                                                                                                   n:'Sprawdzono integrację',                                   scope:'k'},
+    {id:'dso_k6',  l:'Sprawdzono czy komunikat słowny nadawany z deklarowanej strefy jest w niej słyszalny – wszystkie strefy',                                     n:'Wszystkie strefy sprawdzone',                             scope:'k'},
+    {id:'dso_k7',  l:'Sprawdzono zdolność systemu do włączania wszystkich elementów obocznych w obiekcie',                                                          n:'Sprawdzono',                                              scope:'k'},
+    {id:'dso_k8',  l:'Sprawdzono poprawność zadziałania wzmacniacza rezerwowego w momencie wyłączenia wzmacniacza podstawowego',                                    n:'Sprawdzono poprawność zadziałania',                       scope:'k'},
+    {id:'dso_k9',  l:'Sprawdzono poprawność sygnalizowania przez system uszkodzeń występujących na liniach głośnikowych',                                           n:'Sprawdzono poprawność',                                   scope:'k'},
+    {id:'dso_k10', l:'Sprawdzono poprawność działania 25% głośników zainstalowanych w obiekcie',                                                                   n:'Sprawdzono',                                              scope:'k'},
+    {id:'dso_k11', l:'Przeprowadzono wszystkie inne kontrole i próby zlecone przez wykonawcę, dostawcę lub producenta',                                             n:'Przeprowadzono wszystkie inne próby',                     scope:'k'},
 
-    {id:'dso_p1',  l:'Stan złączy, zamocowań i połączeń kablowych',                      n:'Sprawdzono',                                             scope:'p'},
-    {id:'dso_p2',  l:'Działanie wszystkich lampek i wyświetlaczy w szafie RACK',         n:'Sprawdzono',                                             scope:'p'},
-    {id:'dso_p3',  l:'Test akumulatorów',                                                n:'Wykonano test',                                           scope:'p'},
-    {id:'dso_p4',  l:'Stan połączeń układu zasilającego i połączenia ochronnego',        n:'Sprawdzono',                                             scope:'p'},
-    {id:'dso_p5',  l:'Komunikaty alarmowe w czasie < 30s od zaniku napięcia',            n:'Sprawdzono zdolność',                                     scope:'p'},
-    {id:'dso_p6',  l:'Praca na zasilaniu awaryjnym – pełny zakres funkcji',              n:'Odłączono zasilanie, sprawdzono wszystkie funkcje',       scope:'p'},
-    {id:'dso_p7',  l:'Poprawność komunikatów alarmowych',                                n:'Sprawdzono',                                             scope:'p'},
-    {id:'dso_p8',  l:'Sygnalizowanie uszkodzeń w czasie < 100s',                         n:'Sprawdzono zdolność',                                     scope:'p'},
-    {id:'dso_p9',  l:'Poprawność działania 50% głośników w obiekcie',                   n:'Sprawdzono',                                             scope:'p'},
+    {id:'dso_p1',  l:'Sprawdzono stan złączy, zamocowań i połączeń kablowych między urządzeniami',                                                                  n:'Sprawdzono',                                              scope:'p'},
+    {id:'dso_p2',  l:'Sprawdzono działanie wszystkich lampek i wyświetlaczy w szafie RACK',                                                                         n:'Sprawdzono',                                              scope:'p'},
+    {id:'dso_p3',  l:'Wykonano test akumulatorów',                                                                                                                  n:'Wykonano test',                                           scope:'p'},
+    {id:'dso_p4',  l:'Sprawdzono stan połączeń układu zasilającego oraz poprawność połączenia ochronnego',                                                          n:'Sprawdzono',                                              scope:'p'},
+    {id:'dso_p5',  l:'Sprawdzono zdolność systemu do odtwarzania komunikatów alarmowych w czasie krótszym niż 30s od zaniku napięcia podstawowego',                 n:'Sprawdzono zdolność',                                     scope:'p'},
+    {id:'dso_p6',  l:'Odłączono zasilanie podstawowe systemu i sprawdzono: realizowanie funkcji alarmowych, poprawność mikrofonu strażaka, wyłączanie systemów obocznych, sygnalizowanie zaniku napięcia', n:'Odłączono zasilanie, sprawdzono wszystkie funkcje',       scope:'p'},
+    {id:'dso_p7',  l:'Sprawdzono poprawność komunikatów alarmowych',                                                                                                n:'Sprawdzono',                                              scope:'p'},
+    {id:'dso_p8',  l:'Sprawdzono zdolność systemu do sygnalizowania uszkodzeń w czasie krótszym niż 100s',                                                          n:'Sprawdzono zdolność',                                     scope:'p'},
+    {id:'dso_p9',  l:'Sprawdzono poprawność działania 50% głośników zainstalowanych w obiekcie',                                                                   n:'Sprawdzono',                                              scope:'p'},
 
-    {id:'dso_r1',  l:'Czyszczenie i odkurzenie szafy RACK oraz mikrofonu',               n:'Dokonano',                                               scope:'r'},
-    {id:'dso_r2',  l:'Pomiar pojemności akumulatorów',                                   n:'Wykonano pomiar',                                         scope:'r'},
-    {id:'dso_r3',  l:'Stan połączeń układu zasilającego i ochronnego',                   n:'Sprawdzono',                                             scope:'r'},
-    {id:'dso_r4',  l:'Wzmacniacz rezerwowy przy wyłączeniu podstawowego',                n:'Sprawdzono',                                             scope:'r'},
-    {id:'dso_r5',  l:'Zgodność impedancji linii głośnikowych z dokumentacją',            n:'Sprawdzono',                                             scope:'r'},
-    {id:'dso_r6',  l:'Poprawność działania 100% głośników w obiekcie',                  n:'Sprawdzono w ciągu roku',                                 scope:'r'},
-    {id:'dso_r7',  l:'Zmiany aranżacji mogące wpłynąć na działanie systemu',             n:'Sprawdzono czy nastąpiły',                               scope:'r'},
-    {id:'dso_r8',  l:'Pomiary zrozumiałości mowy i ciśnienia akustycznego',              n:'Przeprowadzono w reprezentatywnych miejscach',            scope:'r'},
+    {id:'dso_r1',  l:'Dokonano czyszczenia i odkurzenia szafy RACK, urządzeń w niej zainstalowanych oraz mikrofonu',                                                n:'Dokonano',                                                scope:'r'},
+    {id:'dso_r2',  l:'Wykonano pomiar pojemności akumulatorów',                                                                                                     n:'Wykonano pomiar',                                         scope:'r'},
+    {id:'dso_r3',  l:'Sprawdzono stan połączeń układu zasilającego oraz poprawność połączenia ochronnego',                                                          n:'Sprawdzono',                                              scope:'r'},
+    {id:'dso_r4',  l:'Sprawdzono poprawność zadziałania wzmacniacza rezerwowego w momencie wyłączenia wzmacniacza podstawowego',                                    n:'Sprawdzono',                                              scope:'r'},
+    {id:'dso_r5',  l:'Sprawdzono zgodność impedancji linii głośnikowych z danymi podanymi w dokumentacji powykonawczej systemu',                                    n:'Sprawdzono',                                              scope:'r'},
+    {id:'dso_r6',  l:'Sprawdzono w ciągu roku poprawność działania 100% głośników zainstalowanych w obiekcie',                                                     n:'Sprawdzono w ciągu roku',                                 scope:'r'},
+    {id:'dso_r7',  l:'Sprawdzono czy nie nastąpiły zmiany w aranżacji obiektu, które mogą mieć wpływ na poprawność działania systemu',                             n:'Sprawdzono czy nastąpiły',                                scope:'r'},
+    {id:'dso_r8',  l:'Przeprowadzono pomiary zrozumiałości mowy oraz ciśnienia akustycznego w wybranych reprezentatywnych miejscach w budynku',                     n:'Przeprowadzono w reprezentatywnych miejscach',             scope:'r'},
   ],
 
   SO_EL: [
     {id:'so_ksiazka',  l:'Czy posiada książkę serwisową',                                n:'Obecność i aktualność książki serwisowej',                scope:'all'},
 
-    {id:'so_e1',  l:'Zapisy w książce eksploatacji / dzienniku pracy systemu',           n:'Sprawdzono wszystkie zapisy',                             scope:'all'},
-    {id:'so_e2',  l:'Wywiad z obsługą – uwagi do pracy systemu',                         n:'Przeprowadzono wywiad',                                   scope:'all'},
-    {id:'so_e3',  l:'Optyczna kontrola uszkodzeń mechanicznych',                         n:'Dokonano kontroli',                                       scope:'all'},
-    {id:'so_e4',  l:'Optyczna kontrola połączeń kablowych',                              n:'Dokonano kontroli',                                       scope:'all'},
-    {id:'so_e5',  l:'Optyczna kontrola miejsca montażu klap – uszkodzenia mechaniczne',  n:'Dokonano kontroli',                                       scope:'all'},
-    {id:'so_e6',  l:'Otwarcie i zamknięcie klap z przycisku wentylacyjnego',             n:'Dokonano próby',                                          scope:'all'},
-    {id:'so_e7',  l:'Alarmowe otwarcie klap z czujek dymu',                              n:'Sprawdzono zadziałanie',                                  scope:'all'},
-    {id:'so_e8',  l:'Alarmowe otwarcie klap z RPO',                                      n:'Sprawdzono zadziałanie',                                  scope:'all'},
-    {id:'so_e9',  l:'Alarmowe uruchomienie klap oddymiających z centrali SSP',           n:'Dokonano próby',                                          scope:'all'},
-    {id:'so_e10', l:'Zdolność do zadziałania po zaniku zasilania podstawowego',          n:'Sprawdzono',                                             scope:'all'},
-    {id:'so_e11', l:'Stan uszczelek, siłowników oraz uchwytów po wyzwoleniu alarmowym',  n:'Sprawdzono',                                             scope:'all'},
-    {id:'so_e12', l:'Stan oraz przesmarowanie okuć',                                     n:'Sprawdzono i przesmarowano',                              scope:'all'},
-    {id:'so_e13', l:'Reakcja systemu na pojawiające się uszkodzenia',                    n:'Sprawdzono',                                             scope:'all'},
-    {id:'so_e14', l:'Stan akumulatorów zasilania rezerwowego',                           n:'Sprawdzono',                                             scope:'all'},
-    {id:'so_e15', l:'Wpis w książce eksploatacji systemu',                               n:'Dokonano wpisu',                                          scope:'all'},
-    {id:'so_e16', l:'Inne kontrole zlecone przez wykonawcę / dostawcę / producenta',     n:'Przeprowadzono',                                         scope:'all'},
+    {id:'so_e1',  l:'Sprawdzono wszystkie zapisy w książce eksploatacji / dzienniku pracy systemu',                                                n:'Sprawdzono wszystkie zapisy',                             scope:'all'},
+    {id:'so_e2',  l:'Przeprowadzono wywiad z obsługą na temat uwag do pracy systemu',                                                              n:'Przeprowadzono wywiad',                                   scope:'all'},
+    {id:'so_e3',  l:'Dokonano optycznej kontroli uszkodzeń mechanicznych',                                                                         n:'Dokonano kontroli',                                       scope:'all'},
+    {id:'so_e4',  l:'Dokonano optycznej kontroli połączeń kablowych',                                                                              n:'Dokonano kontroli',                                       scope:'all'},
+    {id:'so_e5',  l:'Dokonano optycznej kontroli miejsca montażu klap pod względem możliwości wystąpienia uszkodzeń mechanicznych',                n:'Dokonano kontroli',                                       scope:'all'},
+    {id:'so_e6',  l:'Dokonano otwarcia i zamknięcia klap z przycisku wentylacyjnego',                                                              n:'Dokonano próby',                                          scope:'all'},
+    {id:'so_e7',  l:'Alarmowe otwarcie klap z czujek dymu',                                                                                        n:'Sprawdzono zadziałanie',                                  scope:'all'},
+    {id:'so_e8',  l:'Alarmowe otwarcie klap z RPO',                                                                                                n:'Sprawdzono zadziałanie',                                  scope:'all'},
+    {id:'so_e9',  l:'Dokonano alarmowego uruchomienia klap oddymiających z centrali SSP',                                                          n:'Dokonano próby',                                          scope:'all'},
+    {id:'so_e10', l:'Sprawdzono zdolność do zadziałania po zaniku zasilania podstawowego',                                                         n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_e11', l:'Sprawdzono stan uszczelek, siłowników oraz uchwytów siłowników po wyzwoleniu alarmowym',                                      n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_e12', l:'Sprawdzono stan oraz przesmarowanie okuć',                                                                                    n:'Sprawdzono i przesmarowano',                              scope:'all'},
+    {id:'so_e13', l:'Dokonano sprawdzenia systemu pod względem reakcji na pojawiające się uszkodzenia',                                            n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_e14', l:'Sprawdzono stan akumulatorów zasilania rezerwowego',                                                                          n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_e15', l:'Dokonano wpisu w książce eksploatacji systemu',                                                                               n:'Dokonano wpisu',                                          scope:'all'},
+    {id:'so_e16', l:'Przeprowadzono wszystkie inne kontrole i próby zlecone przez wykonawcę, dostawcę lub producenta systemu',                     n:'Przeprowadzono',                                          scope:'all'},
   ],
 
   SO_PN: [
     {id:'so_ksiazka',  l:'Czy posiada książkę serwisową',                                n:'Obecność i aktualność książki serwisowej',                scope:'all'},
 
-    {id:'so_p1',  l:'Zapisy w książce eksploatacji / dzienniku pracy systemu',           n:'Sprawdzono wszystkie zapisy',                             scope:'all'},
-    {id:'so_p2',  l:'Wywiad z obsługą – uwagi do pracy systemu',                         n:'Przeprowadzono wywiad',                                   scope:'all'},
-    {id:'so_p3',  l:'Optyczna kontrola uszkodzeń mechanicznych',                         n:'Dokonano kontroli',                                       scope:'all'},
-    {id:'so_p4',  l:'Optyczna kontrola miejsca montażu klap – uszkodzenia mechaniczne',  n:'Dokonano kontroli',                                       scope:'all'},
-    {id:'so_p5',  l:'Stan sekcyjnych urządzeń wyzwalających (iglice, napinacze, naboje CO₂)', n:'Sprawdzono',                                        scope:'all'},
-    {id:'so_p6',  l:'Uruchomienie klap oddymiających z central sekcyjnych',              n:'Dokonano próby',                                          scope:'all'},
-    {id:'so_p7',  l:'Stan uszczelek, siłowników oraz uchwytów po wyzwoleniu alarmowym',  n:'Sprawdzono',                                             scope:'all'},
-    {id:'so_p8',  l:'Stan oraz przesmarowanie okuć',                                     n:'Sprawdzono i przesmarowano',                              scope:'all'},
-    {id:'so_p9',  l:'Uruchomienie termobezpiecznika miejscowo w klapie',                 n:'Wykonano próbę',                                          scope:'all'},
-    {id:'so_p10', l:'Stan miejscowych urządzeń wyzwalających (iglice, napinacze, naboje CO₂)', n:'Sprawdzono',                                       scope:'all'},
-    {id:'so_p11', l:'Ważenie naboi CO₂',                                                n:'Wykonano ważenie',                                        scope:'all'},
-    {id:'so_p12', l:'Ręczne / automatyczne zamknięcie klap oddymiających',               n:'Wykonano',                                               scope:'all'},
-    {id:'so_p13', l:'Stan rezerwy naboi CO₂',                                           n:'Sprawdzono',                                             scope:'all'},
-    {id:'so_p14', l:'Próba szczelności układu pneumatycznego',                           n:'Dokonano próby',                                          scope:'all'},
-    {id:'so_p15', l:'Przywrócenie systemu do stanu dozorowania',                         n:'Wykonano reset systemu',                                  scope:'all'},
-    {id:'so_p16', l:'Wpis w książce eksploatacji systemu',                               n:'Dokonano wpisu',                                          scope:'all'},
-    {id:'so_p17', l:'Inne kontrole zlecone przez wykonawcę / dostawcę / producenta',     n:'Przeprowadzono',                                         scope:'all'},
+    {id:'so_p1',  l:'Sprawdzono wszystkie zapisy w książce eksploatacji / dzienniku pracy systemu',                                                n:'Sprawdzono wszystkie zapisy',                             scope:'all'},
+    {id:'so_p2',  l:'Przeprowadzono wywiad z obsługą na temat uwag do pracy systemu',                                                              n:'Przeprowadzono wywiad',                                   scope:'all'},
+    {id:'so_p3',  l:'Dokonano optycznej kontroli uszkodzeń mechanicznych',                                                                         n:'Dokonano kontroli',                                       scope:'all'},
+    {id:'so_p4',  l:'Dokonano optycznej kontroli miejsca montażu klap pod względem możliwości wystąpienia uszkodzeń mechanicznych',                n:'Dokonano kontroli',                                       scope:'all'},
+    {id:'so_p5',  l:'Sprawdzono stan sekcyjnych urządzeń wyzwalających – iglic, napinaczy, wyzwalaczy ręcznych oraz elektrycznych, gniazd, naboi CO₂ oraz uszczelnień', n:'Sprawdzono',  scope:'all'},
+    {id:'so_p6',  l:'Dokonano uruchomienia klap oddymiających z central sekcyjnych',                                                               n:'Dokonano próby',                                          scope:'all'},
+    {id:'so_p7',  l:'Sprawdzono stan uszczelek, siłowników oraz uchwytów siłowników po wyzwoleniu alarmowym',                                      n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_p8',  l:'Sprawdzono stan oraz przesmarowanie okuć',                                                                                    n:'Sprawdzono i przesmarowano',                              scope:'all'},
+    {id:'so_p9',  l:'Uruchomiono termobezpiecznik miejscowo w klapie',                                                                             n:'Uruchomiono',                                             scope:'all'},
+    {id:'so_p10', l:'Sprawdzono stan miejscowych urządzeń wyzwalających – iglic, napinaczy, wyzwalaczy, gniazd, naboi CO₂ oraz uszczelnień',       n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_p11', l:'Wykonano ważenie naboi CO₂',                                                                                                  n:'Wykonano ważenie',                                        scope:'all'},
+    {id:'so_p12', l:'Wykonano ręczne / automatyczne zamknięcie klap oddymiających',                                                                n:'Wykonano zamknięcie',                                     scope:'all'},
+    {id:'so_p13', l:'Sprawdzono stan rezerwy naboi CO₂',                                                                                           n:'Sprawdzono',                                              scope:'all'},
+    {id:'so_p14', l:'Dokonano próby szczelności układu pneumatycznego',                                                                            n:'Dokonano próby',                                          scope:'all'},
+    {id:'so_p15', l:'Przywrócono system do stanu dozorowania',                                                                                     n:'Przywrócono',                                             scope:'all'},
+    {id:'so_p16', l:'Dokonano wpisu w książce eksploatacji systemu',                                                                               n:'Dokonano wpisu',                                          scope:'all'},
+    {id:'so_p17', l:'Przeprowadzono wszystkie inne kontrole i próby zlecone przez wykonawcę, dostawcę lub producenta systemu',                     n:'Przeprowadzono',                                          scope:'all'},
   ],
 
   PSP: [
@@ -4169,6 +4169,7 @@ function planerRender() {
             ? w2.godziny * w2.osoby.length : null;
           const editCall = 'event.stopPropagation();planerEdytujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
           const delCall  = 'event.stopPropagation();planerUsunWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
+          const copyCall = 'event.stopPropagation();planerKopiujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
           cell += '<div style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px">';
           cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:2px">';
           cell += '<div style="flex:1;min-width:0">';
@@ -4180,6 +4181,7 @@ function planerRender() {
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
+          cell += '<button onclick="' + esc(copyCall) + '" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">📋</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
           cell += '</div>';
           cell += '</div>';
@@ -4401,7 +4403,167 @@ function planerZapiszWpis() {
   toast('✅ Wpis zapisany');
 }
 
+function planerKopiujWpis(key, idx) {
+  const wpisy = plGetWpisy();
+  const w = (wpisy[key]||[])[idx];
+  if (!w) return;
+
+  // Usuń stary modal jeśli istnieje
+  const stary = document.getElementById('planerKopiujModal');
+  if (stary) stary.remove();
+
+  const osobyStr = (w.osoby||[]).join(', ') || '—';
+  const autoStr  = w.auto || '';
+  const obiektStr = w.obiekt || '';
+
+  const modal = document.createElement('div');
+  modal.id = 'planerKopiujModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0 0 0 0';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:500px;padding:24px 20px 32px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:22px">📋</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">Kopiuj wpis</div>
+        <button onclick="document.getElementById('planerKopiujModal').remove()" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:8px">
+        <b style="color:var(--text)">${esc(osobyStr)}</b>${autoStr ? ' · 🚗 '+esc(autoStr) : ''}${obiektStr ? '<br>📍 '+esc(obiektStr) : ''}
+      </div>
+
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px">Skopiuj na:</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <button onclick="planerKopiujNaDni('${key}',${idx},1)" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">
+          ➡️ Następny dzień
+        </button>
+        <button onclick="planerKopiujNaDni('${key}',${idx},2)" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">
+          ➡️➡️ Za 2 dni
+        </button>
+      </div>
+
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px">Kopiuj na cały zakres:</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <button onclick="planerKopiujZakres('${key}',${idx},'week')" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">
+          📅 Reszta tygodnia<br><span style="font-size:10px;color:var(--muted);font-weight:400">(pon–pt)</span>
+        </button>
+        <button onclick="planerKopiujZakres('${key}',${idx},'month')" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">
+          🗓️ Reszta miesiąca<br><span style="font-size:10px;color:var(--muted);font-weight:400">(dni robocze)</span>
+        </button>
+      </div>
+
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px">Własny zakres dat:</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <input type="date" id="kopiujOd" style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:13px">
+        <span style="color:var(--muted)">do</span>
+        <input type="date" id="kopiujDo" style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:13px">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:12px;cursor:pointer">
+        <input type="checkbox" id="kopiujTylkoPn" checked style="accent-color:var(--red);width:16px;height:16px">
+        Tylko dni robocze (pomiń sob/niedz)
+      </label>
+      <button onclick="planerKopiujWlasny('${key}',${idx})" style="width:100%;padding:13px;background:var(--red);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">
+        📋 Kopiuj na wybrany zakres
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Ustaw domyślne daty — od jutra
+  const src = new Date(key + 'T00:00:00');
+  const jutro = new Date(src); jutro.setDate(jutro.getDate() + 1);
+  const konMies = new Date(src.getFullYear(), src.getMonth() + 1, 0);
+  document.getElementById('kopiujOd').value = jutro.toISOString().split('T')[0];
+  document.getElementById('kopiujDo').value = konMies.toISOString().split('T')[0];
+}
+
+function _kopiujWpisNaDni(key, idx, daty) {
+  const wpisy = plGetWpisy();
+  const w = JSON.parse(JSON.stringify((wpisy[key]||[])[idx] || {}));
+  if (!w.katId) return 0;
+  let dodano = 0;
+  daty.forEach(function(d) {
+    if (d === key) return; // nie kopiuj na ten sam dzień
+    if (!wpisy[d]) wpisy[d] = [];
+    // Sprawdź czy identyczny wpis już istnieje
+    const istnieje = wpisy[d].some(function(x) {
+      return x.katId === w.katId &&
+        JSON.stringify(x.osoby||[]) === JSON.stringify(w.osoby||[]) &&
+        (x.auto||'') === (w.auto||'') &&
+        (x.obiekt||'') === (w.obiekt||'');
+    });
+    if (!istnieje) { wpisy[d].push(JSON.parse(JSON.stringify(w))); dodano++; }
+  });
+  plSaveWpisy(wpisy);
+  daty.forEach(function(d) { plSyncDzien(d); });
+  return dodano;
+}
+
+function planerKopiujNaDni(key, idx, ile) {
+  const src = new Date(key + 'T00:00:00');
+  const daty = [];
+  for (var i = 1; i <= ile; i++) {
+    const d = new Date(src); d.setDate(d.getDate() + i);
+    daty.push(plDateKey(d));
+  }
+  const dodano = _kopiujWpisNaDni(key, idx, daty);
+  document.getElementById('planerKopiujModal').remove();
+  planerRender();
+  toast('📋 Skopiowano na ' + dodano + ' ' + (dodano === 1 ? 'dzień' : 'dni'));
+}
+
+function planerKopiujZakres(key, idx, tryb) {
+  const src = new Date(key + 'T00:00:00');
+  const daty = [];
+  if (tryb === 'week') {
+    // Reszta bieżącego tygodnia (pon–pt)
+    const dow = src.getDay(); // 0=nd, 1=pn, ..., 5=pt, 6=sb
+    const zostalo = dow === 0 ? 0 : 5 - dow; // ile dni roboczych zostało
+    for (var i = 1; i <= zostalo; i++) {
+      const d = new Date(src); d.setDate(d.getDate() + i);
+      if (d.getDay() >= 1 && d.getDay() <= 5) daty.push(plDateKey(d));
+    }
+  } else if (tryb === 'month') {
+    // Reszta miesiąca — dni robocze
+    const koniec = new Date(src.getFullYear(), src.getMonth() + 1, 0);
+    const cur = new Date(src); cur.setDate(cur.getDate() + 1);
+    while (cur <= koniec) {
+      if (cur.getDay() >= 1 && cur.getDay() <= 5) daty.push(plDateKey(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  const dodano = _kopiujWpisNaDni(key, idx, daty);
+  document.getElementById('planerKopiujModal').remove();
+  planerRender();
+  toast('📋 Skopiowano na ' + dodano + ' dni');
+}
+
+function planerKopiujWlasny(key, idx) {
+  const od = document.getElementById('kopiujOd').value;
+  const doV = document.getElementById('kopiujDo').value;
+  const tylkoPn = document.getElementById('kopiujTylkoPn').checked;
+  if (!od || !doV) { toast('⚠️ Wybierz zakres dat'); return; }
+
+  const start = new Date(od + 'T00:00:00');
+  const end   = new Date(doV + 'T00:00:00');
+  if (start > end) { toast('⚠️ Data "od" musi być przed "do"'); return; }
+
+  const daty = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (!tylkoPn || (dow >= 1 && dow <= 5)) daty.push(plDateKey(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const dodano = _kopiujWpisNaDni(key, idx, daty);
+  document.getElementById('planerKopiujModal').remove();
+  planerRender();
+  toast('📋 Skopiowano na ' + dodano + ' dni');
+}
+
 function planerUsunWpisModal() {
+  if (_planerEditKey === null || _planerEditIdx === null) return;
+  if (!confirm('Usunąć ten wpis?')) return;
   const wpisy = plGetWpisy();
   if (wpisy[_planerEditKey]) {
     wpisy[_planerEditKey].splice(_planerEditIdx, 1);
