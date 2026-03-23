@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 75</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 76</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3864,17 +3864,25 @@ function planerIsDesktop() {
 function _planerBindSerwisyBtns() {
   var body = document.getElementById('planerBody');
   if (!body) return;
-  body.addEventListener('click', function(e) {
+  // Usuń stary listener żeby nie duplikować
+  if (body._planerClickHandler) body.removeEventListener('click', body._planerClickHandler);
+  body._planerClickHandler = function(e) {
     var btn = e.target.closest('button[data-fn]');
     if (!btn) return;
     e.stopPropagation();
     var fn = btn.getAttribute('data-fn');
     var k  = btn.getAttribute('data-k');
-    if (fn === 'assign')    planerSerwisAssignDay(k);
-    if (fn === 'usun')      planerSerwisUsun(k);
+    if (fn === 'assign')     planerSerwisAssignDay(k);
+    if (fn === 'usun')       planerSerwisUsun(k);
     if (fn === 'assignharm') planerSerwisAssignDayFromHarm(k);
-    if (fn === 'usunharm')  planerSerwisUsunHarm(k);
-  }, { once: true });
+    if (fn === 'usunharm')   planerSerwisUsunHarm(k);
+    if (fn === 'copy') {
+      var copyKey = btn.getAttribute('data-copy-key');
+      var copyIdx = parseInt(btn.getAttribute('data-copy-idx'));
+      planerKopiujWpis(copyKey, copyIdx);
+    }
+  };
+  body.addEventListener('click', body._planerClickHandler);
 }
 
 function planerSerwisyHtml() {
@@ -4180,7 +4188,7 @@ function planerRender() {
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
-          cell += '<button data-copy-key="' + esc(dk) + '" data-copy-idx="' + wIdx + '" onclick="event.stopPropagation();planerKopiujWpis(this.dataset.copyKey, parseInt(this.dataset.copyIdx))" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">📋</button>';
+          cell += '<button data-copy-key="' + esc(dk) + '" data-copy-idx="' + wIdx + '" data-fn="copy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">📋</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
           cell += '</div>';
           cell += '</div>';
