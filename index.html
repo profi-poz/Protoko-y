@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 73</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 74</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4169,7 +4169,6 @@ function planerRender() {
             ? w2.godziny * w2.osoby.length : null;
           const editCall = 'event.stopPropagation();planerEdytujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
           const delCall  = 'event.stopPropagation();planerUsunWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
-          const copyCall = 'event.stopPropagation();planerKopiujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
           cell += '<div style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px">';
           cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:2px">';
           cell += '<div style="flex:1;min-width:0">';
@@ -4181,7 +4180,7 @@ function planerRender() {
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
-          cell += '<button onclick="' + esc(copyCall) + '" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">📋</button>';
+          cell += '<button data-copy-key="' + esc(dk) + '" data-copy-idx="' + wIdx + '" onclick="event.stopPropagation();planerKopiujWpis(this.dataset.copyKey, parseInt(this.dataset.copyIdx))" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">📋</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
           cell += '</div>';
           cell += '</div>';
