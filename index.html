@@ -4188,7 +4188,6 @@ function planerRender() {
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
-          cell += '<button data-copy-key="' + esc(dk) + '" data-copy-idx="' + wIdx + '" data-fn="copy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">📋</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
           cell += '</div>';
           cell += '</div>';
@@ -4305,6 +4304,30 @@ function _planerRenderWpisModal(w) {
   const isNoObiekt  = !!katObj.noObiekt;
   const isNoGodziny = !!katObj.noGodziny;
 
+  // Selektor dni tygodnia — tylko przy nowym wpisie z godzinami
+  const isNowy = _planerEditIdx === null;
+  const srcDate = _planerEditKey ? new Date(_planerEditKey + 'T00:00:00') : new Date();
+  // Znajdź poniedziałek bieżącego tygodnia
+  const dow = srcDate.getDay() === 0 ? 6 : srcDate.getDay() - 1; // 0=pon
+  const pn = new Date(srcDate); pn.setDate(srcDate.getDate() - dow);
+  const DN_SHORT = ['Pn','Wt','Śr','Cz','Pt'];
+  const dniHtml = !isNoGodziny && isNowy ? `
+    <div class="field">
+      <label>📅 Dni tygodnia</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${DN_SHORT.map((d, i) => {
+          const dt = new Date(pn); dt.setDate(pn.getDate() + i);
+          const dk2 = dt.toISOString().split('T')[0];
+          const isSelected = dk2 === _planerEditKey;
+          return `<label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer">
+            <input type="checkbox" class="planer-dzien-chk" value="${dk2}" ${isSelected?'checked':''} style="width:18px;height:18px;accent-color:var(--red)">
+            <span style="font-size:11px;font-weight:700;color:var(--muted)">${d}</span>
+            <span style="font-size:10px;color:var(--muted)">${dt.getDate()}.${String(dt.getMonth()+1).padStart(2,'0')}</span>
+          </label>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   // checkboxy osób
   const osobyHtml = osoby.length
     ? osoby.map(o => `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">
@@ -4317,6 +4340,8 @@ function _planerRenderWpisModal(w) {
   const autaOptsHtml = auta.map(a => `<option value="${a}" ${selAuto===a?'selected':''}>${a}</option>`).join('');
 
   document.getElementById('planerWpisBody').innerHTML = `
+    ${dniHtml}
+
     <div style="margin-bottom:14px">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700">👷 Osoby</div>
       <div id="planerOsobyChk">${osobyHtml}</div>
@@ -4392,22 +4417,36 @@ function planerZapiszWpis() {
   const obiekt = obiektEl ? obiektEl.value.trim() : '';
   const uwagi  = document.getElementById('planerUwagiInp').value.trim();
 
-  const wpisy = plGetWpisy();
-  if (!wpisy[_planerEditKey]) wpisy[_planerEditKey] = [];
-
   const entry = { katId: _planerEditKatId, osoby, auto, godziny, obiekt, uwagi };
+  const wpisy = plGetWpisy();
 
   if (_planerEditIdx !== null) {
+    // Edycja istniejącego — zapisz na jeden dzień
+    if (!wpisy[_planerEditKey]) wpisy[_planerEditKey] = [];
     wpisy[_planerEditKey][_planerEditIdx] = entry;
+    plSaveWpisy(wpisy);
+    plSyncDzien(_planerEditKey);
+    closePlanerWpis();
+    planerRender();
+    toast('✅ Wpis zaktualizowany');
   } else {
-    wpisy[_planerEditKey].push(entry);
-  }
+    // Nowy wpis — zapisz na wszystkie zaznaczone dni
+    const dniChks = document.querySelectorAll('.planer-dzien-chk:checked');
+    const daty = dniChks.length > 0
+      ? Array.from(dniChks).map(c => c.value)
+      : [_planerEditKey]; // fallback: tylko bieżący dzień
 
-  plSaveWpisy(wpisy);
-  plSyncDzien(_planerEditKey);
-  closePlanerWpis();
-  planerRender();
-  toast('✅ Wpis zapisany');
+    daty.forEach(function(dk) {
+      if (!wpisy[dk]) wpisy[dk] = [];
+      wpisy[dk].push(JSON.parse(JSON.stringify(entry)));
+    });
+
+    plSaveWpisy(wpisy);
+    daty.forEach(function(dk) { plSyncDzien(dk); });
+    closePlanerWpis();
+    planerRender();
+    toast('✅ Dodano na ' + daty.length + (daty.length === 1 ? ' dzień' : ' dni'));
+  }
 }
 
 function planerKopiujWpis(key, idx) {
