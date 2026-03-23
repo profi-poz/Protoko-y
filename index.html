@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 74</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 75</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4188,8 +4188,8 @@ function planerRender() {
         });
 
         const addCall = 'planerDodajWpis(' + JSON.stringify(dk) + ',' + JSON.stringify(kat.id) + ')';
-        html += '<div onclick="' + esc(addCall) + '" style="flex:1;min-width:0;padding:3px 4px;border-right:1px solid var(--border);min-height:26px;cursor:pointer;opacity:' + (inMon ? 1 : .3) + ';background:' + (isT ? 'rgba(220,53,69,.05)' : ((isSat || isSun) ? 'rgba(255,255,255,.015)' : 'transparent')) + '">';
-        html += cell;
+        html += '<div data-add-key="' + esc(dk) + '" data-add-kat="' + esc(kat.id) + '" onclick="if(event.target===this||event.target.closest(\'[data-pl-content]\'))planerDodajWpis(this.dataset.addKey,this.dataset.addKat)" style="flex:1;min-width:0;padding:3px 4px;border-right:1px solid var(--border);min-height:26px;cursor:pointer;opacity:' + (inMon ? 1 : .3) + ';background:' + (isT ? 'rgba(220,53,69,.05)' : ((isSat || isSun) ? 'rgba(255,255,255,.015)' : 'transparent')) + '">';
+        html += '<div data-pl-content="1">' + cell + '</div>';
         if (inMon && !cell) html += '<div style="font-size:8px;color:rgba(255,255,255,.12);text-align:center">＋</div>';
         html += '</div>';
       }
