@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 78</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 79</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4195,7 +4195,7 @@ function planerRender() {
         });
 
         const addCall = 'planerDodajWpis(' + JSON.stringify(dk) + ',' + JSON.stringify(kat.id) + ')';
-        html += '<div data-add-key="' + esc(dk) + '" data-add-kat="' + esc(kat.id) + '" onclick="if(event.target===this||event.target.closest(\'[data-pl-content]\'))planerDodajWpis(this.dataset.addKey,this.dataset.addKat)" style="flex:1;min-width:0;padding:3px 4px;border-right:1px solid var(--border);min-height:26px;cursor:pointer;opacity:' + (inMon ? 1 : .3) + ';background:' + (isT ? 'rgba(220,53,69,.05)' : ((isSat || isSun) ? 'rgba(255,255,255,.015)' : 'transparent')) + '">';
+        html += '<div data-add-key="' + esc(dk) + '" data-add-kat="' + esc(kat.id) + '" onclick="var b=event.target.closest(\'button\');if(!b)planerDodajWpis(this.dataset.addKey,this.dataset.addKat)" style="flex:1;min-width:0;padding:3px 4px;border-right:1px solid var(--border);min-height:26px;cursor:pointer;opacity:' + (inMon ? 1 : .3) + ';background:' + (isT ? 'rgba(220,53,69,.05)' : ((isSat || isSun) ? 'rgba(255,255,255,.015)' : 'transparent')) + '">';
         html += '<div data-pl-content="1">' + cell + '</div>';
         if (inMon && !cell) html += '<div style="font-size:8px;color:rgba(255,255,255,.12);text-align:center">＋</div>';
         html += '</div>';
@@ -4314,7 +4314,7 @@ function _planerRenderWpisModal(w) {
   const dniHtml = !isNoGodziny && isNowy ? `
     <div class="field">
       <label>📅 Dni tygodnia</label>
-      <div style="display:flex;gap:6px" id="planerDniRow">
+      <div style="display:flex;gap:6px;width:100%" id="planerDniRow">
         ${DN_SHORT.map((d, i) => {
           const dt = new Date(pn); dt.setDate(pn.getDate() + i);
           const dk2 = dt.toISOString().split('T')[0];
@@ -4322,10 +4322,10 @@ function _planerRenderWpisModal(w) {
           return `<button type="button"
             class="pl-dzien-btn${isSelected?' active':''}"
             data-dk="${dk2}"
-            style="flex:1;border-radius:10px;border:2px solid ${isSelected?'var(--red)':'var(--border)'};background:${isSelected?'rgba(220,53,69,.2)':'var(--surface2)'};padding:8px 2px;cursor:pointer;text-align:center;transition:all .15s">
+            style="flex:1;min-width:0;border-radius:10px;border:2px solid ${isSelected?'var(--red)':'var(--border)'};background:${isSelected?'rgba(220,53,69,.2)':'var(--surface2)'};padding:8px 2px;cursor:pointer;text-align:center;transition:all .15s;box-sizing:border-box">
             <input type="checkbox" class="planer-dzien-chk" value="${dk2}" ${isSelected?'checked':''} style="display:none">
-            <div class="pl-d-label" style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${isSelected?'var(--red)':'var(--muted)'}">${d}</div>
-            <div class="pl-d-date" style="font-size:10px;margin-top:1px;color:${isSelected?'var(--text)':'var(--muted)'}">${dt.getDate()}.${String(dt.getMonth()+1).padStart(2,'0')}</div>
+            <div class="pl-d-label" style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${isSelected?'var(--red)':'var(--muted)'};white-space:nowrap">${d}</div>
+            <div class="pl-d-date" style="font-size:10px;margin-top:1px;color:${isSelected?'var(--text)':'var(--muted)'};white-space:nowrap">${dt.getDate()}.${String(dt.getMonth()+1).padStart(2,'0')}</div>
           </button>`;
         }).join('')}
       </div>
@@ -4453,10 +4453,14 @@ function planerZapiszWpis() {
     toast('✅ Wpis zaktualizowany');
   } else {
     // Nowy wpis — zapisz na wszystkie zaznaczone dni
-    const dniChks = document.querySelectorAll('.planer-dzien-chk:checked');
-    const daty = dniChks.length > 0
-      ? Array.from(dniChks).map(c => c.value)
-      : [_planerEditKey]; // fallback: tylko bieżący dzień
+    const dniRow = document.getElementById('planerDniRow');
+    let daty;
+    if (dniRow) {
+      // Czytaj z przycisków (class active) — niezawodne
+      const aktywne = Array.from(dniRow.querySelectorAll('.pl-dzien-btn.active'));
+      daty = aktywne.map(b => b.getAttribute('data-dk')).filter(Boolean);
+    }
+    if (!daty || daty.length === 0) daty = [_planerEditKey];
 
     daty.forEach(function(dk) {
       if (!wpisy[dk]) wpisy[dk] = [];
