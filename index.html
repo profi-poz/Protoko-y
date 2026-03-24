@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 76</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 77</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4314,16 +4314,29 @@ function _planerRenderWpisModal(w) {
   const dniHtml = !isNoGodziny && isNowy ? `
     <div class="field">
       <label>📅 Dni tygodnia</label>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px">
         ${DN_SHORT.map((d, i) => {
           const dt = new Date(pn); dt.setDate(pn.getDate() + i);
           const dk2 = dt.toISOString().split('T')[0];
           const isSelected = dk2 === _planerEditKey;
-          return `<label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer">
-            <input type="checkbox" class="planer-dzien-chk" value="${dk2}" ${isSelected?'checked':''} style="width:18px;height:18px;accent-color:var(--red)">
-            <span style="font-size:11px;font-weight:700;color:var(--muted)">${d}</span>
-            <span style="font-size:10px;color:var(--muted)">${dt.getDate()}.${String(dt.getMonth()+1).padStart(2,'0')}</span>
-          </label>`;
+          const activeStyle = 'border-color:var(--red);background:rgba(220,53,69,.2);color:var(--red)';
+          const inactiveStyle = 'border-color:var(--border);background:var(--surface2);color:var(--muted)';
+          return `<button type="button"
+            data-active="${isSelected?'1':'0'}"
+            onclick="
+              var a=this.dataset.active==='1';
+              this.dataset.active=a?'0':'1';
+              this.querySelector('.planer-dzien-chk').checked=!a;
+              this.style.borderColor=!a?'var(--red)':'var(--border)';
+              this.style.background=!a?'rgba(220,53,69,.2)':'var(--surface2)';
+              this.querySelector('.pl-d-label').style.color=!a?'var(--red)':'var(--muted)';
+              this.querySelector('.pl-d-date').style.color=!a?'var(--text)':'var(--muted)';
+            "
+            style="flex:1;border-radius:10px;border:2px solid ${isSelected?'var(--red)':'var(--border)'};background:${isSelected?'rgba(220,53,69,.2)':'var(--surface2)'};padding:8px 2px;cursor:pointer;text-align:center;transition:all .15s">
+            <input type="checkbox" class="planer-dzien-chk" value="${dk2}" ${isSelected?'checked':''} style="display:none">
+            <div class="pl-d-label" style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${isSelected?'var(--red)':'var(--muted)'}">${d}</div>
+            <div class="pl-d-date" style="font-size:10px;margin-top:1px;color:${isSelected?'var(--text)':'var(--muted)'}">${dt.getDate()}.${String(dt.getMonth()+1).padStart(2,'0')}</div>
+          </button>`;
         }).join('')}
       </div>
     </div>` : '';
