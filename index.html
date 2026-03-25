@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 79</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 80</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4306,7 +4306,9 @@ function _planerRenderWpisModal(w) {
 
   // Selektor dni tygodnia — tylko przy nowym wpisie z godzinami
   const isNowy = _planerEditIdx === null;
-  const srcDate = _planerEditKey ? new Date(_planerEditKey + 'T00:00:00') : new Date();
+  // Oblicz poniedziałek bieżącego tygodnia — używamy lokalnej daty (bez T00:00:00 bo to UTC)
+  const srcParts = (_planerEditKey || plDateKey(new Date())).split('-');
+  const srcDate = new Date(parseInt(srcParts[0]), parseInt(srcParts[1])-1, parseInt(srcParts[2]));
   // Znajdź poniedziałek bieżącego tygodnia
   const dow = srcDate.getDay() === 0 ? 6 : srcDate.getDay() - 1; // 0=pon
   const pn = new Date(srcDate); pn.setDate(srcDate.getDate() - dow);
