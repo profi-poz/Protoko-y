@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 81</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 82</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4187,7 +4187,11 @@ function planerRender() {
           if (w2.uwagi) cell += '<div style="color:var(--muted);font-style:italic;font-size:9px">' + esc(w2.uwagi) + '</div>';
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
+          const prevCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',-1)';
+          const nextCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',1)';
+          cell += '<button onclick="' + esc(prevCall) + '" title="Kopiuj na poprzedni dzień roboczy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">◀</button>';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
+          cell += '<button onclick="' + esc(nextCall) + '" title="Kopiuj na następny dzień roboczy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">▶</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
           cell += '</div>';
           cell += '</div>';
@@ -4304,43 +4308,6 @@ function _planerRenderWpisModal(w) {
   const isNoObiekt  = !!katObj.noObiekt;
   const isNoGodziny = !!katObj.noGodziny;
 
-  // Selektor dni tygodnia — tylko przy nowym wpisie z godzinami
-  const isNowy = _planerEditIdx === null;
-  // Oblicz poniedziałek bieżącego tygodnia — używamy lokalnej daty (bez T00:00:00 bo to UTC)
-  const srcParts = (_planerEditKey || plDateKey(new Date())).split('-');
-  const srcDate = new Date(parseInt(srcParts[0]), parseInt(srcParts[1])-1, parseInt(srcParts[2]));
-  // Znajdź poniedziałek bieżącego tygodnia
-  const dow = srcDate.getDay() === 0 ? 6 : srcDate.getDay() - 1; // 0=pon
-  const pn = new Date(srcDate); pn.setDate(srcDate.getDate() - dow);
-  const DN_SHORT = ['Pn','Wt','Śr','Cz','Pt'];
-  const dniHtml = !isNoGodziny && isNowy ? `
-    <div class="field">
-      <label>📅 Dni tygodnia</label>
-      <div style="display:flex;gap:6px;width:100%" id="planerDniRow">
-        ${DN_SHORT.map((d, i) => {
-          const dt = new Date(pn); dt.setDate(pn.getDate() + i);
-          const dk2 = dt.toISOString().split('T')[0];
-          const isSelected = dk2 === _planerEditKey;
-          return `<button type="button"
-            class="pl-dzien-btn${isSelected?' active':''}"
-            data-dk="${dk2}"
-            style="flex:1;min-width:0;border-radius:10px;border:2px solid ${isSelected?'var(--red)':'var(--border)'};background:${isSelected?'rgba(220,53,69,.2)':'var(--surface2)'};padding:8px 2px;cursor:pointer;text-align:center;transition:all .15s;box-sizing:border-box">
-            <input type="checkbox" class="planer-dzien-chk" value="${dk2}" ${isSelected?'checked':''} style="display:none">
-            <div class="pl-d-label" style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${isSelected?'var(--red)':'var(--muted)'};white-space:nowrap">${d}</div>
-            <div class="pl-d-date" style="font-size:10px;margin-top:1px;color:${isSelected?'var(--text)':'var(--muted)'};white-space:nowrap">${dt.getDate()}.${String(dt.getMonth()+1).padStart(2,'0')}</div>
-          </button>`;
-        }).join('')}
-      </div>
-    </div>` : '';
-
-  // checkboxy osób
-  const osobyHtml = osoby.length
-    ? osoby.map(o => `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">
-        <input type="checkbox" value="${o}" ${sel.includes(o)?'checked':''} style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">
-        <span style="font-size:14px;font-weight:600">${o}</span>
-      </label>`).join('')
-    : '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak osób — dodaj w ⚙️ Ustawieniach</div>';
-
   // select aut + pole ręczne
   const autaOptsHtml = auta.map(a => `<option value="${a}" ${selAuto===a?'selected':''}>${a}</option>`).join('');
 
@@ -4441,40 +4408,21 @@ function planerZapiszWpis() {
   const obiekt = obiektEl ? obiektEl.value.trim() : '';
   const uwagi  = document.getElementById('planerUwagiInp').value.trim();
 
-  const entry = { katId: _planerEditKatId, osoby, auto, godziny, obiekt, uwagi };
   const wpisy = plGetWpisy();
+  if (!wpisy[_planerEditKey]) wpisy[_planerEditKey] = [];
+  const entry = { katId: _planerEditKatId, osoby, auto, godziny, obiekt, uwagi };
 
   if (_planerEditIdx !== null) {
-    // Edycja istniejącego — zapisz na jeden dzień
-    if (!wpisy[_planerEditKey]) wpisy[_planerEditKey] = [];
     wpisy[_planerEditKey][_planerEditIdx] = entry;
-    plSaveWpisy(wpisy);
-    plSyncDzien(_planerEditKey);
-    closePlanerWpis();
-    planerRender();
-    toast('✅ Wpis zaktualizowany');
   } else {
-    // Nowy wpis — zapisz na wszystkie zaznaczone dni
-    const dniRow = document.getElementById('planerDniRow');
-    let daty;
-    if (dniRow) {
-      // Czytaj z przycisków (class active) — niezawodne
-      const aktywne = Array.from(dniRow.querySelectorAll('.pl-dzien-btn.active'));
-      daty = aktywne.map(b => b.getAttribute('data-dk')).filter(Boolean);
-    }
-    if (!daty || daty.length === 0) daty = [_planerEditKey];
-
-    daty.forEach(function(dk) {
-      if (!wpisy[dk]) wpisy[dk] = [];
-      wpisy[dk].push(JSON.parse(JSON.stringify(entry)));
-    });
-
-    plSaveWpisy(wpisy);
-    daty.forEach(function(dk) { plSyncDzien(dk); });
-    closePlanerWpis();
-    planerRender();
-    toast('✅ Dodano na ' + daty.length + (daty.length === 1 ? ' dzień' : ' dni'));
+    wpisy[_planerEditKey].push(entry);
   }
+
+  plSaveWpisy(wpisy);
+  plSyncDzien(_planerEditKey);
+  closePlanerWpis();
+  planerRender();
+  toast('✅ Wpis zapisany');
 }
 
 function planerKopiujWpis(key, idx) {
@@ -4633,6 +4581,28 @@ function planerKopiujWlasny(key, idx) {
   document.getElementById('planerKopiujModal').remove();
   planerRender();
   toast('📋 Skopiowano na ' + dodano + ' dni');
+}
+
+function planerKopiujSasiedni(key, idx, kierunek) {
+  // Znajdź następny/poprzedni dzień roboczy (pon-pt), pomijając weekendy
+  const parts = key.split('-');
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  do {
+    d.setDate(d.getDate() + kierunek);
+  } while (d.getDay() === 0 || d.getDay() === 6); // pomiń nd i sb
+
+  const targetKey = plDateKey(d);
+  const wpisy = plGetWpisy();
+  const w = (wpisy[key]||[])[idx];
+  if (!w) return;
+
+  if (!wpisy[targetKey]) wpisy[targetKey] = [];
+  wpisy[targetKey].push(JSON.parse(JSON.stringify(w)));
+  plSaveWpisy(wpisy);
+  plSyncDzien(targetKey);
+  planerRender();
+  const label = kierunek > 0 ? 'następny' : 'poprzedni';
+  toast('▶ Skopiowano na ' + label + ' dzień roboczy (' + targetKey + ')');
 }
 
 function planerUsunWpisModal() {
