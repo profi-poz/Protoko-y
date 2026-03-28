@@ -708,7 +708,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 83</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 84</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4308,10 +4308,18 @@ function _planerRenderWpisModal(w) {
   const isNoGodziny = !!katObj.noGodziny;
 
   const osobyHtml = osoby.length
-    ? osoby.map(o => `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer">
-        <input type="checkbox" value="${o}" ${sel.includes(o)?'checked':''} style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">
-        <span style="font-size:14px;font-weight:600">${o}</span>
-      </label>`).join('')
+    ? osoby.map(o => {
+        const jestZajeta = _planerEditIdx === null && (() => {
+          const wpisy = plGetWpisy();
+          const dniWpisy = wpisy[_planerEditKey] || [];
+          return dniWpisy.some(wp => (wp.osoby||[]).includes(o));
+        })();
+        return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer;opacity:${jestZajeta?'.45':'1'}">
+          <input type="checkbox" value="${o}" ${sel.includes(o)?'checked':''} style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">
+          <span style="font-size:14px;font-weight:600">${o}</span>
+          ${jestZajeta?'<span style="font-size:10px;color:#ff9800;margin-left:auto">zajęty</span>':''}
+        </label>`;
+      }).join('')
     : '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak osób — dodaj w ⚙️ Ustawieniach</div>';
 
   const autaOptsHtml = auta.map(a => `<option value="${a}" ${selAuto===a?'selected':''}>${a}</option>`).join('');
