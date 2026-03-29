@@ -711,7 +711,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 85</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 86</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2199,7 +2199,7 @@ async function rebuildHarmSheet() {
   document.body.appendChild(s);
 }
 
-function testConnection() {
+async function testConnection() {
   const url = document.getElementById('serverUrl').value;
   if (!url) { toast('⚠️ Podaj URL serwera',1); return; }
   try {
