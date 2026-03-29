@@ -609,6 +609,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
           <button class="btn btn-ghost" style="margin:0;flex:1" onclick="testConnection()">🔌 Test</button>
           <button class="btn btn-ghost" style="margin:0;flex:1" onclick="loadObiektyManual()">🏢 Obiekty</button>
         </div>
+        <div style="margin-top:10px">
+          <button class="btn btn-ghost" style="margin:0;width:100%;border-color:#6495ed;color:#6495ed" onclick="rebuildHarmSheet()">📅 Przebuduj zakładkę Harmonogram w Sheets</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-hd">📋 Format danych JSON</div>
@@ -708,7 +711,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 84</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 85</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2177,7 +2180,26 @@ function saveServerConfig() {
   toast('✅ Konfiguracja zapisana!');
 }
 
-async function testConnection() {
+async function rebuildHarmSheet() {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) { toast('⚠️ Brak URL serwera'); return; }
+  toast('⏳ Przebudowuję zakładkę Harmonogram...');
+  const cbName = 'cb_rebuild_' + Date.now();
+  const timer = setTimeout(function() {
+    delete window[cbName];
+    toast('⚠️ Timeout — sprawdź czy GAS jest wdrożony');
+  }, 15000);
+  window[cbName] = function(r) {
+    clearTimeout(timer);
+    delete window[cbName];
+    toast(r && r.ok ? '✅ Zakładka Harmonogram przebudowana!' : '⚠️ Błąd: ' + JSON.stringify(r));
+  };
+  const s = document.createElement('script');
+  s.src = url + '?rebuildHarm=1&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
+function testConnection() {
   const url = document.getElementById('serverUrl').value;
   if (!url) { toast('⚠️ Podaj URL serwera',1); return; }
   try {
