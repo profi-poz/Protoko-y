@@ -711,7 +711,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 86</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 87</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1977,9 +1977,13 @@ async function syncFromServer() {
     serverProtokoly = [];
   }
   // Połącz: serwer + lokalne, bez duplikatów (po id)
+  // Filtruj tylko prawdziwe protokoły (mają typ z listy instalacji)
+  const VALID_TYPY = new Set(['SSP','DSO','DSG','PSP','DSP','SUG','SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME','Inne']);
   const localIds = new Set(protokoly.map(p => String(p.id)));
   const onlyServer = serverProtokoly.filter(p => !localIds.has(String(p.id)));
-  allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => {
+  allProtokoly = [...protokoly, ...onlyServer]
+    .filter(p => p && p.typ && VALID_TYPY.has(p.typ))
+    .sort((a,b) => {
     const da = a.data || '', db = b.data || '';
     return db.localeCompare(da);
   });
