@@ -117,7 +117,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red);}
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237a8499' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
 .field select option{background:var(--surface);}
-.field textarea{min-height:80px;resize:none;}
+.field textarea{min-height:80px;resize:none;overflow:hidden;transition:height .1s;}
+.pl-osoba-btn { transition: background .15s, border-color .15s; }
+.pl-osoba-btn.pl-osoba-active { background: rgba(220,53,69,.15) !important; border-color: var(--red) !important; }
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
 /* CHECKLIST */
@@ -711,7 +713,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 87</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 88</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -977,7 +979,19 @@ if (!localStorage.getItem('serverUrl')) localStorage.setItem('serverUrl', DEFAUL
 
 // Załaduj obiekty do autocomplete przy starcie
 window.addEventListener('DOMContentLoaded', function() {
-  setTimeout(loadObiekty, 1500); // po załadowaniu apki
+  setTimeout(loadObiekty, 1500);
+  // Auto-resize wszystkich textarea
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight + 2) + 'px';
+  }
+  document.addEventListener('input', function(e) {
+    if (e.target.tagName === 'TEXTAREA') autoResize(e.target);
+  });
+  // Przy wczytaniu szkicu/danych też resize
+  window._autoResizeAll = function() {
+    document.querySelectorAll('textarea').forEach(autoResize);
+  };
 });
 const SK_DRAFT = 'profipoz_draft';
 const SK_DRAFTS = 'profipoz_drafts';
@@ -1680,6 +1694,7 @@ function loadDraft(draftId) {
   document.getElementById('draftsModal').remove();
   toast('📂 Szkic wczytany!');
   showScreen('nowy');
+  setTimeout(function(){ if(window._autoResizeAll) window._autoResizeAll(); }, 100);
 }
 
 function deleteDraft(draftId) {
@@ -4203,7 +4218,12 @@ function planerRender() {
             ? w2.godziny * w2.osoby.length : null;
           const editCall = 'event.stopPropagation();planerEdytujWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
           const delCall  = 'event.stopPropagation();planerUsunWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
-          cell += '<div style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px">';
+          const prevCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',-1)';
+          const nextCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',1)';
+          // drag&drop — kodujemy źródło w data atrybutach
+          cell += '<div draggable="true" data-drag-key="' + esc(dk) + '" data-drag-idx="' + wIdx + '" '
+            + 'ondragstart="planerDragStart(event)" ondragend="planerDragEnd(event)" '
+            + 'style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px;cursor:grab">';
           cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:2px">';
           cell += '<div style="flex:1;min-width:0">';
           cell += '<div style="font-weight:700;color:var(--text);font-size:11px">' + esc(osobyStr || '—') + '</div>';
@@ -4213,19 +4233,20 @@ function planerRender() {
           if (w2.uwagi) cell += '<div style="color:var(--muted);font-style:italic;font-size:9px">' + esc(w2.uwagi) + '</div>';
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
-          const prevCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',-1)';
-          const nextCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',1)';
           cell += '<button onclick="' + esc(prevCall) + '" title="Kopiuj na poprzedni dzień roboczy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">◀</button>';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
           cell += '<button onclick="' + esc(nextCall) + '" title="Kopiuj na następny dzień roboczy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">▶</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
-          cell += '</div>';
-          cell += '</div>';
-          cell += '</div>';
+          cell += '</div></div></div>';
         });
 
         const addCall = 'planerDodajWpis(' + JSON.stringify(dk) + ',' + JSON.stringify(kat.id) + ')';
-        html += '<div data-add-key="' + esc(dk) + '" data-add-kat="' + esc(kat.id) + '" onclick="var b=event.target.closest(\'button\');if(!b)planerDodajWpis(this.dataset.addKey,this.dataset.addKat)" style="flex:1;min-width:0;padding:3px 4px;border-right:1px solid var(--border);min-height:26px;cursor:pointer;opacity:' + (inMon ? 1 : .3) + ';background:' + (isT ? 'rgba(220,53,69,.05)' : ((isSat || isSun) ? 'rgba(255,255,255,.015)' : 'transparent')) + '">';
+        html += '<div data-add-key="' + esc(dk) + '" data-add-kat="' + esc(kat.id) + '" '
+          + 'ondragover="event.preventDefault();this.style.outline=\'2px solid var(--red)\'" '
+          + 'ondragleave="this.style.outline=\'\'" '
+          + 'ondrop="this.style.outline=\'\';planerDropWpis(event,this.dataset.addKey,this.dataset.addKat)" '
+          + 'onclick="var b=event.target.closest(\'button\');if(!b)planerDodajWpis(this.dataset.addKey,this.dataset.addKat)" '
+          + 'style="flex:1;min-width:0;padding:3px 4px;border-right:1px solid var(--border);min-height:26px;cursor:pointer;opacity:' + (inMon ? 1 : .3) + ';background:' + (isT ? 'rgba(220,53,69,.05)' : ((isSat || isSun) ? 'rgba(255,255,255,.015)' : 'transparent')) + '">';
         html += '<div data-pl-content="1">' + cell + '</div>';
         if (inMon && !cell) html += '<div style="font-size:8px;color:rgba(255,255,255,.12);text-align:center">＋</div>';
         html += '</div>';
@@ -4340,11 +4361,20 @@ function _planerRenderWpisModal(w) {
           const dniWpisy = wpisy[_planerEditKey] || [];
           return dniWpisy.some(wp => (wp.osoby||[]).includes(o));
         })();
-        return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--dark);border-radius:8px;margin-bottom:5px;cursor:pointer;opacity:${jestZajeta?'.45':'1'}">
-          <input type="checkbox" value="${o}" ${sel.includes(o)?'checked':''} style="width:18px;height:18px;accent-color:var(--red);cursor:pointer">
-          <span style="font-size:14px;font-weight:600">${o}</span>
-          ${jestZajeta?'<span style="font-size:10px;color:#ff9800;margin-left:auto">zajęty</span>':''}
-        </label>`;
+        const isSelected = sel.includes(o);
+        return `<button type="button" data-osoba="${o}"
+          onclick="this.classList.toggle('pl-osoba-active');this.querySelector('input').checked=this.classList.contains('pl-osoba-active')"
+          class="pl-osoba-btn${isSelected?' pl-osoba-active':''}"
+          style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+            background:${isSelected?'rgba(220,53,69,.15)':'var(--dark)'};
+            border:2px solid ${isSelected?'var(--red)':'var(--border)'};
+            border-radius:8px;margin-bottom:5px;cursor:pointer;width:100%;text-align:left;
+            opacity:${jestZajeta&&!isSelected?'.5':'1'}">
+          <input type="checkbox" value="${o}" ${isSelected?'checked':''} style="display:none">
+          <span style="font-size:14px;font-weight:600;color:var(--text)">${o}</span>
+          ${jestZajeta&&!isSelected?'<span style="font-size:10px;color:#ff9800;margin-left:auto">zajęty</span>':''}
+          ${isSelected?'<span style="margin-left:auto;color:var(--red)">✓</span>':''}
+        </button>`;
       }).join('')
     : '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak osób — dodaj w ⚙️ Ustawieniach</div>';
 
@@ -4411,8 +4441,14 @@ function planerAutoSelChange(sel) {
 }
 
 function planerZapiszWpis() {
-  const chks = document.querySelectorAll('#planerOsobyChk input[type=checkbox]:checked');
-  const osoby = Array.from(chks).map(c => c.value);
+  // Czytaj osoby z toggle buttonów lub checkboxów (fallback)
+  const osoby = Array.from(document.querySelectorAll('.pl-osoba-btn.pl-osoba-active'))
+    .map(b => b.dataset.osoba).filter(Boolean);
+  // Fallback na checkboxy jeśli brak przycisków
+  if (!osoby.length) {
+    const chks = document.querySelectorAll('#planerOsobyChk input[type=checkbox]:checked');
+    Array.from(chks).forEach(c => osoby.push(c.value));
+  }
 
   const autoSel = document.getElementById('planerAutoSel').value;
   const auto = autoSel === '__reczny__'
@@ -4598,6 +4634,51 @@ function planerKopiujWlasny(key, idx) {
   document.getElementById('planerKopiujModal').remove();
   planerRender();
   toast('📋 Skopiowano na ' + dodano + ' dni');
+}
+
+function planerDragStart(e) {
+  const el = e.currentTarget;
+  e.dataTransfer.setData('text/plain', JSON.stringify({
+    key: el.dataset.dragKey, idx: parseInt(el.dataset.dragIdx)
+  }));
+  e.dataTransfer.effectAllowed = 'copyMove';
+  el.style.opacity = '0.4';
+}
+function planerDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+}
+function planerDropWpis(e, targetKey, targetKatId) {
+  e.preventDefault(); e.stopPropagation();
+  let src;
+  try { src = JSON.parse(e.dataTransfer.getData('text/plain')); } catch(ex) { return; }
+  if (!src || !src.key) return;
+
+  const wpisy = plGetWpisy();
+  const srcWpisy = wpisy[src.key] || [];
+  const w = srcWpisy[src.idx];
+  if (!w) return;
+
+  const isSameCell = src.key === targetKey && w.katId === targetKatId;
+  if (isSameCell) return;
+
+  // Ctrl = kopiuj, bez Ctrl = przenieś
+  const isCopy = e.ctrlKey || e.metaKey;
+
+  // Dodaj do docelowego dnia z docelową kategorią
+  if (!wpisy[targetKey]) wpisy[targetKey] = [];
+  const newW = Object.assign({}, JSON.parse(JSON.stringify(w)), { katId: targetKatId });
+  wpisy[targetKey].push(newW);
+
+  // Usuń źródło jeśli przeniesienie
+  if (!isCopy) {
+    wpisy[src.key] = srcWpisy.filter(function(_, i) { return i !== src.idx; });
+    plSyncDzien(src.key);
+  }
+
+  plSaveWpisy(wpisy);
+  plSyncDzien(targetKey);
+  planerRender();
+  toast(isCopy ? '📋 Skopiowano' : '↔️ Przeniesiono');
 }
 
 function planerKopiujSasiedni(key, idx, kierunek) {
@@ -5360,7 +5441,7 @@ function _doGeneratePDF(p) {
   // I. Informacje ogolne
   sectionHead('I. INFORMACJE OGOLNE');
   row('Obiekt', p.obiekt);
-  if (p.lokalizacjaCentral) row(p.typ === 'DSG' ? 'Adres obiektu' : 'Adres / Lokalizacja', p.lokalizacjaCentral);
+  row(p.typ === 'DSG' ? 'Adres obiektu' : 'Lokalizacja centrali', p.lokalizacjaCentral || '-');
   if (p.typ !== 'DSG') row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
   row(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data);
   if (dataNastepna && dataNastepna !== '-') row(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna);
