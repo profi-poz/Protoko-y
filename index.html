@@ -399,11 +399,12 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
         </div>
         <div class="field" style="position:relative">
           <label>Obiekt / Lokalizacja</label>
-          <input type="text" id="obiekt" placeholder="Nazwa i adres obiektu" autocomplete="off"
-            oninput="autocompleteObiekt(this.value)"
+          <textarea id="obiekt" placeholder="Nazwa i adres obiektu" autocomplete="off" rows="2"
+            oninput="autocompleteObiekt(this.value);this.style.height='auto';this.style.height=(this.scrollHeight+2)+'px'"
             onkeydown="autocompleteKey(event)"
             onfocus="autocompleteObiekt(this.value)"
-            onblur="setTimeout(()=>hideAC(),200)">
+            onblur="setTimeout(()=>hideAC(),200)"
+            style="min-height:44px"></textarea>
           <div id="ac-list" style="
             display:none; position:absolute; left:0; right:0; top:100%; z-index:999;
             background:#fff; border:1px solid #ccc; border-radius:0 0 8px 8px;
@@ -427,7 +428,9 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
         </div>
         <div class="field">
           <label>Lokalizacja central</label>
-          <input type="text" id="lokalizacjaCentral" placeholder="np. Piwnica, serwerownia, klatka schodowa" autocomplete="off">
+          <textarea id="lokalizacjaCentral" placeholder="np. Piwnica, serwerownia, klatka schodowa" autocomplete="off" rows="2"
+            oninput="this.style.height='auto';this.style.height=(this.scrollHeight+2)+'px'"
+            style="min-height:44px"></textarea>
         </div>
       </div>
 
@@ -713,7 +716,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 88</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 89</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4220,12 +4223,16 @@ function planerRender() {
           const delCall  = 'event.stopPropagation();planerUsunWpis(' + JSON.stringify(dk) + ',' + wIdx + ')';
           const prevCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',-1)';
           const nextCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',1)';
-          // drag&drop — kodujemy źródło w data atrybutach
+          const selId = 'plsel_' + dk + '_' + wIdx;
           cell += '<div draggable="true" data-drag-key="' + esc(dk) + '" data-drag-idx="' + wIdx + '" '
             + 'ondragstart="planerDragStart(event)" ondragend="planerDragEnd(event)" '
             + 'style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px;cursor:grab">';
           cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:2px">';
-          cell += '<div style="flex:1;min-width:0">';
+          // Checkbox multiselect
+          cell += '<input type="checkbox" class="pl-ms-chk" data-key="' + esc(dk) + '" data-idx="' + wIdx + '" '
+            + 'onclick="event.stopPropagation();planerMsToggle()" '
+            + 'style="width:13px;height:13px;margin-top:2px;flex-shrink:0;accent-color:var(--red);cursor:pointer">';
+          cell += '<div style="flex:1;min-width:0;padding-left:3px">';
           cell += '<div style="font-weight:700;color:var(--text);font-size:11px">' + esc(osobyStr || '—') + '</div>';
           if (w2.auto) cell += '<div style="color:var(--muted);font-size:10px">🚗 ' + esc(w2.auto) + '</div>';
           if (!isNoObiekt && w2.obiekt) cell += '<div style="color:#6495ed;font-size:10px">📍 ' + esc(w2.obiekt) + '</div>';
@@ -4233,9 +4240,9 @@ function planerRender() {
           if (w2.uwagi) cell += '<div style="color:var(--muted);font-style:italic;font-size:9px">' + esc(w2.uwagi) + '</div>';
           cell += '</div>';
           cell += '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">';
-          cell += '<button onclick="' + esc(prevCall) + '" title="Kopiuj na poprzedni dzień roboczy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">◀</button>';
+          cell += '<button onclick="' + esc(prevCall) + '" title="Kopiuj na poprzedni dzień" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">◀</button>';
           cell += '<button onclick="' + esc(editCall) + '" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">✏️</button>';
-          cell += '<button onclick="' + esc(nextCall) + '" title="Kopiuj na następny dzień roboczy" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">▶</button>';
+          cell += '<button onclick="' + esc(nextCall) + '" title="Kopiuj na następny dzień" style="background:none;border:1px solid rgba(100,149,237,.4);border-radius:4px;color:#6495ed;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">▶</button>';
           cell += '<button onclick="' + esc(delCall)  + '" style="background:none;border:1px solid rgba(231,76,60,.3);border-radius:4px;color:#e74c3c;font-size:9px;padding:1px 4px;cursor:pointer;line-height:1.4">🗑️</button>';
           cell += '</div></div></div>';
         });
@@ -4259,6 +4266,19 @@ function planerRender() {
 
   document.getElementById('planerBody').innerHTML = '<div style="overflow-x:auto;padding-bottom:20px">' + html + '</div>' + planerSerwisyHtml();
   _planerBindSerwisyBtns();
+  // Pasek multiselect (początkowo ukryty)
+  if (!document.getElementById('planerMsBar')) {
+    const bar = document.createElement('div');
+    bar.id = 'planerMsBar';
+    bar.style.cssText = 'display:none;position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid var(--red);border-radius:12px;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:500;box-shadow:0 4px 20px rgba(0,0,0,.5)';
+    bar.innerHTML = '<span id="planerMsCount" style="font-size:13px;font-weight:700;color:var(--red)">0 zaznaczonych</span>'
+      + '<button onclick="planerMsKopiujNaDzien(-1)" style="padding:6px 12px;background:rgba(100,149,237,.2);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">◀ Kopiuj wcześniej</button>'
+      + '<button onclick="planerMsKopiujNaDzien(1)" style="padding:6px 12px;background:rgba(100,149,237,.2);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">Kopiuj później ▶</button>'
+      + '<button onclick="planerMsUsun()" style="padding:6px 12px;background:rgba(231,76,60,.2);border:1px solid #e74c3c;border-radius:8px;color:#e74c3c;font-size:12px;cursor:pointer">🗑️ Usuń</button>'
+      + '<button onclick="planerMsClear()" style="padding:6px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer">✕</button>';
+    bar.style.display = 'none';
+    document.body.appendChild(bar);
+  }
 }
 function planerSelectDay(dk) {
   _plDate = new Date(dk);
@@ -4634,6 +4654,80 @@ function planerKopiujWlasny(key, idx) {
   document.getElementById('planerKopiujModal').remove();
   planerRender();
   toast('📋 Skopiowano na ' + dodano + ' dni');
+}
+
+function planerMsToggle() {
+  const chks = document.querySelectorAll('.pl-ms-chk:checked');
+  const bar = document.getElementById('planerMsBar');
+  const cnt = document.getElementById('planerMsCount');
+  if (!bar) return;
+  if (chks.length > 0) {
+    bar.style.display = 'flex';
+    if (cnt) cnt.textContent = chks.length + ' zaznaczonych';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function planerMsClear() {
+  document.querySelectorAll('.pl-ms-chk').forEach(c => c.checked = false);
+  const bar = document.getElementById('planerMsBar');
+  if (bar) bar.style.display = 'none';
+}
+
+function _planerMsGetSelected() {
+  const selected = [];
+  document.querySelectorAll('.pl-ms-chk:checked').forEach(c => {
+    selected.push({ key: c.dataset.key, idx: parseInt(c.dataset.idx) });
+  });
+  return selected;
+}
+
+function planerMsKopiujNaDzien(kierunek) {
+  const selected = _planerMsGetSelected();
+  if (!selected.length) return;
+  const wpisy = plGetWpisy();
+  const syncDni = new Set();
+
+  selected.forEach(function(s) {
+    const w = (wpisy[s.key]||[])[s.idx];
+    if (!w) return;
+    // Znajdź sąsiedni dzień roboczy
+    const parts = s.key.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    do { d.setDate(d.getDate() + kierunek); } while (d.getDay()===0 || d.getDay()===6);
+    const targetKey = plDateKey(d);
+    if (!wpisy[targetKey]) wpisy[targetKey] = [];
+    wpisy[targetKey].push(JSON.parse(JSON.stringify(w)));
+    syncDni.add(targetKey);
+  });
+
+  plSaveWpisy(wpisy);
+  syncDni.forEach(dk => plSyncDzien(dk));
+  planerMsClear();
+  planerRender();
+  toast('📋 Skopiowano ' + selected.length + ' wpisów');
+}
+
+function planerMsUsun() {
+  const selected = _planerMsGetSelected();
+  if (!selected.length) return;
+  if (!confirm('Usunąć ' + selected.length + ' zaznaczonych wpisów?')) return;
+  const wpisy = plGetWpisy();
+  const syncDni = new Set();
+  // Grupuj po dniu i usuń od końca żeby indeksy się nie przesunęły
+  const byKey = {};
+  selected.forEach(s => { if (!byKey[s.key]) byKey[s.key] = []; byKey[s.key].push(s.idx); });
+  Object.keys(byKey).forEach(key => {
+    const idxs = byKey[key].sort((a,b) => b-a);
+    idxs.forEach(idx => { if (wpisy[key]) wpisy[key].splice(idx, 1); });
+    syncDni.add(key);
+  });
+  plSaveWpisy(wpisy);
+  syncDni.forEach(dk => plSyncDzien(dk));
+  planerMsClear();
+  planerRender();
+  toast('🗑️ Usunięto ' + selected.length + ' wpisów');
 }
 
 function planerDragStart(e) {
