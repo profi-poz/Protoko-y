@@ -716,7 +716,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 89</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 90</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -4225,14 +4225,12 @@ function planerRender() {
           const nextCall = 'event.stopPropagation();planerKopiujSasiedni(' + JSON.stringify(dk) + ',' + wIdx + ',1)';
           const selId = 'plsel_' + dk + '_' + wIdx;
           cell += '<div draggable="true" data-drag-key="' + esc(dk) + '" data-drag-idx="' + wIdx + '" '
+            + 'data-sel-key="' + esc(dk) + '" data-sel-idx="' + wIdx + '" '
             + 'ondragstart="planerDragStart(event)" ondragend="planerDragEnd(event)" '
-            + 'style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px;cursor:grab">';
+            + 'onclick="planerMsClick(event,this)" '
+            + 'style="font-size:10px;line-height:1.3;padding:2px 0 3px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px;cursor:pointer;border-radius:3px">';
           cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:2px">';
-          // Checkbox multiselect
-          cell += '<input type="checkbox" class="pl-ms-chk" data-key="' + esc(dk) + '" data-idx="' + wIdx + '" '
-            + 'onclick="event.stopPropagation();planerMsToggle()" '
-            + 'style="width:13px;height:13px;margin-top:2px;flex-shrink:0;accent-color:var(--red);cursor:pointer">';
-          cell += '<div style="flex:1;min-width:0;padding-left:3px">';
+          cell += '<div style="flex:1;min-width:0;padding-left:2px">';
           cell += '<div style="font-weight:700;color:var(--text);font-size:11px">' + esc(osobyStr || '—') + '</div>';
           if (w2.auto) cell += '<div style="color:var(--muted);font-size:10px">🚗 ' + esc(w2.auto) + '</div>';
           if (!isNoObiekt && w2.obiekt) cell += '<div style="color:#6495ed;font-size:10px">📍 ' + esc(w2.obiekt) + '</div>';
@@ -4272,10 +4270,12 @@ function planerRender() {
     bar.id = 'planerMsBar';
     bar.style.cssText = 'display:none;position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid var(--red);border-radius:12px;padding:10px 16px;display:flex;gap:8px;align-items:center;z-index:500;box-shadow:0 4px 20px rgba(0,0,0,.5)';
     bar.innerHTML = '<span id="planerMsCount" style="font-size:13px;font-weight:700;color:var(--red)">0 zaznaczonych</span>'
-      + '<button onclick="planerMsKopiujNaDzien(-1)" style="padding:6px 12px;background:rgba(100,149,237,.2);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">◀ Kopiuj wcześniej</button>'
-      + '<button onclick="planerMsKopiujNaDzien(1)" style="padding:6px 12px;background:rgba(100,149,237,.2);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">Kopiuj później ▶</button>'
-      + '<button onclick="planerMsUsun()" style="padding:6px 12px;background:rgba(231,76,60,.2);border:1px solid #e74c3c;border-radius:8px;color:#e74c3c;font-size:12px;cursor:pointer">🗑️ Usuń</button>'
-      + '<button onclick="planerMsClear()" style="padding:6px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer">✕</button>';
+      + '<button onclick="planerMsKopiujNaTydzien(-1)" title="Ctrl=kopiuj" style="padding:6px 10px;background:rgba(100,149,237,.2);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">◀◀ Poprzedni tydzień</button>'
+      + '<button onclick="planerMsPrzeniesNaTydzien(-1)" style="padding:6px 10px;background:rgba(100,149,237,.15);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">↤ Przenieś ◀◀</button>'
+      + '<button onclick="planerMsPrzeniesNaTydzien(1)" style="padding:6px 10px;background:rgba(100,149,237,.15);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">▶▶ Przenieś ↦</button>'
+      + '<button onclick="planerMsKopiujNaTydzien(1)" title="Ctrl=kopiuj" style="padding:6px 10px;background:rgba(100,149,237,.2);border:1px solid #6495ed;border-radius:8px;color:#6495ed;font-size:12px;cursor:pointer">Następny tydzień ▶▶</button>'
+      + '<button onclick="planerMsUsun()" style="padding:6px 10px;background:rgba(231,76,60,.2);border:1px solid #e74c3c;border-radius:8px;color:#e74c3c;font-size:12px;cursor:pointer">🗑️ Usuń</button>'
+      + '<button onclick="planerMsClear()" style="padding:6px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer">✕ Odznacz</button>';
     bar.style.display = 'none';
     document.body.appendChild(bar);
   }
@@ -4656,43 +4656,68 @@ function planerKopiujWlasny(key, idx) {
   toast('📋 Skopiowano na ' + dodano + ' dni');
 }
 
-function planerMsToggle() {
-  const chks = document.querySelectorAll('.pl-ms-chk:checked');
-  const bar = document.getElementById('planerMsBar');
-  const cnt = document.getElementById('planerMsCount');
+// ── MULTISELECT Excel-style (Ctrl+klik) ──────────────────────────
+let _plMsSelected = []; // [{key, idx}]
+
+function planerMsClick(e, el) {
+  // Jeśli kliknięto przycisk wewnątrz — nie rób nic (handled by button)
+  if (e.target.closest('button')) return;
+
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Toggle zaznaczenia
+    const key = el.dataset.selKey;
+    const idx = parseInt(el.dataset.selIdx);
+    const exists = _plMsSelected.findIndex(s => s.key===key && s.idx===idx);
+    if (exists >= 0) {
+      _plMsSelected.splice(exists, 1);
+      el.style.background = '';
+      el.style.outline = '';
+    } else {
+      _plMsSelected.push({key, idx});
+      el.style.background = 'rgba(220,53,69,.2)';
+      el.style.outline = '1px solid var(--red)';
+    }
+    _planerMsUpdateBar();
+  }
+  // Bez Ctrl — normalne kliknięcie (dodaj wpis) obsługuje parent div
+}
+
+function _planerMsUpdateBar() {
+  let bar = document.getElementById('planerMsBar');
   if (!bar) return;
-  if (chks.length > 0) {
+  if (_plMsSelected.length > 0) {
     bar.style.display = 'flex';
-    if (cnt) cnt.textContent = chks.length + ' zaznaczonych';
+    const cnt = document.getElementById('planerMsCount');
+    if (cnt) cnt.textContent = _plMsSelected.length + ' zaznaczonych';
   } else {
     bar.style.display = 'none';
   }
 }
 
 function planerMsClear() {
-  document.querySelectorAll('.pl-ms-chk').forEach(c => c.checked = false);
-  const bar = document.getElementById('planerMsBar');
-  if (bar) bar.style.display = 'none';
+  _plMsSelected = [];
+  // Odznacz wizualnie
+  document.querySelectorAll('[data-sel-key]').forEach(el => {
+    el.style.background = '';
+    el.style.outline = '';
+  });
+  _planerMsUpdateBar();
 }
 
-function _planerMsGetSelected() {
-  const selected = [];
-  document.querySelectorAll('.pl-ms-chk:checked').forEach(c => {
-    selected.push({ key: c.dataset.key, idx: parseInt(c.dataset.idx) });
-  });
-  return selected;
-}
+function planerMsToggle() { /* legacy — nieużywane */ }
+
+function _planerMsGetSelected() { return _plMsSelected; }
 
 function planerMsKopiujNaDzien(kierunek) {
-  const selected = _planerMsGetSelected();
-  if (!selected.length) return;
+  if (!_plMsSelected.length) return;
   const wpisy = plGetWpisy();
   const syncDni = new Set();
 
-  selected.forEach(function(s) {
+  _plMsSelected.forEach(function(s) {
     const w = (wpisy[s.key]||[])[s.idx];
     if (!w) return;
-    // Znajdź sąsiedni dzień roboczy
     const parts = s.key.split('-');
     const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
     do { d.setDate(d.getDate() + kierunek); } while (d.getDay()===0 || d.getDay()===6);
@@ -4704,30 +4729,87 @@ function planerMsKopiujNaDzien(kierunek) {
 
   plSaveWpisy(wpisy);
   syncDni.forEach(dk => plSyncDzien(dk));
+  const n = _plMsSelected.length;
   planerMsClear();
   planerRender();
-  toast('📋 Skopiowano ' + selected.length + ' wpisów');
+  toast('📋 Skopiowano ' + n + ' wpisów');
+}
+
+function planerMsKopiujNaTydzien(kierunek) {
+  if (!_plMsSelected.length) return;
+  const wpisy = plGetWpisy();
+  const syncDni = new Set();
+
+  _plMsSelected.forEach(function(s) {
+    const w = (wpisy[s.key]||[])[s.idx];
+    if (!w) return;
+    const parts = s.key.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    d.setDate(d.getDate() + kierunek * 7);
+    const targetKey = plDateKey(d);
+    if (!wpisy[targetKey]) wpisy[targetKey] = [];
+    wpisy[targetKey].push(JSON.parse(JSON.stringify(w)));
+    syncDni.add(targetKey);
+  });
+
+  plSaveWpisy(wpisy);
+  syncDni.forEach(dk => plSyncDzien(dk));
+  const n = _plMsSelected.length;
+  planerMsClear();
+  planerRender();
+  toast('📋 Skopiowano ' + n + ' wpisów o ' + (kierunek>0?'+':'') + kierunek + ' tydzień');
+}
+
+function planerMsPrzeniesNaTydzien(kierunek) {
+  if (!_plMsSelected.length) return;
+  const wpisy = plGetWpisy();
+  const syncDni = new Set();
+
+  _plMsSelected.forEach(function(s) {
+    const w = (wpisy[s.key]||[])[s.idx];
+    if (!w) return;
+    const parts = s.key.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    d.setDate(d.getDate() + kierunek * 7);
+    const targetKey = plDateKey(d);
+    if (!wpisy[targetKey]) wpisy[targetKey] = [];
+    wpisy[targetKey].push(JSON.parse(JSON.stringify(w)));
+    syncDni.add(targetKey);
+    syncDni.add(s.key);
+  });
+
+  // Usuń oryginały (od końca żeby indeksy się nie zepsuły)
+  const byKey = {};
+  _plMsSelected.forEach(s => { if(!byKey[s.key]) byKey[s.key]=[]; byKey[s.key].push(s.idx); });
+  Object.keys(byKey).forEach(key => {
+    byKey[key].sort((a,b)=>b-a).forEach(idx => { if(wpisy[key]) wpisy[key].splice(idx,1); });
+  });
+
+  plSaveWpisy(wpisy);
+  syncDni.forEach(dk => plSyncDzien(dk));
+  const n = _plMsSelected.length;
+  planerMsClear();
+  planerRender();
+  toast('↔️ Przeniesiono ' + n + ' wpisów o ' + (kierunek>0?'+':'') + kierunek + ' tydzień');
 }
 
 function planerMsUsun() {
-  const selected = _planerMsGetSelected();
-  if (!selected.length) return;
-  if (!confirm('Usunąć ' + selected.length + ' zaznaczonych wpisów?')) return;
+  if (!_plMsSelected.length) return;
+  if (!confirm('Usunąć ' + _plMsSelected.length + ' zaznaczonych wpisów?')) return;
   const wpisy = plGetWpisy();
   const syncDni = new Set();
-  // Grupuj po dniu i usuń od końca żeby indeksy się nie przesunęły
   const byKey = {};
-  selected.forEach(s => { if (!byKey[s.key]) byKey[s.key] = []; byKey[s.key].push(s.idx); });
+  _plMsSelected.forEach(s => { if(!byKey[s.key]) byKey[s.key]=[]; byKey[s.key].push(s.idx); });
   Object.keys(byKey).forEach(key => {
-    const idxs = byKey[key].sort((a,b) => b-a);
-    idxs.forEach(idx => { if (wpisy[key]) wpisy[key].splice(idx, 1); });
+    byKey[key].sort((a,b)=>b-a).forEach(idx => { if(wpisy[key]) wpisy[key].splice(idx,1); });
     syncDni.add(key);
   });
   plSaveWpisy(wpisy);
   syncDni.forEach(dk => plSyncDzien(dk));
+  const n = _plMsSelected.length;
   planerMsClear();
   planerRender();
-  toast('🗑️ Usunięto ' + selected.length + ' wpisów');
+  toast('🗑️ Usunięto ' + n + ' wpisów');
 }
 
 function planerDragStart(e) {
