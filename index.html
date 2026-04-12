@@ -716,7 +716,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 92</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 93</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1584,7 +1584,7 @@ function getForm() {
     adnotacjeBiuro: document.getElementById('adnotacjeBiuro').value,
     infoKolejnySerwis: document.getElementById('infoKolejnySerwis').value,
     photos: photos.map(p => p.data),
-    wynik: document.getElementById('wynikPrzegladu').value,
+    wynik: document.getElementById('rodzajPrzegladu').value === 'awaryjny' ? '' : document.getElementById('wynikPrzegladu').value,
     serwisOsoby: (document.getElementById('serwisOsoby')||{}).value||'',
     serwisCzas: (document.getElementById('serwisCzas')||{}).value||'',
     serwisDojazd: (document.getElementById('serwisDojazd')||{}).value||'',
