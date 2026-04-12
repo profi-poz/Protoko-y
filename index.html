@@ -716,7 +716,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 90</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 92</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3467,13 +3467,24 @@ function _biuroRenderInner() {
       // Przyciski trybu edycji
       let editHtml = '';
       if (_biuroEditMode) {
-        editHtml = isHidden
-          ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
-              <button onclick="biuroOdkryj('${kEnc}')" style="width:100%;background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.3);border-radius:8px;color:#2ecc71;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">👁️ Przywróć</button>
-            </div>`
-          : `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
-              <button onclick="biuroUkryj('${kEnc}')" style="width:100%;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;color:#e74c3c;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">🗑️ Ukryj pozycję</button>
-            </div>`;
+        const freq = biuroGetFreq(k);
+        editHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700">📅 CZĘSTOTLIWOŚĆ PRZEGLĄDU</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            ${['3','6','12'].map(m => `<button onclick="biuroSetFreq('${kEnc}',${m})"
+              style="flex:1;padding:7px 4px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+              background:${freq==m?'var(--red)':'var(--surface2)'};
+              border:1px solid ${freq==m?'var(--red)':'var(--border)'};
+              color:${freq==m?'#fff':'var(--muted)'}">${m} mies.</button>`).join('')}
+            <button onclick="biuroSetFreq('${kEnc}',null)"
+              style="flex:1;padding:7px 4px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+              background:${!freq?'#555':'var(--surface2)'};border:1px solid var(--border);color:var(--muted)">auto</button>
+          </div>
+          ${isHidden
+            ? `<button onclick="biuroOdkryj('${kEnc}')" style="width:100%;background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.3);border-radius:8px;color:#2ecc71;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">👁️ Przywróć</button>`
+            : `<button onclick="biuroUkryj('${kEnc}')" style="width:100%;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;color:#e74c3c;font-family:'Barlow',sans-serif;font-size:13px;font-weight:700;padding:9px;cursor:pointer">🗑️ Ukryj pozycję</button>`
+          }
+        </div>`;
       }
 
       // Zaplanuj serwis — tylko w normalnym trybie
@@ -4814,9 +4825,32 @@ function planerMsUsun() {
 
 function planerDragStart(e) {
   const el = e.currentTarget;
-  e.dataTransfer.setData('text/plain', JSON.stringify({
-    key: el.dataset.dragKey, idx: parseInt(el.dataset.dragIdx)
-  }));
+  const key = el.dataset.dragKey;
+  const idx = parseInt(el.dataset.dragIdx);
+
+  if (e.ctrlKey || e.metaKey) {
+    // Ctrl+dragstart = dodaj do selekcji
+    const exists = _plMsSelected.findIndex(s => s.key===key && s.idx===idx);
+    if (exists < 0) {
+      _plMsSelected.push({key, idx});
+      el.style.background = 'rgba(220,53,69,.2)';
+      el.style.outline = '1px solid var(--red)';
+      _planerMsUpdateBar();
+    }
+    // Przekaż całą selekcję w dataTransfer
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      multi: true, items: _plMsSelected
+    }));
+  } else if (_plMsSelected.length > 0) {
+    // Jest selekcja — przeciągaj całą grupę
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      multi: true, items: _plMsSelected
+    }));
+  } else {
+    // Zwykłe przeciąganie jednego wpisu
+    e.dataTransfer.setData('text/plain', JSON.stringify({key, idx}));
+  }
+
   e.dataTransfer.effectAllowed = 'copyMove';
   el.style.opacity = '0.4';
 }
@@ -4827,32 +4861,33 @@ function planerDropWpis(e, targetKey, targetKatId) {
   e.preventDefault(); e.stopPropagation();
   let src;
   try { src = JSON.parse(e.dataTransfer.getData('text/plain')); } catch(ex) { return; }
-  if (!src || !src.key) return;
+  if (!src) return;
 
   const wpisy = plGetWpisy();
-  const srcWpisy = wpisy[src.key] || [];
-  const w = srcWpisy[src.idx];
-  if (!w) return;
-
-  const isSameCell = src.key === targetKey && w.katId === targetKatId;
-  if (isSameCell) return;
-
-  // Ctrl = kopiuj, bez Ctrl = przenieś
+  const syncDni = new Set();
   const isCopy = e.ctrlKey || e.metaKey;
+  const items = src.multi ? src.items : [{key: src.key, idx: src.idx}];
 
-  // Dodaj do docelowego dnia z docelową kategorią
-  if (!wpisy[targetKey]) wpisy[targetKey] = [];
-  const newW = Object.assign({}, JSON.parse(JSON.stringify(w)), { katId: targetKatId });
-  wpisy[targetKey].push(newW);
+  items.forEach(function(s) {
+    const w = (wpisy[s.key]||[])[s.idx];
+    if (!w) return;
+    if (!wpisy[targetKey]) wpisy[targetKey] = [];
+    wpisy[targetKey].push(Object.assign({}, JSON.parse(JSON.stringify(w)), {katId: targetKatId}));
+    syncDni.add(targetKey);
+  });
 
-  // Usuń źródło jeśli przeniesienie
   if (!isCopy) {
-    wpisy[src.key] = srcWpisy.filter(function(_, i) { return i !== src.idx; });
-    plSyncDzien(src.key);
+    const byKey = {};
+    items.forEach(s => { if(!byKey[s.key]) byKey[s.key]=[]; byKey[s.key].push(s.idx); });
+    Object.keys(byKey).forEach(key => {
+      byKey[key].sort((a,b)=>b-a).forEach(idx => { if(wpisy[key]) wpisy[key].splice(idx,1); });
+      syncDni.add(key);
+    });
   }
 
   plSaveWpisy(wpisy);
-  plSyncDzien(targetKey);
+  syncDni.forEach(dk => plSyncDzien(dk));
+  if (src.multi) planerMsClear();
   planerRender();
   toast(isCopy ? '📋 Skopiowano' : '↔️ Przeniesiono');
 }
@@ -5104,15 +5139,43 @@ function planerUsunAuto(i) {
 }
 
 // ===== BIURO EDYCJA (ukrywanie pozycji) =====
-const BIURO_HIDDEN_SK = 'profipoz_biuro_hidden'; // Set kluczy "obiekt|typ" do ukrycia
+const BIURO_HIDDEN_SK = 'profipoz_biuro_hidden'; // legacy lokalny fallback
 let _biuroEditMode = false;
 
 function biuroGetHidden() {
+  // Pobierz z cache serwera (klucz __hidden) lub fallback do localStorage
+  const serverHidden = (_biuroStatusCache && _biuroStatusCache.__hidden) || [];
+  if (serverHidden.length) return new Set(serverHidden);
   try { return new Set(JSON.parse(localStorage.getItem(BIURO_HIDDEN_SK) || '[]')); } catch(e) { return new Set(); }
 }
 function biuroSaveHidden(set) {
+  // Zapisz do cache i wyślij na serwer razem ze statusem
   localStorage.setItem(BIURO_HIDDEN_SK, JSON.stringify([...set]));
+  const status = biuroGetStatus();
+  status.__hidden = [...set];
+  biuroSaveStatus(status);
 }
+
+function biuroGetFreq(k) {
+  const status = biuroGetStatus();
+  return (status.__freq || {})[k] || null;
+}
+function biuroSaveFreq(k, val) {
+  const status = biuroGetStatus();
+  if (!status.__freq) status.__freq = {};
+  if (val) status.__freq[k] = val;
+  else delete status.__freq[k];
+  biuroSaveStatus(status);
+}
+function biuroSetFreq(kEnc, val) {
+  const k = decodeURIComponent(kEnc);
+  biuroPinCheck(function() {
+    biuroSaveFreq(k, val ? String(val) : null);
+    _biuroRenderInner();
+    toast(val ? `📅 Częstotliwość: ${val} mies.` : '📅 Częstotliwość: auto');
+  });
+}
+
 function biuroToggleEdit() {
   _biuroEditMode = !_biuroEditMode;
   const btn = document.getElementById('biuroEditBtn');
