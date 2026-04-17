@@ -511,6 +511,10 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
           <textarea id="zalecenieNieprawidl" placeholder="Numeruj zalecenia: 1. Należy..."></textarea>
         </div>
         <div class="field">
+          <label>📢 Uwagi dla inwestora</label>
+          <textarea id="uwagiInwestora" placeholder="Zalecenia i uwagi przekazywane bezpośrednio inwestorowi / właścicielowi obiektu..."></textarea>
+        </div>
+        <div class="field">
           <label>🏢 Adnotacje do biura</label>
           <textarea id="adnotacjeBiuro" placeholder="Informacje wewnętrzne dla biura / Martyny..."></textarea>
         </div>
@@ -716,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 93</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 95</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1582,6 +1586,7 @@ function getForm() {
     nieprawidlowosci: document.getElementById('nieprawidlowosci').value,
     zalecenieNieprawidl: document.getElementById('zalecenieNieprawidl').value,
     adnotacjeBiuro: document.getElementById('adnotacjeBiuro').value,
+    uwagiInwestora: document.getElementById('uwagiInwestora').value,
     infoKolejnySerwis: document.getElementById('infoKolejnySerwis').value,
     photos: photos.map(p => p.data),
     wynik: document.getElementById('rodzajPrzegladu').value === 'awaryjny' ? '' : document.getElementById('wynikPrzegladu').value,
@@ -1683,6 +1688,7 @@ function loadDraft(draftId) {
   set('nieprawidlowosci', d.nieprawidlowosci);
   set('zalecenieNieprawidl', d.zalecenieNieprawidl);
   set('adnotacjeBiuro', d.adnotacjeBiuro);
+  set('uwagiInwestora', d.uwagiInwestora);
   set('infoKolejnySerwis', d.infoKolejnySerwis);
   set('wynikPrzegladu', d.wynik);
   set('serwisOsoby', d.serwisOsoby);
@@ -1799,6 +1805,7 @@ function resetForm() {
   document.getElementById('nieprawidlowosci').value = '';
   document.getElementById('zalecenieNieprawidl').value = '';
   document.getElementById('adnotacjeBiuro').value = '';
+  document.getElementById('uwagiInwestora').value = '';
   document.getElementById('infoKolejnySerwis').value = '';
   resetPhotos();
   // przedstawiciel removed
@@ -1930,6 +1937,7 @@ function showDetail(id) {
     <div style="margin-top:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Nieprawidłowości</div><div style="font-size:13px;line-height:1.6">${p.nieprawidlowosci||'-'}</div></div>
     <div style="margin-top:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Zalecenia do nieprawidłowości</div><div style="font-size:13px;line-height:1.6">${p.zalecenieNieprawidl||'-'}</div></div>
     ${p.adnotacjeBiuro ? `<div style="margin-top:14px;background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.2);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🏢 Adnotacje do biura</div><div style="font-size:13px;line-height:1.6">${p.adnotacjeBiuro}</div></div>` : ''}
+    ${p.uwagiInwestora ? `<div style="margin-top:14px;background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:#2ecc71;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📢 Uwagi dla inwestora</div><div style="font-size:13px;line-height:1.6">${p.uwagiInwestora}</div></div>` : ''}
     <div style="margin-top:10px;background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.2);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--accent2,#ff6b35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🔧 Info do kolejnego serwisu</div><div style="font-size:13px">${p.infoKolejnySerwis||'-'}</div></div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)" class="${wynikClass(p.wynik)}">
       ${wynikIco(p.wynik)} ${p.wynik||'Brak'}
@@ -5550,19 +5558,24 @@ function _doGeneratePDF(p) {
   }
   function row(label, value) {
     if (!value || String(value).trim() === '' || String(value).trim() === '-') return;
-    checkY(7);
+    var lines = doc.splitTextToSize(pl(String(value)), TW - 50);
+    var need = lines.length * 5 + 2;
+    checkY(need);
     doc.setFont(FONT, 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
     doc.text(pl(label) + ':', ML, y);
     doc.setFont(FONT, 'normal');
     doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-    var lines = doc.splitTextToSize(pl(String(value)), TW - 50);
     doc.text(lines, ML + 50, y);
-    y += lines.length * 5 + 0.5;
+    y += need;
   }
   function sekcja(label, value) {
-    checkY(16);
+    if (!value || String(value).trim() === '' || String(value).trim() === '-') return;
+    var txt = String(value).trim();
+    var lines = doc.splitTextToSize(pl(txt), TW - 4);
+    var need = 5 + lines.length * 4.8 + 6;
+    checkY(need);
     doc.setFont(FONT, 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
@@ -5570,9 +5583,6 @@ function _doGeneratePDF(p) {
     y += 5;
     doc.setFont(FONT, 'normal');
     doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-    var txt = (value && String(value).trim() && String(value).trim() !== '-') ? String(value).trim() : 'brak';
-    var lines = doc.splitTextToSize(pl(txt), TW - 4);
-    checkY(lines.length * 4.8 + 5);
     doc.text(lines, ML + 4, y);
     y += lines.length * 4.8 + 6;
   }
@@ -5958,6 +5968,7 @@ function _doGeneratePDF(p) {
     sekcja('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
     sekcja('Zalecenia do nieprawidlowosci', p.zalecenieNieprawidl);
     sekcja('Wykaz uzytych czesci zamiennych', p.czesciZamienne||'');
+    if (p.uwagiInwestora) sekcja('Uwagi dla inwestora', p.uwagiInwestora);
   }
 
   // V. Wnioski / Podsumowanie
