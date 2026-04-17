@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 97</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 98</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -5572,8 +5572,7 @@ function _doGeneratePDF(p) {
     y += need;
   }
   function sekcja(label, value) {
-    if (!value || String(value).trim() === '' || String(value).trim() === '-') return;
-    var txt = String(value).trim();
+    var txt = (value && String(value).trim() && String(value).trim() !== '-') ? String(value).trim() : 'Brak';
     var lines = doc.splitTextToSize(pl(txt), TW - 4);
     var need = 5 + lines.length * 4.8 + 6;
     checkY(need);
@@ -5583,7 +5582,7 @@ function _doGeneratePDF(p) {
     doc.text(pl(label) + ':', ML, y);
     y += 5;
     doc.setFont(FONT, 'normal');
-    doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+    doc.setTextColor(txt === 'Brak' ? GRAY[0] : BLACK[0], txt === 'Brak' ? GRAY[1] : BLACK[1], txt === 'Brak' ? GRAY[2] : BLACK[2]);
     doc.text(lines, ML + 4, y);
     y += lines.length * 4.8 + 6;
   }
@@ -5691,27 +5690,28 @@ function _doGeneratePDF(p) {
   // I. Informacje ogolne
   sectionHead('I. INFORMACJE OGOLNE');
   row('Obiekt', p.obiekt);
-  var lokalizacja = p.lokalizacjaCentral || p.lokalizacja || '';
-  if (lokalizacja === '-') lokalizacja = '';
-  row(p.typ === 'DSG' ? 'Adres obiektu' : 'Lokalizacja centrali', lokalizacja);
   if (p.typ !== 'DSG') row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
   row(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data);
   if (dataNastepna && dataNastepna !== '-') row(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna);
   row('Serwisant', p.serwisant);
-  if (p.uprawnienia) row('Nr uprawnien', p.uprawnienia);
+  if (p.uprawnienia && p.uprawnienia !== '-') row('Nr uprawnien', p.uprawnienia);
   y += 4;
 
   // Specyfikacja systemu
+  var lokalizacja = String(p.lokalizacjaCentral || p.lokalizacja || '').trim();
+  if (lokalizacja === '-') lokalizacja = '';
   if (p.typ !== 'DSG') {
     sectionHead('Specyfikacja obiektu, systemu oraz instalacji:');
-    if (p.modelCentrali) row('Model centrali', p.modelCentrali);
-    if (p.iloscCentral)  row('Ilosc central', p.iloscCentral);
-    if (p.steruje)       row('Czy steruje urzadzeniami', p.steruje);
-    if (p.nadzoruje)     row('Czy nadzoruje urzadzenia', p.nadzoruje);
-    if (p.ksiazka)       row('Ksiazka eksploatacji', p.ksiazka);
+    if (p.modelCentrali && p.modelCentrali !== '-') row('Model centrali', p.modelCentrali);
+    if (lokalizacja) row('Lokalizacja centrali', lokalizacja);
+    if (p.iloscCentral && p.iloscCentral !== '-') row('Ilosc central', p.iloscCentral);
+    if (p.steruje)   row('Czy steruje urzadzeniami', p.steruje);
+    if (p.nadzoruje) row('Czy nadzoruje urzadzenia', p.nadzoruje);
+    if (p.ksiazka)   row('Ksiazka eksploatacji', p.ksiazka);
     y += 4;
   } else {
     sectionHead('Specyfikacja systemu detekcji gazow:');
+    if (lokalizacja) row('Adres / lokalizacja', lokalizacja);
     var dsgModel0 = (p.dsgDetektory && p.dsgDetektory[0]) ? (p.dsgDetektory[0].model || '') : '';
     var dsgGaz0   = (p.dsgDetektory && p.dsgDetektory[0]) ? (p.dsgDetektory[0].gaz   || '') : '';
     if (dsgModel0) row('Model detektora', dsgModel0);
@@ -5964,12 +5964,11 @@ function _doGeneratePDF(p) {
   // IV. Analiza przegladu (nie dla DSG - tam podsumowanie jest juz w sekcji III)
   if (p.typ !== 'DSG') {
     sectionHead('IV. ANALIZA PRZEGLADU');
-    sekcja('Wykaz stwierdzonych uszkodzen', p.usterki);
-    sekcja('Zalecenia do uszkodzen', p.zalecenia || p.zalecenieUsterek);
+    sekcja('Wykaz stwierdzonych uszkodzen',    p.usterki);
+    sekcja('Zalecenia do uszkodzen',            p.zalecenia || p.zalecenieUsterek);
     sekcja('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
-    sekcja('Zalecenia do nieprawidlowosci', p.zalecenieNieprawidl);
-    sekcja('Wykaz uzytych czesci zamiennych', p.czesciZamienne||'');
-    if (p.uwagiInwestora) sekcja('Uwagi dla inwestora', p.uwagiInwestora);
+    sekcja('Zalecenia do nieprawidlowosci',     p.zalecenieNieprawidl);
+    sekcja('Uwagi dla inwestora',               p.uwagiInwestora);
   }
 
   // V. Wnioski / Podsumowanie
