@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 103</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 104</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1900,6 +1900,7 @@ function showDetail(id) {
 
 function showDetailProto(p) {
   if (!p) return;
+  window._currentDetailProto = p; // Zapamiętaj aktualny protokół
   const typ = p.typ;
   const allItems = getCL()[typ] || getCL().Inne || CL[typ] || CL.Inne;
   // Odtwórz scope na podstawie rodzaju przeglądu zapisanego w protokole
@@ -1972,8 +1973,8 @@ function showDetailProto(p) {
       (p.uprawnieniaPrzedst ? 'Nr uprawnień: <b style="color:var(--text)">' + p.uprawnieniaPrzedst + '</b>' : '') +
       '</div>' : ''}
     <div style="margin-top:16px;display:flex;gap:10px;">
-      <button class="btn btn-red" style="flex:1;margin:0" onclick="biuroAction('excel','${p.id}')">📊 Excel</button>
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="biuroAction('pdf','${p.id}')">🖨️ PDF</button>
+      <button class="btn btn-red" style="flex:1;margin:0" onclick="biuroAction('excel', window._currentDetailProto?.id || '${p.id}')">📊 Excel</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="generatePDFCurrent()">🖨️ PDF</button>
       ${p.photos && p.photos.length ? `<div style="margin-top:14px">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📷 Zdjęcia (${p.photos.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${p.photos.map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${src}','_blank')">`).join('')}</div>
@@ -5388,11 +5389,26 @@ function _loadPolishFont(callback) {
   trySource(0);
 }
 
+function generatePDFCurrent() {
+  const p = window._currentDetailProto;
+  if (!p) { toast('Brak protokołu'); return; }
+  _generatePDFFromProto(p);
+}
+
 function generatePDF(id) {
-  let p = allProtokoly.find(x => String(x.id) === String(id))
-       || protokoly.find(x => String(x.id) === String(id))
-       || _panelProtosCache.find(x => String(x.id) === String(id));
+  // Jeśli mamy aktualny protokół w pamięci i jego ID pasuje — użyj go
+  if (window._currentDetailProto && String(window._currentDetailProto.id) === String(id)) {
+    _generatePDFFromProto(window._currentDetailProto);
+    return;
+  }
+  const p = allProtokoly.find(x => String(x.id) === String(id))
+         || protokoly.find(x => String(x.id) === String(id))
+         || _panelProtosCache.find(x => String(x.id) === String(id));
   if (!p) { toast('Nie znaleziono protokolu'); return; }
+  _generatePDFFromProto(p);
+}
+
+function _generatePDFFromProto(p) {
 
   // Jeśli brak lokalizacjaCentral — pobierz świeżo protokoły tego obiektu z GAS
   const needsEnrich = !p.lokalizacjaCentral || p.lokalizacjaCentral === '-';
