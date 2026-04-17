@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 96</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 97</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -5803,9 +5803,9 @@ function _doGeneratePDF(p) {
   // II. Wykaz elementow systemu (nie dotyczy DSG)
   if (p.typ !== 'DSG') {
     sectionHead('II. WYKAZ ELEMENTOW SYSTEMU');
-    var colX = [ML, ML+10, ML+65, ML+140];
-    var colW = [10, 55, 75, 30];
-    var colH = ['', 'Rodzaj urzadzenia', 'Producent / Typ', 'Lokalizacja'];
+    var colX = [ML, ML+10, ML+75];
+    var colW = [10, 65, 91];
+    var colH = ['', 'Rodzaj urzadzenia', 'Producent / Typ'];
     doc.setFillColor(MGRAY[0], MGRAY[1], MGRAY[2]);
     doc.rect(ML, y - 4.5, TW, 6, 'F');
     doc.setFont(FONT,'bold'); doc.setFontSize(8); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
@@ -5819,9 +5819,7 @@ function _doGeneratePDF(p) {
       doc.text('Centrala', colX[1]+1, y);
       var mL = doc.splitTextToSize(pl(model), colW[2]-3);
       doc.text(mL, colX[2]+1, y);
-      var lL = doc.splitTextToSize(pl(p.lokalizacjaCentral||''), colW[3]-2);
-      doc.text(lL, colX[3]+1, y);
-      y += Math.max(mL.length, lL.length, 1) * 5 + 1;
+      y += Math.max(mL.length, 1) * 5 + 1;
       hline(y-1);
     });
     y += 6;
