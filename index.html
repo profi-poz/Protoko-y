@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 95</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 96</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -5557,8 +5557,9 @@ function _doGeneratePDF(p) {
     y += 6;
   }
   function row(label, value) {
-    if (!value || String(value).trim() === '' || String(value).trim() === '-') return;
-    var lines = doc.splitTextToSize(pl(String(value)), TW - 50);
+    var v = value ? String(value).trim() : '';
+    if (!v || v === '-') return;
+    var lines = doc.splitTextToSize(pl(v), TW - 50);
     var need = lines.length * 5 + 2;
     checkY(need);
     doc.setFont(FONT, 'bold');
@@ -5690,7 +5691,9 @@ function _doGeneratePDF(p) {
   // I. Informacje ogolne
   sectionHead('I. INFORMACJE OGOLNE');
   row('Obiekt', p.obiekt);
-  row(p.typ === 'DSG' ? 'Adres obiektu' : 'Lokalizacja centrali', p.lokalizacjaCentral || '-');
+  var lokalizacja = p.lokalizacjaCentral || p.lokalizacja || '';
+  if (lokalizacja === '-') lokalizacja = '';
+  row(p.typ === 'DSG' ? 'Adres obiektu' : 'Lokalizacja centrali', lokalizacja);
   if (p.typ !== 'DSG') row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
   row(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data);
   if (dataNastepna && dataNastepna !== '-') row(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna);
