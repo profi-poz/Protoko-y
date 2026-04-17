@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 98</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 99</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2004,9 +2004,19 @@ async function syncFromServer() {
   }
   // Połącz: serwer + lokalne, bez duplikatów (po id)
   // Filtruj tylko prawdziwe protokoły (mają typ z listy instalacji)
-  const VALID_TYPY = new Set(['SSP','DSO','DSG','PSP','DSP','SUG','SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME','Inne']);
+  const VALID_TYPY = new Set(['SSP','DSO','DSG','PSP','DSP','SUG','SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME','Inne','awaryjny']);
   const localIds = new Set(protokoly.map(p => String(p.id)));
-  const onlyServer = serverProtokoly.filter(p => !localIds.has(String(p.id)));
+  const onlyServer = serverProtokoly
+    .filter(p => !localIds.has(String(p.id)))
+    .map(function(p) {
+      // Wyczyść "-" z pól które mogą być puste — ułatwia renderowanie PDF
+      var clean = Object.assign({}, p);
+      ['lokalizacjaCentral','lokalizacja','uprawnienia','iloscCentral',
+       'modelCentrali','przedstawiciel','firmaObiektu','uwagiInwestora'].forEach(function(k) {
+        if (clean[k] === '-') clean[k] = '';
+      });
+      return clean;
+    });
   allProtokoly = [...protokoly, ...onlyServer]
     .filter(p => p && p.typ && VALID_TYPY.has(p.typ))
     .sort((a,b) => {
@@ -5571,8 +5581,9 @@ function _doGeneratePDF(p) {
     doc.text(lines, ML + 50, y);
     y += need;
   }
-  function sekcja(label, value) {
-    var txt = (value && String(value).trim() && String(value).trim() !== '-') ? String(value).trim() : 'Brak';
+  function sekcja(label, value, optional) {
+    var txt = (value && String(value).trim() && String(value).trim() !== '-') ? String(value).trim() : (optional ? null : 'Brak');
+    if (!txt) return;
     var lines = doc.splitTextToSize(pl(txt), TW - 4);
     var need = 5 + lines.length * 4.8 + 6;
     checkY(need);
@@ -5964,15 +5975,23 @@ function _doGeneratePDF(p) {
   // IV. Analiza przegladu (nie dla DSG - tam podsumowanie jest juz w sekcji III)
   if (p.typ !== 'DSG') {
     sectionHead('IV. ANALIZA PRZEGLADU');
-    sekcja('Wykaz stwierdzonych uszkodzen',    p.usterki);
-    sekcja('Zalecenia do uszkodzen',            p.zalecenia || p.zalecenieUsterek);
-    sekcja('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
-    sekcja('Zalecenia do nieprawidlowosci',     p.zalecenieNieprawidl);
-    sekcja('Uwagi dla inwestora',               p.uwagiInwestora);
+    if (isAwaryjnyPDF) {
+      // Awaryjny — tylko usterki i zalecenia, bez "brak" dla nieużywanych pozycji
+      sekcja('Opis interwencji / stwierdzone usterki', p.usterki);
+      sekcja('Zalecenia i podjete dzialania',           p.zalecenia || p.zalecenieUsterek);
+      sekcja('Uwagi dla inwestora',               p.uwagiInwestora, true);
+    } else {
+      sekcja('Wykaz stwierdzonych uszkodzen',    p.usterki);
+      sekcja('Zalecenia do uszkodzen',            p.zalecenia || p.zalecenieUsterek);
+      sekcja('Wykaz stwierdzonych nieprawidlowosci', p.nieprawidlowosci);
+      sekcja('Zalecenia do nieprawidlowosci',     p.zalecenieNieprawidl);
+      sekcja('Uwagi dla inwestora',               p.uwagiInwestora, true);
+    }
   }
 
   // V. Wnioski / Podsumowanie
-  var isKonserwacjaPDF = (p.rodzaj||'').toLowerCase() === 'awaryjny';
+  var isAwaryjnyPDF = (p.rodzaj||'').toLowerCase() === 'awaryjny' || p.typ === 'awaryjny';
+  var isKonserwacjaPDF = !isAwaryjnyPDF && ['konserwacja','kwartalny','polroczny','roczny'].indexOf((p.rodzaj||'').toLowerCase()) > -1;
 
   if (p.typ === 'DSG') {
     // DSG: sekcja IV podpis kontrolujacego
