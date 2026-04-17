@@ -5377,30 +5377,59 @@ function _loadPolishFont(callback) {
 }
 
 function generatePDF(id) {
-  const p = allProtokoly.find(x => String(x.id) === String(id))
-         || protokoly.find(x => String(x.id) === String(id))
-         || _panelProtosCache.find(x => String(x.id) === String(id));
+  let p = allProtokoly.find(x => String(x.id) === String(id))
+       || protokoly.find(x => String(x.id) === String(id))
+       || _panelProtosCache.find(x => String(x.id) === String(id));
   if (!p) { toast('Nie znaleziono protokolu'); return; }
 
-  // Pokaż dialog wyboru rodzaju + następnego przeglądu
-  showNextReviewPicker(p, function(months, rodzajPDF) {
-    // Użyj rodzaju z dialogu (może być inny niż w protokole)
-    const pdfData = Object.assign({}, p, { rodzaj: rodzajPDF || p.rodzaj });
-    if (months > 0 && pdfData.data) {
-      const d = new Date(pdfData.data);
-      d.setMonth(d.getMonth() + months);
-      const miesiac = String(d.getMonth() + 1).padStart(2, '0');
-      const rok = d.getFullYear();
-      pdfData._dataNastepnaPDF = rok + '-' + miesiac;
-    } else {
-      pdfData._dataNastepnaPDF = null;
-    }
-    toast('Przygotowywanie PDF...');
-    loadJsPDF(function(err) {
-      if (err) { toast('Blad PDF: ' + err.message); return; }
-      _doGeneratePDF(pdfData);
+  // Jeśli brak lokalizacjaCentral — pobierz świeżo protokoły tego obiektu z GAS
+  const needsEnrich = !p.lokalizacjaCentral || p.lokalizacjaCentral === '-';
+  const url = localStorage.getItem('serverUrl');
+
+  function doPDF(enriched) {
+    showNextReviewPicker(enriched, function(months, rodzajPDF) {
+      const pdfData = Object.assign({}, enriched, { rodzaj: rodzajPDF || enriched.rodzaj });
+      if (months > 0 && pdfData.data) {
+        const d = new Date(pdfData.data);
+        d.setMonth(d.getMonth() + months);
+        const miesiac = String(d.getMonth() + 1).padStart(2, '0');
+        const rok = d.getFullYear();
+        pdfData._dataNastepnaPDF = rok + '-' + miesiac;
+      } else {
+        pdfData._dataNastepnaPDF = null;
+      }
+      toast('Przygotowywanie PDF...');
+      loadJsPDF(function(err) {
+        if (err) { toast('Blad PDF: ' + err.message); return; }
+        _doGeneratePDF(pdfData);
+      });
     });
-  });
+  }
+
+  if (needsEnrich && url && p.obiekt) {
+    // Pobierz świeże dane protokołów tego obiektu z GAS
+    const cbName = 'cb_pdf_enrich_' + Date.now();
+    const timer = setTimeout(function() {
+      delete window[cbName];
+      doPDF(p); // timeout — generuj bez wzbogacenia
+    }, 5000);
+    window[cbName] = function(r) {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (r && r.status === 'ok' && Array.isArray(r.protokoly)) {
+        const fresh = r.protokoly.find(x => String(x.id) === String(p.id));
+        if (fresh && fresh.lokalizacjaCentral && fresh.lokalizacjaCentral !== '-') {
+          p = Object.assign({}, p, { lokalizacjaCentral: fresh.lokalizacjaCentral });
+        }
+      }
+      doPDF(p);
+    };
+    const s = document.createElement('script');
+    s.src = url + '?protokolyObiektu=' + encodeURIComponent(p.obiekt) + '&callback=' + cbName;
+    document.body.appendChild(s);
+  } else {
+    doPDF(p);
+  }
 }
 
 function showNextReviewPicker(p, callback) {
@@ -5519,8 +5548,23 @@ function _doGeneratePDF(p) {
     }
     if (!Array.isArray(p.dsgDetektory)) p = Object.assign({}, p, { dsgDetektory: [] });
   }
-  // DEBUG — pokaż co jest w lokalizacjaCentral (usuń po naprawieniu)
-  alert('DEBUG lokalizacja:\n"' + p.lokalizacjaCentral + '"\n\nlokalizacja:\n"' + p.lokalizacja + '"\n\ntyp: ' + p.typ + '\nid: ' + p.id);
+  // Uzupełnij brakujące pola z serverProtokoly (stare lokalne wpisy nie mają lokalizacjaCentral)
+  if (!p.lokalizacjaCentral) {
+    // Szukaj w serverProtokoly po ID
+    const srv = (serverProtokoly||[]).find(x => String(x.id) === String(p.id));
+    if (srv && srv.lokalizacjaCentral && srv.lokalizacjaCentral !== '-') {
+      p = Object.assign({}, p, { lokalizacjaCentral: srv.lokalizacjaCentral });
+    } else {
+      // Szukaj w _obiektyCache po nazwie obiektu
+      const cached = (_obiektyCache||[]).find(x => x.obiekt && p.obiekt &&
+        x.obiekt.toLowerCase().trim() === p.obiekt.toLowerCase().trim());
+      if (cached && cached.lokalizacja) {
+        p = Object.assign({}, p, { lokalizacjaCentral: cached.lokalizacja });
+      }
+    }
+  }
+  // Wyczyść "-" z lokalizacji
+  if (p.lokalizacjaCentral === '-') p = Object.assign({}, p, { lokalizacjaCentral: '' });
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', putOnlyUsedFonts: true });
