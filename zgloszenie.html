@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zgłoszenie Awarii — Profi-Poż</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #D72B2B;
+    --red-dark: #A81E1E;
+    --red-glow: rgba(215,43,43,0.15);
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --border-active: #444;
+    --text: #f0f0f0;
+    --muted: #888;
+    --success: #2ECC71;
+    --warning: #F39C12;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--red);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--red);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 20px;
+  }
+
+  .header-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+  }
+
+  .header-sub {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* STEPS BAR */
+  .steps-bar {
+    display: flex;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .step-item {
+    flex: 1;
+    padding: 10px 6px 8px;
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .step-item.active {
+    color: var(--text);
+    border-bottom-color: var(--red);
+  }
+
+  .step-item.done {
+    color: var(--success);
+    border-bottom-color: var(--success);
+  }
+
+  .step-num {
+    display: block;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  /* CONTENT */
+  .container {
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  /* SCREENS */
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+
+  .screen-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .screen-desc {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  /* FORM ELEMENTS */
+  .field {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  input[type="text"],
+  input[type="tel"],
+  input[type="email"],
+  textarea,
+  select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 16px;
+    padding: 14px 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px var(--red-glow);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.5;
+  }
+
+  /* CODE INPUT — duże, wyraźne */
+  .code-input {
+    font-family: 'Barlow Condensed', sans-serif !important;
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    letter-spacing: 6px !important;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 20px !important;
+  }
+
+  /* CONFIRM CARD */
+  .confirm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .confirm-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--red);
+  }
+
+  .confirm-card .obj-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .confirm-card .obj-addr {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .confirm-card .obj-code {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: var(--red);
+    color: white;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* PRIORITY SELECTOR */
+  .priority-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .priority-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 14px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .priority-btn .prio-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+
+  .priority-btn:hover { border-color: var(--border-active); }
+
+  .priority-btn.selected-low { border-color: var(--success); background: rgba(46,204,113,0.1); color: var(--success); }
+  .priority-btn.selected-med { border-color: var(--warning); background: rgba(243,156,18,0.1); color: var(--warning); }
+  .priority-btn.selected-high { border-color: var(--red); background: var(--red-glow); color: #ff6b6b; }
+
+  /* ZDJĘCIA */
+  .photo-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  .photo-zone:hover, .photo-zone.dragover {
+    border-color: var(--red);
+    background: var(--red-glow);
+  }
+
+  .photo-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .photo-zone-text { font-size: 14px; color: var(--muted); }
+  .photo-zone-sub { font-size: 12px; color: #555; margin-top: 4px; }
+
+  .photo-input { display: none; }
+
+  .photo-previews {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .photo-thumb {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .photo-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .photo-thumb .remove-photo {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    background: rgba(0,0,0,0.7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* BUTTONS */
+  .btn-primary {
+    width: 100%;
+    background: var(--red);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-primary:hover { background: var(--red-dark); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: #444; color: #777; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 14px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover { border-color: var(--border-active); color: var(--text); }
+
+  /* SPINNER */
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ERROR / INFO */
+  .alert {
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.4;
+  }
+
+  .alert-error { background: rgba(215,43,43,0.12); border: 1px solid rgba(215,43,43,0.3); color: #ff9090; }
+  .alert-info { background: rgba(52,152,219,0.1); border: 1px solid rgba(52,152,219,0.25); color: #7ec8e3; }
+  .alert-success { background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.25); color: var(--success); }
+
+  /* SUCCESS SCREEN */
+  .success-icon {
+    width: 80px; height: 80px;
+    background: rgba(46,204,113,0.15);
+    border: 2px solid var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    margin: 0 auto 24px;
+    animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .ticket-number {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 38px;
+    font-weight: 800;
+    color: var(--success);
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .ticket-label {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+  }
+
+  .char-count {
+    text-align: right;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* REQUIRED STAR */
+  .req { color: var(--red); margin-left: 2px; }
+
+  /* INSTALACJA TYPE */
+  .inst-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .inst-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 12px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .inst-btn:hover { border-color: var(--border-active); color: var(--text); }
+  .inst-btn.selected { border-color: var(--red); background: var(--red-glow); color: var(--text); }
+
+  select option { background: var(--surface2); }
+
+  @media (max-width: 360px) {
+    .priority-grid { grid-template-columns: 1fr 1fr 1fr; }
+    .inst-grid { grid-template-columns: 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🔥</div>
+  <div>
+    <div class="header-title">PROFI-POŻ</div>
+    <div class="header-sub">System zgłoszeń awarii</div>
+  </div>
+</div>
+
+<div class="steps-bar" id="stepsBar">
+  <div class="step-item active" id="step1item">
+    <span class="step-num">1</span>Obiekt
+  </div>
+  <div class="step-item" id="step2item">
+    <span class="step-num">2</span>Szczegóły
+  </div>
+  <div class="step-item" id="step3item">
+    <span class="step-num">3</span>Zdjęcia
+  </div>
+  <div class="step-item" id="step4item">
+    <span class="step-num">4</span>Wysyłka
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== KROK 1: KOD OBIEKTU ===== -->
+  <div class="screen active" id="screen1">
+    <div class="section-label">Krok 1 z 4</div>
+    <h1 class="screen-title">Identyfikacja<br>obiektu</h1>
+    <p class="screen-desc">Wpisz kod obiektu, który otrzymałeś od serwisanta. Znajdziesz go na protokole serwisowym.</p>
+
+    <div class="field">
+      <label>Kod obiektu <span class="req">*</span></label>
+      <input type="text" class="code-input" id="codeInput" placeholder="OBJ-000" maxlength="12"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+    </div>
+
+    <div id="codeError" class="alert alert-error" style="display:none">
+      <span>⚠️</span>
+      <span id="codeErrorMsg">Nie znaleziono obiektu o podanym kodzie. Sprawdź czy wpisałeś poprawnie.</span>
+    </div>
+
+    <button class="btn-primary" id="btnVerify" onclick="verifyCode()">
+      WERYFIKUJ KOD
+    </button>
+
+    <div class="alert alert-info" style="margin-top:20px">
+      <span>ℹ️</span>
+      <span>Nie znasz kodu? Zadzwoń do nas: <strong>+48 XXX XXX XXX</strong></span>
+    </div>
+  </div>
+
+  <!-- ===== KROK 1b: POTWIERDZENIE OBIEKTU ===== -->
+  <div class="screen" id="screen1b">
+    <div class="section-label">Weryfikacja obiektu</div>
+    <h1 class="screen-title">Czy to Twój<br>obiekt?</h1>
+    <p class="screen-desc">Upewnij się, że dane obiektu są poprawne przed dalszym wypełnianiem zgłoszenia.</p>
+
+    <div class="confirm-card" id="confirmCard">
+      <div class="obj-code" id="confirmedCode"></div>
+      <div class="obj-name" id="confirmedName"></div>
+      <div class="obj-addr" id="confirmedAddr"></div>
+    </div>
+
+    <button class="btn-primary" onclick="confirmObject()">TAK, TO MÓJ OBIEKT →</button>
+    <button class="btn-secondary" onclick="goBack(1)">← Wpisz inny kod</button>
+  </div>
+
+  <!-- ===== KROK 2: SZCZEGÓŁY AWARII ===== -->
+  <div class="screen" id="screen2">
+    <div class="section-label">Krok 2 z 4</div>
+    <h1 class="screen-title">Opis awarii</h1>
+    <p class="screen-desc">Opisz dokładnie problem — im więcej szczegółów, tym szybciej reagujemy.</p>
+
+    <div class="field">
+      <label>Typ instalacji <span class="req">*</span></label>
+      <div class="inst-grid" id="instGrid">
+        <button class="inst-btn" onclick="selectInst(this, 'SSP')">SSP</button>
+        <button class="inst-btn" onclick="selectInst(this, 'DSO')">DSO</button>
+        <button class="inst-btn" onclick="selectInst(this, 'DSG')">DSG</button>
+        <button class="inst-btn" onclick="selectInst(this, 'PSP')">PSP</button>
+        <button class="inst-btn" onclick="selectInst(this, 'SUG')">SUG</button>
+        <button class="inst-btn" onclick="selectInst(this, 'Inne')">Inne</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Priorytet zgłoszenia <span class="req">*</span></label>
+      <div class="priority-grid">
+        <button class="priority-btn" onclick="selectPriority(this, 'low')">
+          <span class="prio-icon">🟢</span>Niski
+        </button>
+        <button class="priority-btn" onclick="selectPriority(this, 'med')">
+          <span class="prio-icon">🟡</span>Średni
+        </button>
+        <button class="priority-btn" onclick="selectPriority(this, 'high')">
+          <span class="prio-icon">🔴</span>Pilne
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Opis awarii <span class="req">*</span></label>
+      <textarea id="descInput" maxlength="1000" placeholder="np. Centrala SSP sygnalizuje alarm strefy 3, mimo braku pożaru. Czujka przy windzie miga na czerwono od rana..." oninput="updateCharCount(this)"></textarea>
+      <div class="char-count"><span id="descCount">0</span>/1000</div>
+    </div>
+
+    <div class="field">
+      <label>Imię i nazwisko zgłaszającego <span class="req">*</span></label>
+      <input type="text" id="contactName" placeholder="Jan Kowalski" autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label>Telefon kontaktowy <span class="req">*</span></label>
+      <input type="tel" id="contactPhone" placeholder="+48 600 000 000" autocomplete="tel">
+    </div>
+
+    <div id="detailsError" class="alert alert-error" style="display:none">
+      <span>⚠️</span><span id="detailsErrorMsg">Uzupełnij wszystkie wymagane pola.</span>
+    </div>
+
+    <button class="btn-primary" onclick="goToPhotos()">DALEJ: ZDJĘCIA →</button>
+    <button class="btn-secondary" onclick="goBack(1)">← Wróć</button>
+  </div>
+
+  <!-- ===== KROK 3: ZDJĘCIA ===== -->
+  <div class="screen" id="screen3">
+    <div class="section-label">Krok 3 z 4</div>
+    <h1 class="screen-title">Zdjęcia<br><span style="color:var(--muted);font-size:0.6em;font-weight:400">(opcjonalne)</span></h1>
+    <p class="screen-desc">Dodaj zdjęcia usterki jeśli możesz — znacznie ułatwia to diagnozę przed przyjazdem serwisu.</p>
+
+    <div class="photo-zone" id="photoZone" onclick="document.getElementById('photoInput').click()"
+         ondragover="e=>{ e.preventDefault(); e.currentTarget.classList.add('dragover') }"
+         ondragleave="e=>e.currentTarget.classList.remove('dragover')"
+         ondrop="handleDrop(event)">
+      <div class="photo-zone-icon">📷</div>
+      <div class="photo-zone-text">Dotknij aby dodać zdjęcia</div>
+      <div class="photo-zone-sub">lub przeciągnij tutaj • maks. 5 zdjęć • jpg/png</div>
+    </div>
+    <input type="file" class="photo-input" id="photoInput" accept="image/*" multiple onchange="handlePhotos(this.files)">
+
+    <div class="photo-previews" id="photoPreviews"></div>
+
+    <button class="btn-primary" onclick="goToReview()">DALEJ: SPRAWDŹ →</button>
+    <button class="btn-secondary" onclick="goBack(2)">← Wróć</button>
+  </div>
+
+  <!-- ===== KROK 4: PODSUMOWANIE ===== -->
+  <div class="screen" id="screen4">
+    <div class="section-label">Krok 4 z 4</div>
+    <h1 class="screen-title">Sprawdź<br>i wyślij</h1>
+
+    <div class="confirm-card" id="reviewCard" style="margin-bottom:16px">
+      <div class="obj-code" id="reviewCode"></div>
+      <div class="obj-name" id="reviewName"></div>
+      <div class="obj-addr" id="reviewAddr" style="margin-bottom:12px"></div>
+      <hr class="divider" style="margin:12px 0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+        <div>
+          <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Instalacja</div>
+          <div id="reviewInst" style="font-weight:600"></div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Priorytet</div>
+          <div id="reviewPriority" style="font-weight:600"></div>
+        </div>
+        <div style="grid-column:1/-1">
+          <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Zgłaszający</div>
+          <div id="reviewContact" style="font-weight:600"></div>
+        </div>
+        <div style="grid-column:1/-1">
+          <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Opis</div>
+          <div id="reviewDesc" style="color:var(--text);line-height:1.5;font-size:14px"></div>
+        </div>
+      </div>
+      <div id="reviewPhotosInfo" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+    </div>
+
+    <div id="sendError" class="alert alert-error" style="display:none">
+      <span>⚠️</span><span id="sendErrorMsg">Wystąpił błąd podczas wysyłania. Spróbuj ponownie.</span>
+    </div>
+
+    <button class="btn-primary" id="btnSend" onclick="sendReport()">
+      🚀 WYŚLIJ ZGŁOSZENIE
+    </button>
+    <button class="btn-secondary" onclick="goBack(3)">← Wróć do zdjęć</button>
+  </div>
+
+  <!-- ===== SUKCES ===== -->
+  <div class="screen" id="screenSuccess">
+    <br>
+    <div class="success-icon">✅</div>
+    <div class="ticket-number" id="ticketNumber">ZGL-0000</div>
+    <div class="ticket-label">Numer zgłoszenia</div>
+
+    <div class="alert alert-success">
+      <span>✔️</span>
+      <div>
+        <strong>Zgłoszenie wysłane pomyślnie!</strong><br>
+        <span style="font-size:13px">Nasz serwis skontaktuje się z Tobą wkrótce. Zapisz numer zgłoszenia do późniejszego kontaktu.</span>
+      </div>
+    </div>
+
+    <div class="confirm-card">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Zgłoszono przez</div>
+      <div id="successContact" style="font-weight:600;margin-bottom:4px"></div>
+      <div id="successTime" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+
+    <button class="btn-primary" onclick="resetForm()">NOWE ZGŁOSZENIE</button>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// =====================================================================
+// KONFIGURACJA — wstaw swój URL Google Apps Script
+// =====================================================================
+const GAS_URL = 'WSTAW_TUTAJ_URL_GAS_WEBAPP';
+
+// =====================================================================
+// STAN APLIKACJI
+// =====================================================================
+const state = {
+  code: '',
+  objectData: null,
+  instType: '',
+  priority: '',
+  priorityLabel: '',
+  desc: '',
+  contactName: '',
+  contactPhone: '',
+  photos: []   // {file, base64, name}
+};
+
+// =====================================================================
+// NAWIGACJA KROKÓW
+// =====================================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function setStepState(stepNum) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i + 'item');
+    el.classList.remove('active', 'done');
+    if (i < stepNum) el.classList.add('done');
+    else if (i === stepNum) el.classList.add('active');
+  }
+}
+
+function goBack(toStep) {
+  if (toStep === 1) { showScreen('screen1'); setStepState(1); }
+  else if (toStep === 2) { showScreen('screen2'); setStepState(2); }
+  else if (toStep === 3) { showScreen('screen3'); setStepState(3); }
+}
+
+// =====================================================================
+// KROK 1 — WERYFIKACJA KODU
+// =====================================================================
+document.getElementById('codeInput').addEventListener('input', function() {
+  this.value = this.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+  document.getElementById('codeError').style.display = 'none';
+});
+
+// DEMO — baza testowa, usuń lub rozszerz gdy GAS gotowy
+const DEMO_OBIEKTY = {
+  'OBJ-000': { nazwa: 'Obiekt Testowy Sp. z o.o.',      adres: 'ul. Testowa 1, 00-001 Warszawa' },
+  'OBJ-001': { nazwa: 'Centrum Handlowe Arkadia',        adres: 'al. Jana Pawła II 82, 01-501 Warszawa' },
+  'OBJ-002': { nazwa: 'Szpital Bielański',               adres: 'ul. Cegłowska 80, 01-809 Warszawa' },
+  'OBJ-003': { nazwa: 'Hotel Marriott Warszawa',         adres: 'al. Jerozolimskie 65/79, 00-697 Warszawa' },
+};
+
+async function verifyCode() {
+  const code = document.getElementById('codeInput').value.trim();
+  if (!code) {
+    showError('codeError', 'codeErrorMsg', 'Wpisz kod obiektu.');
+    return;
+  }
+
+  const btn = document.getElementById('btnVerify');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Weryfikuję...';
+  document.getElementById('codeError').style.display = 'none';
+
+  // Symuluj opóźnienie sieciowe żeby spinner był widoczny
+  await new Promise(r => setTimeout(r, 600));
+
+  try {
+    let result = null;
+
+    if (GAS_URL === 'WSTAW_TUTAJ_URL_GAS_WEBAPP') {
+      // ── TRYB DEMO (brak GAS) ──────────────────────────
+      const obiekt = DEMO_OBIEKTY[code.toUpperCase()];
+      result = obiekt ? { ok: true, obiekt } : { ok: false };
+    } else {
+      // ── TRYB PRODUKCYJNY ──────────────────────────────
+      const res = await fetch(`${GAS_URL}?verifyKodObiektu=${encodeURIComponent(code)}`);
+      result = await res.json();
+    }
+
+    if (result.ok) {
+      state.code = code.toUpperCase();
+      state.objectData = result.obiekt;
+      document.getElementById('confirmedCode').textContent = state.code;
+      document.getElementById('confirmedName').textContent = result.obiekt.nazwa;
+      document.getElementById('confirmedAddr').textContent = result.obiekt.adres;
+      showScreen('screen1b');
+    } else {
+      showError('codeError', 'codeErrorMsg', result.error || 'Nie znaleziono obiektu o podanym kodzie. Sprawdź pisownię.');
+    }
+  } catch (e) {
+    showError('codeError', 'codeErrorMsg', 'Błąd połączenia z serwerem. Sprawdź internet i spróbuj ponownie.');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'WERYFIKUJ KOD';
+}
+
+// DEMO bez GAS — do testów
+function demoVerify(code) {
+  const demo = {
+    'OBJ-001': { nazwa: 'Galeria Mokotów', adres: 'ul. Wołoska 12, 02-675 Warszawa' },
+    'OBJ-002': { nazwa: 'Szpital Bielański', adres: 'ul. Cegłowska 80, 01-809 Warszawa' },
+  };
+  if (demo[code]) return { ok: true, obiekt: demo[code] };
+  return { ok: false };
+}
+
+function confirmObject() {
+  setStepState(2);
+  showScreen('screen2');
+}
+
+// =====================================================================
+// KROK 2 — SZCZEGÓŁY
+// =====================================================================
+function selectInst(btn, type) {
+  document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.instType = type;
+}
+
+function selectPriority(btn, level) {
+  document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected-low','selected-med','selected-high'));
+  btn.classList.add('selected-' + level);
+  state.priority = level;
+  state.priorityLabel = level === 'low' ? '🟢 Niski' : level === 'med' ? '🟡 Średni' : '🔴 Pilne';
+}
+
+function updateCharCount(el) {
+  document.getElementById('descCount').textContent = el.value.length;
+}
+
+function goToPhotos() {
+  const desc = document.getElementById('descInput').value.trim();
+  const name = document.getElementById('contactName').value.trim();
+  const phone = document.getElementById('contactPhone').value.trim();
+
+  if (!state.instType) { showError('detailsError','detailsErrorMsg','Wybierz typ instalacji.'); return; }
+  if (!state.priority) { showError('detailsError','detailsErrorMsg','Wybierz priorytet zgłoszenia.'); return; }
+  if (!desc) { showError('detailsError','detailsErrorMsg','Opisz awarię.'); return; }
+  if (!name) { showError('detailsError','detailsErrorMsg','Wpisz imię i nazwisko.'); return; }
+  if (!phone) { showError('detailsError','detailsErrorMsg','Wpisz telefon kontaktowy.'); return; }
+
+  state.desc = desc;
+  state.contactName = name;
+  state.contactPhone = phone;
+
+  document.getElementById('detailsError').style.display = 'none';
+  setStepState(3);
+  showScreen('screen3');
+}
+
+// =====================================================================
+// KROK 3 — ZDJĘCIA
+// =====================================================================
+function handlePhotos(files) {
+  const remaining = 5 - state.photos.length;
+  const toAdd = Array.from(files).slice(0, remaining);
+  toAdd.forEach(file => compressAndAdd(file));
+}
+
+function compressAndAdd(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      // Max 1200px szerokości, jakość 0.75 — ~100-200KB z telefonu
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.75);
+      const kb = Math.round(compressed.length * 0.75 / 1024);
+      state.photos.push({ base64: compressed, name: file.name, kb });
+      renderPreviews();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('photoZone').classList.remove('dragover');
+  if (e.dataTransfer.files.length) handlePhotos(e.dataTransfer.files);
+}
+
+function renderPreviews() {
+  const container = document.getElementById('photoPreviews');
+  container.innerHTML = '';
+  state.photos.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'photo-thumb';
+    div.innerHTML = `<img src="${p.base64}" alt="foto ${i+1}">
+      <button class="remove-photo" onclick="removePhoto(${i})">✕</button>
+      <div style="position:absolute;bottom:3px;left:4px;font-size:10px;color:rgba(255,255,255,0.8);background:rgba(0,0,0,0.5);padding:1px 4px;border-radius:3px">${p.kb}KB</div>`;
+    container.appendChild(div);
+  });
+
+  const zone = document.getElementById('photoZone');
+  if (state.photos.length >= 5) {
+    zone.style.display = 'none';
+  } else {
+    zone.style.display = '';
+    zone.querySelector('.photo-zone-text').textContent =
+      state.photos.length > 0 ? `Dodaj kolejne (${state.photos.length}/5)` : 'Dotknij aby dodać zdjęcia';
+  }
+}
+
+function removePhoto(idx) {
+  state.photos.splice(idx, 1);
+  renderPreviews();
+}
+
+// =====================================================================
+// KROK 4 — PODSUMOWANIE
+// =====================================================================
+function goToReview() {
+  setStepState(4);
+  document.getElementById('reviewCode').textContent = state.code;
+  document.getElementById('reviewName').textContent = state.objectData.nazwa;
+  document.getElementById('reviewAddr').textContent = state.objectData.adres;
+  document.getElementById('reviewInst').textContent = state.instType;
+  document.getElementById('reviewPriority').textContent = state.priorityLabel;
+  document.getElementById('reviewContact').textContent = `${state.contactName} • ${state.contactPhone}`;
+  document.getElementById('reviewDesc').textContent = state.desc;
+  document.getElementById('reviewPhotosInfo').textContent =
+    state.photos.length ? `📷 ${state.photos.length} zdjęcie(a) załączone` : '📷 Brak zdjęć';
+  document.getElementById('sendError').style.display = 'none';
+  showScreen('screen4');
+}
+
+// =====================================================================
+// WYSYŁKA
+// =====================================================================
+async function sendReport() {
+  const btn = document.getElementById('btnSend');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Wysyłam...';
+  document.getElementById('sendError').style.display = 'none';
+
+  const ticketNum = generateTicket();
+  const now = new Date();
+
+  const payload = {
+    action: 'newZgloszenie',
+    ticket: ticketNum,
+    kod: state.code,
+    obiekt: state.objectData,
+    instalacja: state.instType,
+    priorytet: state.priority,
+    opis: state.desc,
+    zgłaszający: state.contactName,
+    telefon: state.contactPhone,
+    dataZgloszenia: now.toISOString(),
+    zdjecia: state.photos.map(p => ({ name: p.name, data: p.base64 }))
+  };
+
+  try {
+    let data;
+
+    if (GAS_URL === 'WSTAW_TUTAJ_URL_GAS_WEBAPP') {
+      // ── TRYB DEMO ─────────────────────────────────────
+      await new Promise(r => setTimeout(r, 1000));
+      data = { ok: true };
+    } else {
+      // ── TRYB PRODUKCYJNY ──────────────────────────────
+      const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+      data = await res.json();
+    }
+
+    if (data.ok) {
+      document.getElementById('ticketNumber').textContent = ticketNum;
+      document.getElementById('successContact').textContent = `${state.contactName} • ${state.contactPhone}`;
+      document.getElementById('successTime').textContent =
+        now.toLocaleDateString('pl-PL', { day:'2-digit', month:'long', year:'numeric',
+          hour:'2-digit', minute:'2-digit' });
+      setStepState(5);
+      showScreen('screenSuccess');
+    } else {
+      throw new Error(data.error || 'GAS error');
+    }
+  } catch (e) {
+    showError('sendError', 'sendErrorMsg', 'Błąd podczas wysyłania. Sprawdź internet i spróbuj ponownie. (' + e.message + ')');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🚀 WYŚLIJ ZGŁOSZENIE';
+}
+
+function generateTicket() {
+  const now = new Date();
+  const d = now.toISOString().slice(2,10).replace(/-/g,'');
+  const r = Math.floor(Math.random() * 900) + 100;
+  return `ZGL-${d}-${r}`;
+}
+
+// =====================================================================
+// RESET
+// =====================================================================
+function resetForm() {
+  state.code = ''; state.objectData = null; state.instType = '';
+  state.priority = ''; state.priorityLabel = ''; state.desc = '';
+  state.contactName = ''; state.contactPhone = ''; state.photos = [];
+  document.getElementById('codeInput').value = '';
+  document.getElementById('descInput').value = '';
+  document.getElementById('contactName').value = '';
+  document.getElementById('contactPhone').value = '';
+  document.getElementById('photoPreviews').innerHTML = '';
+  document.getElementById('photoZone').style.display = '';
+  document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.priority-btn').forEach(b =>
+    b.classList.remove('selected-low','selected-med','selected-high'));
+  setStepState(1);
+  showScreen('screen1');
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function showError(containerId, msgId, msg) {
+  document.getElementById(msgId).textContent = msg;
+  document.getElementById(containerId).style.display = 'flex';
+}
+</script>
+</body>
+</html>
