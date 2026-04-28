@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 107</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 108</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -998,6 +998,7 @@ if (!localStorage.getItem('serverUrl')) localStorage.setItem('serverUrl', DEFAUL
 // Załaduj obiekty do autocomplete przy starcie
 window.addEventListener('DOMContentLoaded', function() {
   setTimeout(loadObiekty, 1500);
+  setTimeout(migratePinsToHash, 2000); // Migruj stare piny do hash
   // Auto-resize wszystkich textarea
   function autoResize(el) {
     el.style.height = 'auto';
@@ -2038,19 +2039,48 @@ function showDetailProto(p) {
 // ════════════════════════════════════════════════════
 const SK_SERWISANCI_PINY = 'profipoz_serwisanci_piny';
 
+// Hash PIN przed zapisem — SHA-256 przez Web Crypto API
+async function hashPin(pin) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode('profipoz_salt_' + pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 function getSerwisanciPiny() {
   try { return JSON.parse(localStorage.getItem(SK_SERWISANCI_PINY)||'[]'); } catch(e) { return []; }
 }
 function saveSerwisanciPiny(arr) {
   localStorage.setItem(SK_SERWISANCI_PINY, JSON.stringify(arr));
-  // Sync z GAS
+  // Sync z GAS — zapisuj tylko nazwę i hash (nigdy plaintext)
   const url = localStorage.getItem('serverUrl');
   if (!url) return;
+  const toSave = arr.map(function(s){ return {nazwa: s.nazwa, pin: s.pin}; });
   const cbName = 'cb_sp_' + Date.now();
   window[cbName] = function() { delete window[cbName]; };
   const s = document.createElement('script');
-  s.src = url + '?saveKonfig=serwisanci_piny&val=' + encodeURIComponent(JSON.stringify(arr)) + '&callback=' + cbName;
+  s.src = url + '?saveKonfig=serwisanci_piny&val=' + encodeURIComponent(JSON.stringify(toSave)) + '&callback=' + cbName;
   document.body.appendChild(s);
+}
+
+// Migracja starych plaintextowych pinów → hash
+async function migratePinsToHash() {
+  const piny = getSerwisanciPiny();
+  let needsMigration = false;
+  // Hash ma 64 znaki hex, plaintext PIN ma 4-8 cyfr
+  for (const s of piny) {
+    if (s.pin && s.pin.length < 20) { needsMigration = true; break; }
+  }
+  if (!needsMigration) return;
+  const migrated = await Promise.all(piny.map(async function(s) {
+    if (s.pin && s.pin.length < 20) {
+      return { nazwa: s.nazwa, pin: await hashPin(s.pin) };
+    }
+    return s;
+  }));
+  saveSerwisanciPiny(migrated);
+  console.log('Piny serwisantów zmigrowane do hash');
 }
 
 function renderSerwisanciPiny() {
@@ -2064,20 +2094,21 @@ function renderSerwisanciPiny() {
   list.innerHTML = piny.map((s,i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--dark);border-radius:8px;margin-bottom:6px">
       <span style="flex:1;font-size:14px;font-weight:600">👷 ${s.nazwa}</span>
-      <span style="font-size:12px;color:var(--muted)">PIN: ${'•'.repeat(s.pin.length)}</span>
+      <span style="font-size:12px;color:var(--muted)">PIN: ••••••••</span>
       <button onclick="usunSerwisantPin(${i})" style="background:none;border:none;color:#e74c3c;font-size:16px;cursor:pointer;padding:2px 6px">🗑️</button>
     </div>
   `).join('');
 }
 
-function dodajSerwisantPin() {
+async function dodajSerwisantPin() {
   const nazwa = document.getElementById('newSerwisantNazwa').value.trim();
   const pin   = document.getElementById('newSerwisantPin').value.trim();
   if (!nazwa) { toast('⚠️ Podaj imię serwisanta'); return; }
   if (!pin || pin.length < 4) { toast('⚠️ PIN musi mieć min. 4 cyfry'); return; }
   const piny = getSerwisanciPiny();
   if (piny.find(s => s.nazwa.toLowerCase() === nazwa.toLowerCase())) { toast('⚠️ Ten serwisant już istnieje'); return; }
-  piny.push({ nazwa, pin });
+  const pinHash = await hashPin(pin);
+  piny.push({ nazwa, pin: pinHash });
   saveSerwisanciPiny(piny);
   document.getElementById('newSerwisantNazwa').value = '';
   document.getElementById('newSerwisantPin').value = '';
@@ -2125,17 +2156,20 @@ function _showEdycjaPinModal(p) {
   });
 }
 
-function _weryfikujEdycjaPin() {
+async function _weryfikujEdycjaPin() {
   const pin = (document.getElementById('edycjaPinInput')?.value || '').trim();
   if (!pin) { toast('⚠️ Podaj PIN'); return; }
 
-  // Sprawdź piny serwisantów
-  const piny = getSerwisanciPiny();
-  const serwisant = piny.find(s => s.pin === pin);
+  const pinHash = await hashPin(pin);
 
-  // Sprawdź pin admina
+  // Sprawdź piny serwisantów (porównuj hashe)
+  const piny = getSerwisanciPiny();
+  const serwisant = piny.find(s => s.pin === pinHash);
+
+  // Sprawdź pin admina (też hashowany)
   const adminPin = getAdminPin();
-  const isAdmin = pin === adminPin;
+  const adminHash = await hashPin(adminPin);
+  const isAdmin = pinHash === adminHash || pin === adminPin; // fallback dla starych niezahashowanych
 
   if (!serwisant && !isAdmin) {
     toast('❌ Nieprawidłowy PIN');
