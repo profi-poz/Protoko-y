@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 106</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 107</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -6430,8 +6430,25 @@ function _doGeneratePDF(p) {
   } else {
     // Dla pozostałych: standardowe wnioski z wynikiem
     sectionHead('V. WNIOSKI');
+
+    // Nazwa systemu zależna od typu
+    var systemNames = {
+      SSP: 'System Sygnalizacji Pozaru',
+      DSO: 'Dzwiekowy System Ostrzegawczy',
+      PSP: 'System Transmisji Alarmu',
+      DSP: 'Detekcja i Sygnalizacja Pozaru',
+      SUG: 'Staly Urzadzenie Gasnicze',
+      SO_EL: 'System Oddymiania (elektryczny)',
+      SO_PN: 'System Oddymiania (pneumatyczny)',
+      ODD_EL: 'System Oddymiania (elektryczny)',
+      ODD_PN: 'System Oddymiania (pneumatyczny)',
+      ODD_GR: 'System Oddymiania (grawitacyjny)',
+      ODD_ME: 'System Oddymiania (mechaniczny)',
+    };
+    var sysName = systemNames[p.typ] || 'System';
+
     doc.setFont(FONT,'normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('System Sygnalizacji Pozaru jest:', ML, y); y += 7;
+    doc.text(sysName + ' jest:', ML, y); y += 7;
     var wynikText = p.wynik || 'Sprawny';
     var isNie   = wynikText.toLowerCase().startsWith('nie');
     var isUwagi = wynikText.toLowerCase().indexOf('uwag') > -1;
@@ -6445,8 +6462,22 @@ function _doGeneratePDF(p) {
       doc.text('Sprawny z uwagami - spelnia wymogi z zastrzezeniami opisanymi powyzej.', ML + 4, y); y += 8;
     } else {
       doc.text('Sprawny oraz spelnia wszelkie wymogi dla ktorych zostal wykonany.', ML + 4, y); y += 6;
+      // Linijka o zmianach konstrukcyjnych — tylko gdy checklist potwierdza (OK lub brak wpisu)
+      // Szukamy pkt rozpoznania zmian budowlanych (ssp_p3 lub odpowiednik)
+      var zmianItemIds = ['ssp_p3','so_e3','so_p3','oddgr_przeplyw'];
+      var zmianStatus = null;
+      var chk = p.checklist || {};
+      zmianItemIds.forEach(function(id){ if(chk[id]) zmianStatus = chk[id]; });
       doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y); y += 8;
+      if (zmianStatus === 'ok') {
+        doc.text('W obiekcie nie stwierdzono zmian konstrukcyjnych wplywajacych na prace systemu.', ML, y); y += 8;
+      } else if (zmianStatus === 'fail') {
+        doc.setTextColor(180,0,0);
+        doc.text('W obiekcie stwierdzono zmiany konstrukcyjne mogace wplynac na prace systemu.', ML, y); y += 8;
+        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      } else if (!zmianStatus || zmianStatus === 'na') {
+        // N/D lub brak — nie wypisuj nic o zmianach
+      }
     }
   }
 
