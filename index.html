@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 104</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 106</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -780,6 +780,17 @@ Content-Type: application/json
               style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;padding:10px 12px;outline:none">
             <button class="btn btn-red" style="margin:0;white-space:nowrap" onclick="zmienPin('biuro')">Zmień</button>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">👷 Piny serwisantów (edycja protokołów)</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">Każdy serwisant może mieć własny PIN do edycji protokołów. Zmiany będą podpisane jego imieniem.</p>
+        <div id="serwisanciPinyList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="newSerwisantNazwa" placeholder="Imię i nazwisko" style="flex:2;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+          <input id="newSerwisantPin" placeholder="PIN (4+ cyfry)" inputmode="numeric" type="password" style="flex:1;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+          <button class="btn btn-red" style="margin:0;white-space:nowrap" onclick="dodajSerwisantPin()">➕</button>
         </div>
       </div>
 
@@ -1345,7 +1356,26 @@ function showScreen(name) {
     document.getElementById('panelProtoView').style.display='none';
     panelLoadLista();
   }
-  if(name==='admin'){adminRenderTypes();adminRefreshTypSelect();}
+  if(name==='admin'){
+    adminRenderTypes();
+    adminRefreshTypSelect();
+    renderSerwisanciPiny();
+    // Załaduj piny serwisantów z GAS
+    const urlSP = localStorage.getItem('serverUrl');
+    if (urlSP) {
+      const cbSP = 'cb_gsp_' + Date.now();
+      window[cbSP] = function(r) {
+        delete window[cbSP];
+        if (r && r.status==='ok' && r.data && Array.isArray(r.data.serwisanci_piny) && r.data.serwisanci_piny.length) {
+          localStorage.setItem(SK_SERWISANCI_PINY, JSON.stringify(r.data.serwisanci_piny));
+          renderSerwisanciPiny();
+        }
+      };
+      const sSP = document.createElement('script');
+      sSP.src = urlSP + '?getKonfig=serwisanci_piny&callback=' + cbSP;
+      document.body.appendChild(sSP);
+    }
+  }
   if(name==='biuro'){ biuroRender(); }
   if(name==='planer'){
     planerMigrateWpisy();
@@ -1609,8 +1639,13 @@ function getForm() {
 
 function valid(d) {
   if (!d.obiekt) { toast('⚠️ Podaj nazwę obiektu!',1); return false; }
-  maybeSaveObiektToServer(d); // Zapisz/aktualizuj obiekt w bazie
+  maybeSaveObiektToServer(d);
   if (!d.serwisant) { toast('⚠️ Podaj imię serwisanta!',1); return false; }
+  if (d.rodzaj !== 'awaryjny' && d.typ !== 'DSG' && !d.wynik) {
+    toast('⚠️ Wybierz wynik przeglądu!',1);
+    document.getElementById('wynikPrzegladu').focus();
+    return false;
+  }
   return true;
 }
 
@@ -1811,16 +1846,22 @@ function resetForm() {
   document.getElementById('uwagiInwestora').value = '';
   document.getElementById('infoKolejnySerwis').value = '';
   resetPhotos();
-  // przedstawiciel removed
-  // firmaObiektu removed
-  // uprawnieniaPrzedst removed
-  document.getElementById('wynikPrzegladu').value = 'Pozytywny';
+  document.getElementById('wynikPrzegladu').value = '';
+  // Data → dzisiaj
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-'
+    + String(today.getMonth()+1).padStart(2,'0') + '-'
+    + String(today.getDate()).padStart(2,'0');
+  document.getElementById('dataPrzegladu').value = todayStr;
+  // Serwisant — zostaw (serwisant zazwyczaj nie zmienia się między protokołami)
   const so = document.getElementById('serwisOsoby'); if(so) so.value = '';
   const sc = document.getElementById('serwisCzas');  if(sc) sc.value = '';
   const sd = document.getElementById('serwisDojazd'); if(sd) sd.value = '';
   const dsgU = document.getElementById('dsgUwagi'); if(dsgU) dsgU.value = '';
   const dsgN = document.getElementById('dsgNastepnaKontrola'); if(dsgN) dsgN.value = '';
   _dsgCount = 8;
+  // Auto-resize textarea
+  if (window._autoResizeAll) window._autoResizeAll();
   updateChecklist();
 }
 
@@ -1972,20 +2013,303 @@ function showDetailProto(p) {
       (p.firmaObiektu ? 'Firma obiektu: <b style="color:var(--text)">' + p.firmaObiektu + '</b><br>' : '') +
       (p.uprawnieniaPrzedst ? 'Nr uprawnień: <b style="color:var(--text)">' + p.uprawnieniaPrzedst + '</b>' : '') +
       '</div>' : ''}
-    <div style="margin-top:16px;display:flex;gap:10px;">
-      <button class="btn btn-red" style="flex:1;margin:0" onclick="biuroAction('excel', window._currentDetailProto?.id || '${p.id}')">📊 Excel</button>
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e67e22;border-color:#e67e22" onclick="generatePDFCurrent()">🖨️ PDF</button>
-      ${p.photos && p.photos.length ? `<div style="margin-top:14px">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📷 Zdjęcia (${p.photos.length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">${p.photos.map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open('${src}','_blank')">`).join('')}</div>
-    </div>` : ''}
-    ${p.viewUrl ? `<button class="btn btn-ghost" style="flex:1;margin:0;color:var(--accent)" onclick="showLinkModal('${p.viewUrl}','${p.nr||''}')">🔗 Link</button>` : ''}
-      <button class="btn btn-ghost" style="flex:1;margin:0;color:#e74c3c;border-color:#e74c3c" onclick="biuroAction('del','${p.id}')">🗑️ Usuń</button>
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-red" style="flex:1;margin:0;min-width:80px" onclick="biuroAction('excel', window._currentDetailProto?.id || '${p.id}')">📊 Excel</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;min-width:80px;color:#e67e22;border-color:#e67e22" onclick="generatePDFCurrent()">🖨️ PDF</button>
+      <button class="btn btn-ghost" style="flex:1;margin:0;min-width:80px;color:#6495ed;border-color:#6495ed" onclick="edytujProtokol()">✏️ Edytuj</button>
+      ${p.viewUrl ? `<button class="btn btn-ghost" style="flex:1;margin:0;min-width:80px;color:var(--accent)" onclick="showLinkModal('${p.viewUrl}','${p.nr||''}')">🔗 Link</button>` : ''}
+      <button class="btn btn-ghost" style="flex:1;margin:0;min-width:80px;color:#e74c3c;border-color:#e74c3c" onclick="biuroAction('del','${p.id}')">🗑️ Usuń</button>
     </div>
+    ${(p._historia && p._historia.length) ? `
+    <div style="margin-top:16px;background:rgba(100,149,237,.06);border:1px solid rgba(100,149,237,.2);border-radius:8px;padding:10px 12px">
+      <div style="font-size:11px;color:#6495ed;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📋 Historia zmian</div>
+      ${p._historia.map(h=>`<div style="font-size:11px;color:var(--muted);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <b style="color:var(--text)">${h.kto}</b> · ${h.kiedy}<br>
+        <span style="color:rgba(255,255,255,.5)">${h.opis}</span>
+      </div>`).join('')}
+    </div>` : ''}
   `;
   document.getElementById('detailModal').classList.add('open');
 }
 
+
+// ════════════════════════════════════════════════════
+// PINY SERWISANTÓW + EDYCJA PROTOKOŁÓW
+// ════════════════════════════════════════════════════
+const SK_SERWISANCI_PINY = 'profipoz_serwisanci_piny';
+
+function getSerwisanciPiny() {
+  try { return JSON.parse(localStorage.getItem(SK_SERWISANCI_PINY)||'[]'); } catch(e) { return []; }
+}
+function saveSerwisanciPiny(arr) {
+  localStorage.setItem(SK_SERWISANCI_PINY, JSON.stringify(arr));
+  // Sync z GAS
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  const cbName = 'cb_sp_' + Date.now();
+  window[cbName] = function() { delete window[cbName]; };
+  const s = document.createElement('script');
+  s.src = url + '?saveKonfig=serwisanci_piny&val=' + encodeURIComponent(JSON.stringify(arr)) + '&callback=' + cbName;
+  document.body.appendChild(s);
+}
+
+function renderSerwisanciPiny() {
+  const list = document.getElementById('serwisanciPinyList');
+  if (!list) return;
+  const piny = getSerwisanciPiny();
+  if (!piny.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Brak serwisantów — dodaj poniżej</div>';
+    return;
+  }
+  list.innerHTML = piny.map((s,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--dark);border-radius:8px;margin-bottom:6px">
+      <span style="flex:1;font-size:14px;font-weight:600">👷 ${s.nazwa}</span>
+      <span style="font-size:12px;color:var(--muted)">PIN: ${'•'.repeat(s.pin.length)}</span>
+      <button onclick="usunSerwisantPin(${i})" style="background:none;border:none;color:#e74c3c;font-size:16px;cursor:pointer;padding:2px 6px">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function dodajSerwisantPin() {
+  const nazwa = document.getElementById('newSerwisantNazwa').value.trim();
+  const pin   = document.getElementById('newSerwisantPin').value.trim();
+  if (!nazwa) { toast('⚠️ Podaj imię serwisanta'); return; }
+  if (!pin || pin.length < 4) { toast('⚠️ PIN musi mieć min. 4 cyfry'); return; }
+  const piny = getSerwisanciPiny();
+  if (piny.find(s => s.nazwa.toLowerCase() === nazwa.toLowerCase())) { toast('⚠️ Ten serwisant już istnieje'); return; }
+  piny.push({ nazwa, pin });
+  saveSerwisanciPiny(piny);
+  document.getElementById('newSerwisantNazwa').value = '';
+  document.getElementById('newSerwisantPin').value = '';
+  renderSerwisanciPiny();
+  toast('✅ Dodano: ' + nazwa);
+}
+
+function usunSerwisantPin(idx) {
+  const piny = getSerwisanciPiny();
+  const nazwa = piny[idx]?.nazwa || '';
+  piny.splice(idx, 1);
+  saveSerwisanciPiny(piny);
+  renderSerwisanciPiny();
+  toast('🗑️ Usunięto: ' + nazwa);
+}
+
+// ── Edycja protokołu ─────────────────────────────────
+function edytujProtokol() {
+  const p = window._currentDetailProto;
+  if (!p) return;
+  // Pokaż modal z wyborem pinu
+  _showEdycjaPinModal(p);
+}
+
+function _showEdycjaPinModal(p) {
+  const overlay = document.createElement('div');
+  overlay.id = 'edycjaModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:400px">
+      <div style="font-size:18px;font-weight:800;margin-bottom:6px">✏️ Edycja protokołu</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Podaj swój PIN aby autoryzować zmiany</div>
+      <input id="edycjaPinInput" type="password" inputmode="numeric" placeholder="Twój PIN"
+        style="width:100%;box-sizing:border-box;background:var(--dark);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Barlow',sans-serif;font-size:20px;padding:12px 16px;outline:none;letter-spacing:6px;text-align:center;margin-bottom:16px">
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('edycjaModal').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Barlow',sans-serif;font-size:14px;cursor:pointer">Anuluj</button>
+        <button onclick="_weryfikujEdycjaPin()" style="flex:2;padding:12px;background:var(--red);border:none;border-radius:10px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:.5px">ZATWIERDŹ</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('edycjaPinInput')?.focus(), 100);
+  document.getElementById('edycjaPinInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') _weryfikujEdycjaPin();
+  });
+}
+
+function _weryfikujEdycjaPin() {
+  const pin = (document.getElementById('edycjaPinInput')?.value || '').trim();
+  if (!pin) { toast('⚠️ Podaj PIN'); return; }
+
+  // Sprawdź piny serwisantów
+  const piny = getSerwisanciPiny();
+  const serwisant = piny.find(s => s.pin === pin);
+
+  // Sprawdź pin admina
+  const adminPin = getAdminPin();
+  const isAdmin = pin === adminPin;
+
+  if (!serwisant && !isAdmin) {
+    toast('❌ Nieprawidłowy PIN');
+    document.getElementById('edycjaPinInput').value = '';
+    document.getElementById('edycjaPinInput').focus();
+    return;
+  }
+
+  const kto = serwisant ? serwisant.nazwa : 'Admin';
+  document.getElementById('edycjaModal').remove();
+  _pokazFormularzEdycji(window._currentDetailProto, kto);
+}
+
+function _pokazFormularzEdycji(p, kto) {
+  const overlay = document.createElement('div');
+  overlay.id = 'edycjaFormModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;overflow-y:auto;padding:20px;box-sizing:border-box';
+
+  const pola = [
+    { key:'obiekt',           label:'Obiekt / Lokalizacja',    type:'textarea' },
+    { key:'modelCentrali',    label:'Model centrali',           type:'text' },
+    { key:'lokalizacjaCentral',label:'Lokalizacja centrali',   type:'textarea' },
+    { key:'wynik',            label:'Wynik przeglądu',          type:'select',
+      options:['Sprawny','Sprawny z uwagami','Niesprawny',''] },
+    { key:'usterki',          label:'Usterki / Uwagi',          type:'textarea' },
+    { key:'zalecenia',        label:'Zalecenia',                type:'textarea' },
+    { key:'nieprawidlowosci', label:'Nieprawidłowości',         type:'textarea' },
+    { key:'zalecenieNieprawidl',label:'Zalecenie do nieprawidłowości', type:'textarea' },
+    { key:'infoKolejnySerwis',label:'Info kolejny serwis',      type:'textarea' },
+    { key:'adnotacjeBiuro',   label:'Adnotacje do biura',       type:'textarea' },
+    { key:'uwagiInwestora',   label:'Uwagi dla inwestora',      type:'textarea' },
+  ];
+
+  const inputsHtml = pola.map(f => {
+    const val = (p[f.key]||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (f.type === 'textarea') return `
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">${f.label}</label>
+        <textarea data-key="${f.key}" style="width:100%;box-sizing:border-box;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none;resize:none;overflow:hidden;min-height:60px" oninput="this.style.height='auto';this.style.height=(this.scrollHeight+2)+'px'">${val}</textarea>
+      </div>`;
+    if (f.type === 'select') return `
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">${f.label}</label>
+        <select data-key="${f.key}" style="width:100%;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+          ${f.options.map(o=>`<option value="${o}" ${(p[f.key]||'')==o?'selected':''}>${o||'— brak —'}</option>`).join('')}
+        </select>
+      </div>`;
+    return `
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">${f.label}</label>
+        <input data-key="${f.key}" value="${val}" style="width:100%;box-sizing:border-box;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+      </div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:560px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:18px;font-weight:800">✏️ Edycja protokołu</div>
+          <div style="font-size:12px;color:#6495ed;margin-top:2px">Edytuje: <b>${kto}</b></div>
+        </div>
+        <button onclick="document.getElementById('edycjaFormModal').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">✕</button>
+      </div>
+      <div style="background:var(--dark);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+        <b style="color:var(--text)">${p.obiekt}</b> · ${p.data} · ${p.typ}
+      </div>
+      <div id="edycjaInputy">${inputsHtml}</div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">📝 Opis zmiany (widoczny w historii)</label>
+        <input id="edycjaOpis" placeholder="np. Uzupełniono usterki, poprawiono wynik..." style="width:100%;box-sizing:border-box;background:var(--dark);border:1px solid #6495ed;border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;outline:none">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('edycjaFormModal').remove()" style="flex:1;padding:13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Barlow',sans-serif;font-size:14px;cursor:pointer">Anuluj</button>
+        <button onclick="_zapiszEdycje('${p.id}','${kto.replace(/'/g,"\\'")}')" style="flex:2;padding:13px;background:var(--red);border:none;border-radius:10px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;cursor:pointer;letter-spacing:.5px">💾 ZAPISZ ZMIANY</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  // Auto-resize textareas
+  overlay.querySelectorAll('textarea').forEach(t => {
+    t.style.height = 'auto';
+    t.style.height = (t.scrollHeight + 2) + 'px';
+  });
+}
+
+function _zapiszEdycje(protoId, kto) {
+  const p = window._currentDetailProto;
+  if (!p) return;
+
+  // Zbierz wartości
+  const zmiany = {};
+  const poprzedie = {};
+  document.querySelectorAll('#edycjaInputy [data-key]').forEach(el => {
+    const key = el.dataset.key;
+    const nowaWart = el.value.trim();
+    const staraWart = (p[key]||'').trim();
+    if (nowaWart !== staraWart) {
+      zmiany[key] = nowaWart;
+      poprzedie[key] = staraWart;
+    }
+  });
+
+  const opis = document.getElementById('edycjaOpis')?.value.trim() || 'Edycja danych';
+
+  if (!Object.keys(zmiany).length) {
+    toast('ℹ️ Brak zmian do zapisania');
+    document.getElementById('edycjaFormModal').remove();
+    return;
+  }
+
+  // Przygotuj wpis historii
+  const now = new Date();
+  const kiedy = now.toLocaleDateString('pl') + ' ' + now.toLocaleTimeString('pl', {hour:'2-digit',minute:'2-digit'});
+  const opisZmian = Object.keys(zmiany).map(k => {
+    const labels = {obiekt:'Obiekt',modelCentrali:'Model',lokalizacjaCentral:'Lokalizacja',
+      wynik:'Wynik',usterki:'Usterki',zalecenia:'Zalecenia',
+      nieprawidlowosci:'Nieprawidłowości',zalecenieNieprawidl:'Zalecenie',
+      infoKolejnySerwis:'Info serwis',adnotacjeBiuro:'Adnotacje biuro',uwagiInwestora:'Uwagi inwestora'};
+    return (labels[k]||k) + ': "' + (poprzedie[k]||'—') + '" → "' + zmiany[k] + '"';
+  }).join('; ');
+
+  const historiaWpis = {
+    kto, kiedy, opis: opis + (opisZmian ? ' [' + opisZmian + ']' : '')
+  };
+
+  // Zaktualizuj protokół lokalnie
+  const zaktualizowany = Object.assign({}, p, zmiany);
+  if (!zaktualizowany._historia) zaktualizowany._historia = [];
+  zaktualizowany._historia.unshift(historiaWpis);
+
+  // Zapisz w lokalnej historii
+  const idx = protokoly.findIndex(x => String(x.id) === String(p.id));
+  if (idx >= 0) {
+    protokoly[idx] = zaktualizowany;
+    localStorage.setItem(SK, JSON.stringify(protokoly));
+  }
+  // Zaktualizuj w allProtokoly
+  const aidx = allProtokoly.findIndex(x => String(x.id) === String(p.id));
+  if (aidx >= 0) allProtokoly[aidx] = zaktualizowany;
+
+  window._currentDetailProto = zaktualizowany;
+
+  // Wyślij zmiany na serwer GAS
+  _wyslijEdycjeDoGAS(zaktualizowany, historiaWpis);
+
+  document.getElementById('edycjaFormModal').remove();
+  renderHistory();
+  updateBadge();
+  toast('✅ Zmiany zapisane · ' + kto);
+
+  // Odśwież modal z nowym protokołem
+  setTimeout(() => showDetailProto(zaktualizowany), 300);
+}
+
+function _wyslijEdycjeDoGAS(p, historiaWpis) {
+  const url = localStorage.getItem('serverUrl');
+  if (!url) return;
+  const cbName = 'cb_edit_' + Date.now();
+  window[cbName] = function(r) {
+    delete window[cbName];
+    if (r && r.ok) toast('☁️ Zmiany zsynchronizowane z serwerem');
+  };
+  const payload = {
+    id: p.id,
+    obiekt: p.obiekt,
+    typ: p.typ,
+    data: p.data,
+    zmiany: p,
+    historia: historiaWpis
+  };
+  const s = document.createElement('script');
+  s.src = url + '?edytujProtokol=' + encodeURIComponent(JSON.stringify(payload)) + '&callback=' + cbName;
+  document.body.appendChild(s);
+}
 
 function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
 document.getElementById('detailModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
@@ -2022,10 +2346,14 @@ async function syncFromServer() {
   // Filtruj tylko prawdziwe protokoły (mają typ z listy instalacji)
   const VALID_TYPY = new Set(['SSP','DSO','DSG','PSP','DSP','SUG','SO_EL','SO_PN','ODD_EL','ODD_PN','ODD_GR','ODD_ME','Inne','awaryjny']);
   const localIds = new Set(protokoly.map(p => String(p.id)));
+  // Klucz drugorzędny: obiekt+data+typ (na wypadek różnych ID dla tego samego protokołu)
+  const localKeys = new Set(protokoly.map(p =>
+    (p.obiekt||'').trim().toLowerCase() + '|' + (p.data||'') + '|' + (p.typ||'')
+  ));
   const onlyServer = serverProtokoly
-    .filter(p => !localIds.has(String(p.id)))
+    .filter(p => !localIds.has(String(p.id)) &&
+      !localKeys.has((p.obiekt||'').trim().toLowerCase() + '|' + (p.data||'') + '|' + (p.typ||'')))
     .map(function(p) {
-      // Wyczyść "-" z pól które mogą być puste — ułatwia renderowanie PDF
       var clean = Object.assign({}, p);
       ['lokalizacjaCentral','lokalizacja','uprawnienia','iloscCentral',
        'modelCentrali','przedstawiciel','firmaObiektu','uwagiInwestora'].forEach(function(k) {
