@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 115</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 116</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2180,14 +2180,36 @@ async function _weryfikujEdycjaPin() {
 
   const pinHash = await hashPin(pin);
 
+  // Najpierw pobierz świeże piny z serwera
+  const url = localStorage.getItem('serverUrl');
+  if (url) {
+    await new Promise(function(resolve) {
+      const cbName = 'cb_vpin_' + Date.now();
+      const timer = setTimeout(function() {
+        delete window[cbName]; resolve();
+      }, 3000);
+      window[cbName] = function(r) {
+        clearTimeout(timer);
+        delete window[cbName];
+        if (r && r.status === 'ok' && r.data && Array.isArray(r.data.serwisanci_piny)) {
+          localStorage.setItem(SK_SERWISANCI_PINY, JSON.stringify(r.data.serwisanci_piny));
+        }
+        resolve();
+      };
+      const s = document.createElement('script');
+      s.src = url + '?getKonfig=serwisanci_piny&callback=' + cbName;
+      document.body.appendChild(s);
+    });
+  }
+
   // Sprawdź piny serwisantów (porównuj hashe)
   const piny = getSerwisanciPiny();
   const serwisant = piny.find(s => s.pin === pinHash);
 
-  // Sprawdź pin admina (też hashowany)
+  // Sprawdź pin admina
   const adminPin = getAdminPin();
   const adminHash = await hashPin(adminPin);
-  const isAdmin = pinHash === adminHash || pin === adminPin; // fallback dla starych niezahashowanych
+  const isAdmin = pinHash === adminHash || pin === adminPin;
 
   if (!serwisant && !isAdmin) {
     toast('❌ Nieprawidłowy PIN');
