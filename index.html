@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 117</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 118</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -6611,6 +6611,8 @@ function _doGeneratePDF(p) {
     hline(y); y += 4;
     doc.setFont(FONT,'normal'); doc.setFontSize(7.5); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
     doc.text('(podpis i pieczatka)', ML, y); y += 10;
+  } else if (isAwaryjnyPDF) {
+    // Dla awaryjnych — brak sekcji V (wnioski nie mają sensu dla interwencji)
   } else if (isKonserwacjaPDF) {
     // Dla konserwacji: zamiast wyniku - zestawienie czasu i zasobów
     sectionHead('V. PODSUMOWANIE SERWISU');
