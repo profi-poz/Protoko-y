@@ -388,7 +388,7 @@ html,body{height:100%;overflow:hidden;font-family:'Barlow',sans-serif;background
           <label>Rodzaj przeglądu</label>
           <select id="rodzajPrzegladu" onchange="updateChecklist()">
             <option value="przeglad" selected>Przegląd</option>
-            <option value="awaryjny">Awaryjny</option>
+            <option value="awaryjny">Serwisowy</option>
             <option value="odbiorowy">Odbiorowy</option>
             <option value="konserwacja">Konserwacja</option>
           </select>
@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 119</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 130</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -6026,7 +6026,7 @@ function showNextReviewPicker(p, callback) {
     {v:'roczny',     l:'Roczny'},
     {v:'odbiorowy',  l:'Odbiorowy'},
     {v:'konserwacja',l:'Konserwacja'},
-    {v:'awaryjny',   l:'Awaryjny'},
+    {v:'awaryjny',   l:'Serwisowy'},
   ];
   const aktualnyRodzaj = (p.rodzaj||'roczny').toLowerCase()
     .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
@@ -6037,7 +6037,7 @@ function showNextReviewPicker(p, callback) {
   else if (aktualnyRodzaj.includes('roczny') && !aktualnyRodzaj.includes('pol')) normRodzaj = 'roczny';
   else if (aktualnyRodzaj.includes('odbiorowy')) normRodzaj = 'odbiorowy';
   else if (aktualnyRodzaj.includes('konserwacja')) normRodzaj = 'konserwacja';
-  else if (aktualnyRodzaj.includes('awaryjny')) normRodzaj = 'awaryjny';
+  else if (aktualnyRodzaj.includes('awaryjny') || aktualnyRodzaj.includes('interwencja')) normRodzaj = 'awaryjny';
   else if (aktualnyRodzaj.includes('przeglad') || aktualnyRodzaj.includes('przegląd')) normRodzaj = 'przeglad';
 
   const rodzajOpts = rodzajOpcje.map(r =>
@@ -6204,7 +6204,15 @@ function _doGeneratePDF(p) {
     SO_EL: 'SYSTEMU ODDYMIANIA ELEKTRYCZNEGO',
     SO_PN: 'SYSTEMU ODDYMIANIA PNEUMATYCZNEGO'
   };
-  var typName = TYP_NAMES[p.typ] || p.typ;
+  var typName = TYP_NAMES[p.typ] || (p.typ === 'awaryjny' ? 'SERWISOWY' : p.typ);
+
+  // Wykryj typ — musi być przed stroną tytułową
+  var isAwaryjnyPDF = (p.rodzaj||'').toLowerCase() === 'awaryjny'
+    || (p.rodzaj||'').toLowerCase().includes('interwencja')
+    || p.typ === 'awaryjny';
+  var isKonserwacjaPDF = !isAwaryjnyPDF && (
+    ['konserwacja','kwartalny','polroczny','roczny','serwis'].indexOf((p.rodzaj||'').toLowerCase()) > -1
+  );
 
   // ════════════════════════════════════════════════════
   // STRONA TYTULOWA
@@ -6236,13 +6244,18 @@ function _doGeneratePDF(p) {
   if (p.typ === 'DSG') {
     doc.text(pl('PROTOKOL Z SPRAWDZENIA DZIALANIA'), W/2, 115, { align: 'center' });
     doc.text(pl('SYSTEMU DETEKCJI GAZOW'), W/2, 127, { align: 'center' });
+    doc.setFontSize(13);
+    doc.setTextColor(RED[0], RED[1], RED[2]);
+    doc.text(typName, W/2, 140, { align: 'center' });
+  } else if (isAwaryjnyPDF) {
+    doc.text('PROTOKOL SERWISOWY', W/2, 121, { align: 'center' });
   } else {
     doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
     doc.text('I KONSERWACJI', W/2, 127, { align: 'center' });
+    doc.setFontSize(13);
+    doc.setTextColor(RED[0], RED[1], RED[2]);
+    doc.text(typName, W/2, 140, { align: 'center' });
   }
-  doc.setFontSize(13);
-  doc.setTextColor(RED[0], RED[1], RED[2]);
-  doc.text(typName, W/2, 140, { align: 'center' });
 
   // Ramka z danymi klienta na dole strony tytulowej
   var bx = ML, by = 190, bw = TW, bh = 75;
@@ -6269,7 +6282,10 @@ function _doGeneratePDF(p) {
 
   var ty = by + 10;
   ty = titleRow('Obiekt', p.obiekt, ty);
-  if (p.typ !== 'DSG') ty = titleRow('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '', ty);
+  if (p.typ !== 'DSG') {
+    var titleRodzaj = isAwaryjnyPDF ? 'Serwisowy' : (p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
+    ty = titleRow('Rodzaj przegladu', titleRodzaj, ty);
+  }
   ty = titleRow(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data, ty);
   titleRow(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna, ty);
 
@@ -6292,7 +6308,11 @@ function _doGeneratePDF(p) {
   doc.text('PROFI-POZ Sp. z o.o.', ML, y);
   doc.setFont(FONT, 'normal');
   doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
-  var headerSuffix = p.typ === 'DSG' ? pl('Protokol sprawdzenia systemu detekcji gazow') : pl('Protokol przegladu i konserwacji ' + typName.toLowerCase());
+  var headerSuffix = p.typ === 'DSG' 
+    ? pl('Protokol sprawdzenia systemu detekcji gazow') 
+    : (isAwaryjnyPDF 
+        ? pl('Protokol serwisowy')
+        : pl('Protokol przegladu i konserwacji ' + typName.toLowerCase()));
   doc.text('  |  ' + headerSuffix, ML + 32, y);
   hline(y + 2, RED[0], RED[1], RED[2], 0.5);
   y += 10;
@@ -6300,7 +6320,13 @@ function _doGeneratePDF(p) {
   // I. Informacje ogolne
   sectionHead('I. INFORMACJE OGOLNE');
   row('Obiekt', p.obiekt);
-  if (p.typ !== 'DSG') row('Rodzaj przegladu', p.rodzaj ? p.rodzaj.charAt(0).toUpperCase() + p.rodzaj.slice(1) : '');
+  if (p.typ !== 'DSG') {
+    var rodzajRaw = p.rodzaj || '';
+    var rodzajLabel = isAwaryjnyPDF 
+      ? 'Serwisowy' 
+      : (rodzajRaw ? rodzajRaw.charAt(0).toUpperCase() + rodzajRaw.slice(1) : '');
+    row('Rodzaj przegladu', rodzajLabel);
+  }
   row(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data);
   if (dataNastepna && dataNastepna !== '-') row(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna);
   row('Serwisant', p.serwisant);
@@ -6539,21 +6565,11 @@ function _doGeneratePDF(p) {
     y += 4;
 
   } else {
-    // Standardowa lista kontrolna
+    // Standardowa lista kontrolna — tylko dla zwykłych przeglądów
+    if (!isAwaryjnyPDF && !isKonserwacjaPDF) {
     sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
 
-    // Dla konserwacji/awaryjnych — brak listy kontrolnej w PDF
-    var isAwaryjnyPDF = (p.rodzaj||'').toLowerCase() === 'awaryjny' || p.typ === 'awaryjny';
-    var isKonserwacjaPDF = !isAwaryjnyPDF && (
-      ['konserwacja','kwartalny','polroczny','roczny','serwis'].indexOf((p.rodzaj||'').toLowerCase()) > -1
-    );
-
-    if (isAwaryjnyPDF || isKonserwacjaPDF) {
-      doc.setFont(FONT,'normal'); doc.setFontSize(8.5);
-      doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
-      doc.text(isAwaryjnyPDF ? 'Protokol interwencji - brak listy kontrolnej.' : 'Protokol serwisowy - brak listy kontrolnej.', ML, y);
-      y += 7;
-    } else {
+    {
       var itemLabels = {};
       var clSource = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
       clSource.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
@@ -6582,6 +6598,7 @@ function _doGeneratePDF(p) {
         });
       }
     }
+    } // koniec if (!isAwaryjnyPDF && !isKonserwacjaPDF)
   }
 
   // IV. Analiza przegladu (nie dla DSG)
