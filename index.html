@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 130</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 131</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -2180,14 +2180,12 @@ async function _weryfikujEdycjaPin() {
 
   const pinHash = await hashPin(pin);
 
-  // Najpierw pobierz świeże piny z serwera
+  // Pobierz świeże piny z serwera
   const url = localStorage.getItem('serverUrl');
   if (url) {
     await new Promise(function(resolve) {
       const cbName = 'cb_vpin_' + Date.now();
-      const timer = setTimeout(function() {
-        delete window[cbName]; resolve();
-      }, 3000);
+      const timer = setTimeout(function() { delete window[cbName]; resolve(); }, 5000);
       window[cbName] = function(r) {
         clearTimeout(timer);
         delete window[cbName];
@@ -2202,9 +2200,14 @@ async function _weryfikujEdycjaPin() {
     });
   }
 
-  // Sprawdź piny serwisantów (porównuj hashe)
   const piny = getSerwisanciPiny();
-  const serwisant = piny.find(s => s.pin === pinHash);
+
+  // Szukaj pasującego pinu — obsługuj zarówno zahashowane jak i plaintext (migracja)
+  const serwisant = piny.find(s => {
+    if (!s.pin) return false;
+    if (s.pin.length >= 20) return s.pin === pinHash;      // zahashowany
+    return s.pin === pin;                                    // plaintext (stary)
+  });
 
   // Sprawdź pin admina
   const adminPin = getAdminPin();
@@ -2216,6 +2219,18 @@ async function _weryfikujEdycjaPin() {
     document.getElementById('edycjaPinInput').value = '';
     document.getElementById('edycjaPinInput').focus();
     return;
+  }
+
+  // Jeśli pin był plaintext — zahashuj go teraz i zapisz
+  if (serwisant && serwisant.pin.length < 20) {
+    const pinyAktualne = getSerwisanciPiny();
+    const updated = await Promise.all(pinyAktualne.map(async function(s) {
+      if (s.nazwa === serwisant.nazwa && s.pin.length < 20) {
+        return { nazwa: s.nazwa, pin: await hashPin(s.pin) };
+      }
+      return s;
+    }));
+    saveSerwisanciPiny(updated);
   }
 
   const kto = serwisant ? serwisant.nazwa : 'Admin';
