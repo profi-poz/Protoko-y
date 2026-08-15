@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 131</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 134</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -5963,10 +5963,13 @@ function _generatePDFFromProto(p) {
       } else {
         pdfData._dataNastepnaPDF = null;
       }
-      toast('Przygotowywanie PDF...');
-      loadJsPDF(function(err) {
-        if (err) { toast('Blad PDF: ' + err.message); return; }
-        _doGeneratePDF(pdfData);
+      // Okno edycji przed pobraniem
+      showPdfEditModal(pdfData, function(finalData) {
+        toast('Przygotowywanie PDF...');
+        loadJsPDF(function(err) {
+          if (err) { toast('Blad PDF: ' + err.message); return; }
+          _doGeneratePDF(finalData);
+        });
       });
     });
   }
@@ -6004,7 +6007,7 @@ function showNextReviewPicker(p, callback) {
   modal.id = 'nextReviewModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
 
-  // DSG — uproszczony dialog: tylko termin następnej kontroli
+  // DSG — uproszczony dialog
   if (p.typ === 'DSG') {
     modal.innerHTML = `
       <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:340px;width:100%">
@@ -6023,86 +6026,142 @@ function showNextReviewPicker(p, callback) {
         </div>
       </div>`;
     modal.querySelectorAll('button[data-m]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        modal.remove();
-        callback(parseInt(btn.getAttribute('data-m')), 'sprawdzenie');
-      });
-      btn.addEventListener('mouseenter', function() { btn.style.background='rgba(220,53,69,.15)'; btn.style.borderColor='var(--red2)'; btn.style.color='var(--red2)'; });
-      btn.addEventListener('mouseleave', function() { btn.style.background=btn.getAttribute('data-m')==='0'?'transparent':'var(--surface2)'; btn.style.borderColor='var(--border)'; btn.style.color=btn.getAttribute('data-m')==='0'?'var(--muted)':'var(--text)'; });
+      btn.addEventListener('click', function() { modal.remove(); callback(parseInt(btn.getAttribute('data-m')), 'sprawdzenie'); });
     });
     document.body.appendChild(modal);
     return;
   }
 
-  const rodzajOpcje = [
-    {v:'przeglad',   l:'Przegląd (pełna lista)'},
-    {v:'kwartalny',  l:'Kwartalny'},
-    {v:'polroczny',  l:'Półroczny'},
-    {v:'roczny',     l:'Roczny'},
-    {v:'odbiorowy',  l:'Odbiorowy'},
-    {v:'konserwacja',l:'Konserwacja'},
-    {v:'awaryjny',   l:'Serwisowy'},
-  ];
-  const aktualnyRodzaj = (p.rodzaj||'roczny').toLowerCase()
-    .replace(/ó/g,'o').replace(/ł/g,'l').replace(/ą/g,'a').replace(/ę/g,'e')
-    .replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z').replace(/ń/g,'n').replace(/ć/g,'c');
-  let normRodzaj = 'przeglad';
-  if (aktualnyRodzaj.includes('kwartalny')) normRodzaj = 'kwartalny';
-  else if (aktualnyRodzaj.includes('polroczny') || aktualnyRodzaj.includes('pol')) normRodzaj = 'polroczny';
-  else if (aktualnyRodzaj.includes('roczny') && !aktualnyRodzaj.includes('pol')) normRodzaj = 'roczny';
-  else if (aktualnyRodzaj.includes('odbiorowy')) normRodzaj = 'odbiorowy';
-  else if (aktualnyRodzaj.includes('konserwacja')) normRodzaj = 'konserwacja';
-  else if (aktualnyRodzaj.includes('awaryjny') || aktualnyRodzaj.includes('interwencja')) normRodzaj = 'awaryjny';
-  else if (aktualnyRodzaj.includes('przeglad') || aktualnyRodzaj.includes('przegląd')) normRodzaj = 'przeglad';
+  // Serwisowy — tylko generuj bez pytania o okres
+  if (isAwaryjnyP(p)) {
+    modal.remove();
+    callback(0, 'awaryjny');
+    return;
+  }
 
-  const rodzajOpts = rodzajOpcje.map(r =>
-    `<option value="${r.v}" ${normRodzaj === r.v ? 'selected' : ''}>${r.l}</option>`
-  ).join('');
-
-  modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:340px;width:100%">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:28px;margin-bottom:6px">📄</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">Generuj protokół PDF</div>
-      </div>
-
-      <div class="field" style="margin-bottom:14px">
-        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">📋 Rodzaj przeglądu w protokole</label>
-        <select id="pdfRodzajSel" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:10px 12px;width:100%;margin-top:6px">${rodzajOpts}</select>
-      </div>
-
-      <div class="field" style="margin-bottom:20px">
-        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">📅 Następny przegląd za</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-          <button data-m="3"  style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">3 miesiące</button>
-          <button data-m="6"  style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">6 miesięcy</button>
-          <button data-m="12" style="padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">12 miesięcy</button>
-          <button data-m="0"  style="padding:11px 6px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">Pomiń</button>
+  // KROK 1 — wybierz okres następnego przeglądu
+  function pokazKrok1() {
+    modal.innerHTML = `
+      <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:340px;width:100%">
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="font-size:28px;margin-bottom:6px">📄</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">Generuj protokół PDF</div>
         </div>
+        <div class="field" style="margin-bottom:4px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">📅 Następny przegląd za</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+            <button data-m="3"  style="padding:14px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;cursor:pointer">3 miesiące</button>
+            <button data-m="6"  style="padding:14px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;cursor:pointer">6 miesięcy</button>
+            <button data-m="12" style="padding:14px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;cursor:pointer">12 miesięcy</button>
+            <button data-m="0"  style="padding:14px 6px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">Pomiń</button>
+          </div>
+        </div>
+      </div>`;
+    modal.querySelectorAll('button[data-m]').forEach(function(btn) {
+      btn.addEventListener('click', function() { pokazKrok2(parseInt(btn.getAttribute('data-m'))); });
+    });
+  }
+
+  // KROK 2 — wybierz typ przeglądu (kwartalny/półroczny/roczny)
+  function pokazKrok2(months) {
+    const typy = [
+      {v:'kwartalny',   l:'Kwartalny',    icon:'🔁'},
+      {v:'polroczny',   l:'Półroczny',    icon:'📆'},
+      {v:'roczny',      l:'Roczny',       icon:'📅'},
+      {v:'odbiorowy',   l:'Odbiorowy',    icon:'✅'},
+      {v:'konserwacja', l:'Konserwacja',  icon:'🔧'},
+      {v:'przeglad',    l:'Przegląd',     icon:'📋'},
+    ];
+    modal.innerHTML = `
+      <div style="background:var(--surface);border-radius:16px;padding:24px;max-width:340px;width:100%">
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="font-size:28px;margin-bottom:6px">📋</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">Rodzaj przeglądu</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Jak opisać w protokole?</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${typy.map(t => `<button data-v="${t.v}" style="padding:13px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">${t.icon} ${t.l}</button>`).join('')}
+        </div>
+        <button id="wrocBtn" style="margin-top:12px;width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">← Wróć</button>
+      </div>`;
+    modal.querySelectorAll('button[data-v]').forEach(function(btn) {
+      btn.addEventListener('click', function() { modal.remove(); callback(months, btn.getAttribute('data-v')); });
+    });
+    modal.querySelector('#wrocBtn').addEventListener('click', pokazKrok1);
+  }
+
+  pokazKrok1();
+  document.body.appendChild(modal);
+}
+
+function isAwaryjnyP(p) {
+  return (p.rodzaj||'').toLowerCase() === 'awaryjny'
+    || (p.rodzaj||'').toLowerCase().includes('interwencja')
+    || p.typ === 'awaryjny';
+}
+
+function showPdfEditModal(pdfData, callback) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9998;overflow-y:auto;padding:20px;box-sizing:border-box';
+
+  const pola = [
+    {key:'obiekt',            label:'Obiekt / Lokalizacja',         type:'textarea'},
+    {key:'modelCentrali',     label:'Model centrali',               type:'text'},
+    {key:'lokalizacjaCentral',label:'Lokalizacja centrali',         type:'textarea'},
+    {key:'serwisant',         label:'Serwisant',                    type:'text'},
+    {key:'usterki',           label:'Usterki / Uwagi',              type:'textarea'},
+    {key:'zalecenia',         label:'Zalecenia',                    type:'textarea'},
+    {key:'nieprawidlowosci',  label:'Nieprawidłowości',             type:'textarea'},
+    {key:'zalecenieNieprawidl',label:'Zalecenie do nieprawidłowości',type:'textarea'},
+    {key:'uwagiInwestora',    label:'Uwagi dla inwestora',          type:'textarea'},
+  ];
+
+  const inputsHtml = pola.map(f => {
+    let raw = pdfData[f.key] !== undefined ? pdfData[f.key] : '';
+    if (raw === '-' || raw === '—') raw = '';
+    const val = String(raw).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (f.type === 'textarea') return `
+      <div style="margin-bottom:10px">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:3px">${f.label}</label>
+        <textarea data-key="${f.key}" style="width:100%;box-sizing:border-box;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;outline:none;resize:none;overflow:hidden;min-height:48px" oninput="this.style.height='auto';this.style.height=(this.scrollHeight+2)+'px'">${val}</textarea>
+      </div>`;
+    return `
+      <div style="margin-bottom:10px">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:3px">${f.label}</label>
+        <input data-key="${f.key}" value="${val}" style="width:100%;box-sizing:border-box;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;outline:none">
+      </div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:560px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:17px;font-weight:800">✏️ Podgląd przed wydrukiem</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Możesz poprawić dane przed pobraniem PDF</div>
+        </div>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">✕</button>
+      </div>
+      <div>${inputsHtml}</div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Barlow',sans-serif;font-size:14px;cursor:pointer">Anuluj</button>
+        <button id="pdfEditOk" style="flex:2;padding:12px;background:var(--red);border:none;border-radius:10px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;cursor:pointer;letter-spacing:.5px">🖨️ POBIERZ PDF</button>
       </div>
     </div>`;
 
-  // Podświetl wybrany przycisk
-  modal.querySelectorAll('button[data-m]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const months = parseInt(btn.getAttribute('data-m'));
-      const rodzaj = document.getElementById('pdfRodzajSel').value;
-      modal.remove();
-      callback(months, rodzaj);
+  overlay.querySelector('#pdfEditOk').addEventListener('click', function() {
+    const finalData = Object.assign({}, pdfData);
+    overlay.querySelectorAll('[data-key]').forEach(function(el) {
+      finalData[el.dataset.key] = el.value.trim();
     });
-    btn.addEventListener('mouseenter', function() {
-      btn.style.background = 'rgba(220,53,69,.15)';
-      btn.style.borderColor = 'var(--red2)';
-      btn.style.color = 'var(--red2)';
-    });
-    btn.addEventListener('mouseleave', function() {
-      btn.style.background = btn.getAttribute('data-m') === '0' ? 'transparent' : 'var(--surface2)';
-      btn.style.borderColor = 'var(--border)';
-      btn.style.color = btn.getAttribute('data-m') === '0' ? 'var(--muted)' : 'var(--text)';
-    });
+    overlay.remove();
+    callback(finalData);
   });
 
-  document.body.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.querySelectorAll('textarea').forEach(function(t) {
+    t.style.height = 'auto';
+    t.style.height = (t.scrollHeight + 2) + 'px';
+  });
 }
 
 function _doGeneratePDF(p) {
@@ -6344,8 +6403,7 @@ function _doGeneratePDF(p) {
   }
   row(p.typ === 'DSG' ? 'Data sprawdzenia' : 'Data przegladu', p.data);
   if (dataNastepna && dataNastepna !== '-') row(p.typ === 'DSG' ? 'Termin nastepnej kontroli' : 'Data nastepnego przegladu', dataNastepna);
-  row('Serwisant', p.serwisant);
-  if (p.uprawnienia && p.uprawnienia !== '-') row('Nr uprawnien', p.uprawnienia);
+  // Serwisant usunięty z sekcji I — nie drukujemy
   y += 4;
 
   // Specyfikacja systemu
@@ -6353,12 +6411,28 @@ function _doGeneratePDF(p) {
   if (lokalizacja === '-') lokalizacja = '';
   if (p.typ !== 'DSG') {
     sectionHead('Specyfikacja obiektu, systemu oraz instalacji:');
-    if (p.modelCentrali && p.modelCentrali !== '-') row('Model centrali', p.modelCentrali);
-    if (lokalizacja) row('Lokalizacja centrali', lokalizacja);
-    if (p.iloscCentral && p.iloscCentral !== '-') row('Ilosc central', p.iloscCentral);
-    if (p.steruje)   row('Czy steruje urzadzeniami', p.steruje);
-    if (p.nadzoruje) row('Czy nadzoruje urzadzenia', p.nadzoruje);
-    if (p.ksiazka)   row('Ksiazka eksploatacji', p.ksiazka);
+
+    // Ramka specyfikacji
+    var specY = y;
+    var specItems = [];
+    var iloscC = parseInt(p.iloscCentral) || 1;
+    var rodzajSys = iloscC > 1 ? 'Sieciowy' : 'Autonomiczny';
+    specItems.push(['Rodzaj systemu', rodzajSys]);
+    if (p.modelCentrali && p.modelCentrali !== '-') specItems.push(['Model centrali', p.modelCentrali]);
+    if (p.iloscCentral && p.iloscCentral !== '-') specItems.push(['Ilosc central', String(p.iloscCentral)]);
+    if (lokalizacja) specItems.push(['Lokalizacja centrali', lokalizacja]);
+    if (p.steruje)   specItems.push(['Czy steruje urzadzeniami', p.steruje]);
+    if (p.nadzoruje) specItems.push(['Czy nadzoruje urzadzenia', p.nadzoruje]);
+    if (p.ksiazka)   specItems.push(['Ksiazka eksploatacji', p.ksiazka]);
+
+    specItems.forEach(function(item) {
+      checkY(7);
+      doc.setFont(FONT,'normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+      doc.text(pl(item[0]) + ':', ML + 4, y);
+      doc.setFont(FONT,'bold');
+      doc.text(pl(String(item[1])), ML + 60, y);
+      y += 6;
+    });
     y += 4;
   } else {
     sectionHead('Specyfikacja systemu detekcji gazow:');
@@ -6422,7 +6496,11 @@ function _doGeneratePDF(p) {
   doc.setFont(FONT,'bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
   doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
   doc.setFont(FONT,'normal'); doc.setFontSize(8);
-  legalLines.forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+  legalLines.forEach(function(line) {
+    var lines2 = doc.splitTextToSize(line, TW - 2);
+    doc.text(lines2, ML, y, {align: 'justify', maxWidth: TW - 2});
+    y += lines2.length * 4.2;
+  });
   y += 4;
 
   checkY(30);
@@ -6430,11 +6508,13 @@ function _doGeneratePDF(p) {
   doc.text('Kwalifikacje:', ML, y); y += 5;
   doc.setFont(FONT,'normal'); doc.setFontSize(8);
   [
-    '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow,',
-    '  obslugi technicznej i napraw instalacji.',
-    '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia',
-    '  wymagane przez producenta systemu.',
-  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow, obslugi technicznej i napraw instalacji.',
+    '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia wymagane przez producenta systemu.',
+  ].forEach(function(line) {
+    var lines2 = doc.splitTextToSize(line, TW - 2);
+    doc.text(lines2, ML, y, {align: 'justify', maxWidth: TW - 2});
+    y += lines2.length * 4.2;
+  });
   y += 4;
 
   checkY(36);
@@ -6442,13 +6522,14 @@ function _doGeneratePDF(p) {
   doc.text('Odpowiedzialnosc:', ML, y); y += 5;
   doc.setFont(FONT,'normal'); doc.setFontSize(8);
   [
-    '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki',
-    '  nieprawidlowo wykonanego przegladu.',
-    '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie',
-    '  z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
-    '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen',
-    '  oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
-  ].forEach(function(line) { doc.text(line, ML, y); y += 4.2; });
+    '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki nieprawidlowo wykonanego przegladu.',
+    '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
+    '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
+  ].forEach(function(line) {
+    var lines2 = doc.splitTextToSize(line, TW - 2);
+    doc.text(lines2, ML, y, {align: 'justify', maxWidth: TW - 2});
+    y += lines2.length * 4.2;
+  });
   y += 6;
 
   // II. Wykaz elementow systemu (nie dotyczy DSG)
