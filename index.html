@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 134</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 135</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -6316,15 +6316,15 @@ function _doGeneratePDF(p) {
   doc.setFontSize(16);
   doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
   if (p.typ === 'DSG') {
-    doc.text(pl('PROTOKOL Z SPRAWDZENIA DZIALANIA'), W/2, 115, { align: 'center' });
-    doc.text(pl('SYSTEMU DETEKCJI GAZOW'), W/2, 127, { align: 'center' });
+    doc.text('PROTOKÓŁ SPRAWDZENIA DZIAŁANIA', W/2, 115, { align: 'center' });
+    doc.text('SYSTEMU DETEKCJI GAZÓW', W/2, 127, { align: 'center' });
     doc.setFontSize(13);
     doc.setTextColor(RED[0], RED[1], RED[2]);
     doc.text(typName, W/2, 140, { align: 'center' });
   } else if (isAwaryjnyPDF) {
-    doc.text('PROTOKOL SERWISOWY', W/2, 121, { align: 'center' });
+    doc.text('PROTOKÓŁ SERWISOWY', W/2, 121, { align: 'center' });
   } else {
-    doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
+    doc.text('PROTOKÓŁ PRZEGLĄDU', W/2, 115, { align: 'center' });
     doc.text('I KONSERWACJI', W/2, 127, { align: 'center' });
     doc.setFontSize(13);
     doc.setTextColor(RED[0], RED[1], RED[2]);
@@ -6492,14 +6492,27 @@ function _doGeneratePDF(p) {
     ];
   }
 
+  // Helper do justowania tekstu
+  function justText(txt, mx, my, maxW) {
+    var allLines = doc.splitTextToSize(txt, maxW);
+    allLines.forEach(function(line, idx) {
+      var isLast = idx === allLines.length - 1;
+      if (isLast) {
+        doc.text(line, mx, my + idx * 4.2);
+      } else {
+        doc.text(line, mx, my + idx * 4.2, {align: 'justify', maxWidth: maxW});
+      }
+    });
+    return allLines.length * 4.2;
+  }
+
   checkY(80);
   doc.setFont(FONT,'bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
   doc.text('Instalacje wykonano oraz sprawdzono zgodnie z wymaganiami:', ML, y); y += 5;
   doc.setFont(FONT,'normal'); doc.setFontSize(8);
   legalLines.forEach(function(line) {
-    var lines2 = doc.splitTextToSize(line, TW - 2);
-    doc.text(lines2, ML, y, {align: 'justify', maxWidth: TW - 2});
-    y += lines2.length * 4.2;
+    checkY(12);
+    y += justText(line, ML, y, TW - 2);
   });
   y += 4;
 
@@ -6508,27 +6521,25 @@ function _doGeneratePDF(p) {
   doc.text('Kwalifikacje:', ML, y); y += 5;
   doc.setFont(FONT,'normal'); doc.setFontSize(8);
   [
-    '\u2022 Osoba/Firma wykonujaca przeglad posiadala wymagana wiedze z zakresu przegladow, obslugi technicznej i napraw instalacji.',
-    '\u2022 Osoba/Firma wykonujaca przeglad posiada wszelkie uprawnienia oraz szkolenia wymagane przez producenta systemu.',
+    '\u2022 Osoba/Firma wykonuj\u0105ca przegl\u0105d posiada\u0142a wymagane kwalifikacje z zakresu przegl\u0105d\u00f3w, obs\u0142ugi technicznej i napraw instalacji.',
+    '\u2022 Osoba/Firma wykonuj\u0105ca przegl\u0105d posiada wszelkie uprawnienia oraz szkolenia wymagane przez producenta systemu.',
   ].forEach(function(line) {
-    var lines2 = doc.splitTextToSize(line, TW - 2);
-    doc.text(lines2, ML, y, {align: 'justify', maxWidth: TW - 2});
-    y += lines2.length * 4.2;
+    checkY(10);
+    y += justText(line, ML, y, TW - 2);
   });
   y += 4;
 
   checkY(36);
   doc.setFont(FONT,'bold'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-  doc.text('Odpowiedzialnosc:', ML, y); y += 5;
+  doc.text('Odpowiedzialno\u015b\u0107:', ML, y); y += 5;
   doc.setFont(FONT,'normal'); doc.setFontSize(8);
   [
-    '\u2022 Osoba/Firma wykonujaca przeglad ponosi pelna odpowiedzialnosc za skutki nieprawidlowo wykonanego przegladu.',
-    '\u2022 Osoba/Firma posiada pelna odpowiedzialnosc za wykonanie przegladu zgodnie z obowiazujacymi przepisami prawnymi oraz zasadami sztuki.',
-    '\u2022 Wlasciciel instalacji ponosi pelna odpowiedzialnosc za usuniecia uszkodzen oraz nieprawidlowosci stwierdzonych w trakcie przegladu.',
+    '\u2022 Osoba/Firma wykonuj\u0105ca przegl\u0105d ponosi pe\u0142n\u0105 odpowiedzialno\u015b\u0107 za skutki nieprawid\u0142owo wykonanego przegl\u0105du.',
+    '\u2022 Osoba/Firma posiada pe\u0142n\u0105 odpowiedzialno\u015b\u0107 za wykonanie przegl\u0105du zgodnie z obowi\u0105zuj\u0105cymi przepisami prawnymi oraz zasadami sztuki.',
+    '\u2022 W\u0142a\u015bciciel instalacji ponosi pe\u0142n\u0105 odpowiedzialno\u015b\u0107 za usuni\u0119cia uszkodze\u0144 oraz nieprawid\u0142owo\u015bci stwierdzonych w trakcie przegl\u0105du.',
   ].forEach(function(line) {
-    var lines2 = doc.splitTextToSize(line, TW - 2);
-    doc.text(lines2, ML, y, {align: 'justify', maxWidth: TW - 2});
-    y += lines2.length * 4.2;
+    checkY(10);
+    y += justText(line, ML, y, TW - 2);
   });
   y += 6;
 
@@ -6661,40 +6672,46 @@ function _doGeneratePDF(p) {
     y += 4;
 
   } else {
-    // Standardowa lista kontrolna — tylko dla zwykłych przeglądów
-    if (!isAwaryjnyPDF && !isKonserwacjaPDF) {
-    sectionHead('III. ZAKRES PRZEGLADU - LISTA KONTROLNA');
-
-    {
+    // Lista kontrolna — pokaż jeśli wypełniona, dla wszystkich typów poza serwisowym
+    if (!isAwaryjnyPDF) {
       var itemLabels = {};
       var clSource = getCL()[p.typ] || getCL().Inne || CL[p.typ] || CL.Inne || [];
       clSource.forEach(function(i){ itemLabels[i.id] = i.l || i.id; });
-
-      var okIds = [];
+      var okIds = [], failIds = [], naIds = [];
       if (p.checklist) {
         Object.keys(p.checklist).forEach(function(id){
           if (p.checklist[id] === 'ok') okIds.push(id);
+          else if (p.checklist[id] === 'fail') failIds.push(id);
         });
       }
-
-      doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-
-      if (!okIds.length) {
-        doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
-        doc.text('Brak zaznaczonych pozycji (OK) listy kontrolnej', ML, y); y += 7;
-      } else {
+      if (okIds.length || failIds.length) {
+        sectionHead('III. ZAKRES PRZEGLĄDU - LISTA KONTROLNA');
+        // OK
         okIds.forEach(function(id) {
           var label = itemLabels[id] || id;
           checkY(8);
           checkmark(ML, y);
-          var lines2 = doc.splitTextToSize(pl(label), TW - 8);
+          var lines2 = doc.splitTextToSize(label, TW - 8);
           doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
           doc.text(lines2, ML + 5.5, y);
           y += lines2.length * 5 + 1;
         });
+        // BŁĄD
+        failIds.forEach(function(id) {
+          var label = itemLabels[id] || id;
+          checkY(8);
+          // X mark
+          doc.setDrawColor(220,53,69); doc.setLineWidth(0.6);
+          doc.line(ML+0.5, y-3, ML+3.5, y); doc.line(ML+3.5, y-3, ML+0.5, y);
+          doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
+          var lines2 = doc.splitTextToSize(label, TW - 8);
+          doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(220,53,69);
+          doc.text(lines2, ML + 5.5, y);
+          doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+          y += lines2.length * 5 + 1;
+        });
       }
     }
-    } // koniec if (!isAwaryjnyPDF && !isKonserwacjaPDF)
   }
 
   // IV. Analiza przegladu (nie dla DSG)
