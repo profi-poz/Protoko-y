@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 136</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 137</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -6325,9 +6325,12 @@ function _doGeneratePDF(p) {
   } else if (isAwaryjnyPDF) {
     doc.text('PROTOKOL SERWISOWY', W/2, 121, { align: 'center' });
   } else {
-    // Sprobuj polskie znaki - jestli PTSans zaladowany to zadzialaja
-    var titleLine1 = FONT === 'PTSans' ? 'PROTOK\u00d3\u0141 PRZEGL\u0104DU' : 'PROTOKOL PRZEGLADU';
-    doc.text(titleLine1, W/2, 115, { align: 'center' });
+    // Użyj polskich znaków jeśli PTSans załadowany, wpp ASCII
+    if (FONT === 'PTSans') {
+      doc.text('PROTOK\u00d3\u0141 PRZEGL\u0104DU', W/2, 115, { align: 'center' });
+    } else {
+      doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
+    }
     doc.text('I KONSERWACJI', W/2, 127, { align: 'center' });
     doc.setFontSize(13);
     doc.setTextColor(RED[0], RED[1], RED[2]);
@@ -6733,27 +6736,7 @@ function _doGeneratePDF(p) {
     doc.setFont(FONT,'normal'); doc.setFontSize(7.5); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
     doc.text('(podpis i pieczatka)', ML, y); y += 10;
   } else if (isAwaryjnyPDF) {
-    // Dla awaryjnych — brak sekcji V (wnioski nie mają sensu dla interwencji)
-  } else if (isKonserwacjaPDF) {
-    // Dla konserwacji: zamiast wyniku - zestawienie czasu i zasobów
-    sectionHead('V. PODSUMOWANIE SERWISU');
-    checkY(30);
-    doc.setFont(FONT,'normal'); doc.setFontSize(9); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-    doc.text('Zestawienie czasu i zasobow przeznaczonych na serwis:', ML, y); y += 8;
-    var serwisRows = [
-      ['Liczba osob:', p.serwisOsoby || '-'],
-      ['Czas serwisu:', p.serwisCzas || '-'],
-      ['Czas dojazdu (w obie strony):', p.serwisDojazd || '-'],
-    ];
-    serwisRows.forEach(function(r) {
-      checkY(7);
-      doc.setFont(FONT,'bold'); doc.setFontSize(8.5); doc.setTextColor(GRAY[0],GRAY[1],GRAY[2]);
-      doc.text(pl(r[0]), ML + 4, y);
-      doc.setFont(FONT,'normal'); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
-      doc.text(pl(r[1]), ML + 70, y);
-      y += 6;
-    });
-    y += 4;
+    // Dla serwisowych — brak sekcji V
   } else {
     // Dla pozostałych: standardowe wnioski z wynikiem
     sectionHead('V. WNIOSKI');
