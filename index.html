@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 137</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 138</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3776,8 +3776,7 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS
 function pl(s) {
   if (!s) return '';
   var str = String(s);
-  if (!window._jspdfNeedsPl) return str; // PTSans zaladowany — UTF-8 dziala
-  // Transliteracja dla helvetica fallback
+  // Zawsze transliteruj - PTSans nie obsługuje poprawnie polskich znaków
   return str
     .replace(/ą/g,'a').replace(/Ą/g,'A')
     .replace(/ć/g,'c').replace(/Ć/g,'C')
@@ -6327,7 +6326,7 @@ function _doGeneratePDF(p) {
   } else {
     // Użyj polskich znaków jeśli PTSans załadowany, wpp ASCII
     if (FONT === 'PTSans') {
-      doc.text('PROTOK\u00d3\u0141 PRZEGL\u0104DU', W/2, 115, { align: 'center' });
+      doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
     } else {
       doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
     }
@@ -6683,7 +6682,7 @@ function _doGeneratePDF(p) {
           var label = itemLabels[id] || id;
           checkY(8);
           checkmark(ML, y);
-          var lines2 = doc.splitTextToSize(label, TW - 8);
+          var lines2 = doc.splitTextToSize(pl(label), TW - 8);
           doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
           doc.text(lines2, ML + 5.5, y);
           y += lines2.length * 5 + 1;
@@ -6696,7 +6695,7 @@ function _doGeneratePDF(p) {
           doc.setDrawColor(220,53,69); doc.setLineWidth(0.6);
           doc.line(ML+0.5, y-3, ML+3.5, y); doc.line(ML+3.5, y-3, ML+0.5, y);
           doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
-          var lines2 = doc.splitTextToSize(label, TW - 8);
+          var lines2 = doc.splitTextToSize(pl(label), TW - 8);
           doc.setFont(FONT,'normal'); doc.setFontSize(8.5); doc.setTextColor(220,53,69);
           doc.text(lines2, ML + 5.5, y);
           doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
