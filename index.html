@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 138</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 139</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3776,7 +3776,8 @@ const LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS
 function pl(s) {
   if (!s) return '';
   var str = String(s);
-  // Zawsze transliteruj - PTSans nie obsługuje poprawnie polskich znaków
+  if (!window._jspdfNeedsPl) return str; // NotoSans załadowany — polskie znaki działają
+  // Transliteracja dla helvetica fallback
   return str
     .replace(/ą/g,'a').replace(/Ą/g,'A')
     .replace(/ć/g,'c').replace(/Ć/g,'C')
@@ -5876,14 +5877,6 @@ function loadJsPDF(callback) {
 function _loadPolishFont(callback) {
   if (window._jspdfFontReady) { callback(null); return; }
 
-  // Próbuj załadować PTSans z Google Fonts (woff2, potem woff jako fallback)
-  var fontSources = [
-    { normal: 'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0aExcOPIDU.woff2',
-      bold:   'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OkWcQ.woff2' },
-    { normal: 'https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0aExcOPIDU.woff',
-      bold:   'https://fonts.gstatic.com/s/ptsans/v17/jizfRExUiTo99u79B_mh4OkWcQ.woff' },
-  ];
-
   function bufToB64(buf) {
     var arr = new Uint8Array(buf), b64 = '', chunk = 8192;
     for (var i = 0; i < arr.length; i += chunk)
@@ -5891,38 +5884,43 @@ function _loadPolishFont(callback) {
     return btoa(b64);
   }
 
-  function trySource(idx) {
-    if (idx >= fontSources.length) {
-      // Fallback — helvetica z transliteracją polskich znaków
-      window._jspdfFontReady = true;
-      window._jspdfFontName  = 'helvetica';
-      window._jspdfNeedsPl   = true; // sygnał dla pl() żeby transliterować
-      callback(null);
-      return;
-    }
-    var src = fontSources[idx];
-    fetch(src.normal)
-      .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('normal'); })
-      .then(function(buf) {
-        var b64 = bufToB64(buf);
-        var { jsPDF } = window.jspdf;
-        jsPDF.API.events.push(['addFonts', function(){ this.addFileToVFS('PTSans-normal.ttf',b64); this.addFont('PTSans-normal.ttf','PTSans','normal'); }]);
-        window._jspdfFontNormal = b64;
-        return fetch(src.bold);
-      })
-      .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('bold'); })
-      .then(function(buf) {
-        var b64 = bufToB64(buf);
-        var { jsPDF } = window.jspdf;
-        jsPDF.API.events.push(['addFonts', function(){ this.addFileToVFS('PTSans-bold.ttf',b64); this.addFont('PTSans-bold.ttf','PTSans','bold'); }]);
-        window._jspdfFontReady = true;
-        window._jspdfFontName  = 'PTSans';
-        window._jspdfNeedsPl   = false;
-        callback(null);
-      })
-      .catch(function() { trySource(idx + 1); });
+  function fallback() {
+    window._jspdfFontReady = true;
+    window._jspdfFontName  = 'helvetica';
+    window._jspdfNeedsPl   = true;
+    callback(null);
   }
-  trySource(0);
+
+  // Noto Sans TTF z jsDelivr — obsługuje polskie znaki
+  var normalUrl = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
+  var boldUrl   = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Bold.ttf';
+
+  var normalB64;
+  fetch(normalUrl, {mode:'cors'})
+    .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('normal'); })
+    .then(function(buf) {
+      normalB64 = bufToB64(buf);
+      return fetch(boldUrl, {mode:'cors'});
+    })
+    .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('bold'); })
+    .then(function(buf) {
+      var boldB64 = bufToB64(buf);
+      var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+      jsPDF.API.events.push(['addFonts', function(){
+        this.addFileToVFS('NotoSans-Regular.ttf', normalB64);
+        this.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+        this.addFileToVFS('NotoSans-Bold.ttf', boldB64);
+        this.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+      }]);
+      window._jspdfFontReady = true;
+      window._jspdfFontName  = 'NotoSans';
+      window._jspdfNeedsPl   = false;
+      callback(null);
+    })
+    .catch(function(e) {
+      console.warn('NotoSans load failed, falling back to helvetica:', e);
+      fallback();
+    });
 }
 
 function generatePDFCurrent() {
@@ -6327,6 +6325,8 @@ function _doGeneratePDF(p) {
     // Użyj polskich znaków jeśli PTSans załadowany, wpp ASCII
     if (FONT === 'PTSans') {
       doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
+    } else if (FONT === 'NotoSans') {
+      doc.text('PROTOKÓŁ PRZEGLĄDU', W/2, 115, { align: 'center' });
     } else {
       doc.text('PROTOKOL PRZEGLADU', W/2, 115, { align: 'center' });
     }
