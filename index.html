@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 139</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 141</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3731,23 +3731,40 @@ function maybeSaveObiektToServer(d) {
   if (!d.obiekt) return;
   const url = localStorage.getItem('serverUrl');
   if (!url) return;
-  const exists = _obiektyCache.some(o => o.obiekt.toLowerCase() === d.obiekt.toLowerCase());
-  // Zawsze aktualizuj model/lokalizację na serwerze po każdym protokole
+
+  // BUG FIX: Dla awaryjnych/serwisowych NIE zmieniaj typu obiektu
+  const isAwaryjnyTyp = d.typ === 'awaryjny' || d.rodzaj === 'awaryjny';
+
+  // Szukaj istniejącego obiektu po nazwie (porównanie case-insensitive + trim)
+  const idx = _obiektyCache.findIndex(o =>
+    o.obiekt.trim().toLowerCase() === d.obiekt.trim().toLowerCase()
+  );
+
   const obj = {
     obiekt: d.obiekt,
-    typ: d.typ || '',
+    // Typ: jeśli awaryjny — zachowaj stary typ z cache, nie nadpisuj
+    typ: isAwaryjnyTyp ? (_obiektyCache[idx] ? _obiektyCache[idx].typ : '') : (d.typ || ''),
     modelCentrali: d.modelCentrali || '',
     iloscCentral: d.iloscCentral || '',
     lokalizacja: d.lokalizacjaCentral || '',
   };
+
   // Aktualizuj lokalny cache
-  const idx = _obiektyCache.findIndex(o => o.obiekt.toLowerCase() === d.obiekt.toLowerCase());
   if (idx >= 0) {
+    // Istniejący obiekt — aktualizuj tylko model/lokalizację, NIE typ gdy awaryjny
+    if (!isAwaryjnyTyp && d.typ) _obiektyCache[idx].typ = d.typ;
     if (d.modelCentrali) _obiektyCache[idx].modelCentrali = d.modelCentrali;
     if (d.iloscCentral) _obiektyCache[idx].iloscCentral = d.iloscCentral;
     if (d.lokalizacjaCentral) _obiektyCache[idx].lokalizacja = d.lokalizacjaCentral;
   } else {
-    _obiektyCache.push({ obiekt: d.obiekt, typ: d.typ||'', modelCentrali: d.modelCentrali||'', iloscCentral: d.iloscCentral||'', lokalizacja: d.lokalizacjaCentral||'' });
+    // Nowy obiekt — dodaj tylko jeśli nie jest awaryjny bez pasującego obiektu
+    _obiektyCache.push({
+      obiekt: d.obiekt,
+      typ: isAwaryjnyTyp ? '' : (d.typ || ''),
+      modelCentrali: d.modelCentrali || '',
+      iloscCentral: d.iloscCentral || '',
+      lokalizacja: d.lokalizacjaCentral || ''
+    });
   }
   localStorage.setItem('profipoz_obiekty', JSON.stringify(_obiektyCache));
 
@@ -3872,7 +3889,12 @@ function biuroRender() {
       if (res && res.protokoly && res.protokoly.length) {
         const localIds = new Set(protokoly.map(p => String(p.id)));
         const onlyServer = res.protokoly.filter(p => !localIds.has(String(p.id)));
-        allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => (b.data||'').localeCompare(a.data||''));
+        allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => {
+          // Sortuj po dacie wysłania (timestamp ID) — nowsze na górze
+          const ta = a.wyslano || a.id || a.data || '';
+          const tb = b.wyslano || b.id || b.data || '';
+          return String(tb).localeCompare(String(ta));
+        });
       }
       doRender();
     };
@@ -5877,6 +5899,9 @@ function loadJsPDF(callback) {
 function _loadPolishFont(callback) {
   if (window._jspdfFontReady) { callback(null); return; }
 
+  var CACHE_KEY_N = 'pp_font_noto_n';
+  var CACHE_KEY_B = 'pp_font_noto_b';
+
   function bufToB64(buf) {
     var arr = new Uint8Array(buf), b64 = '', chunk = 8192;
     for (var i = 0; i < arr.length; i += chunk)
@@ -5891,20 +5916,8 @@ function _loadPolishFont(callback) {
     callback(null);
   }
 
-  // Noto Sans TTF z jsDelivr — obsługuje polskie znaki
-  var normalUrl = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
-  var boldUrl   = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Bold.ttf';
-
-  var normalB64;
-  fetch(normalUrl, {mode:'cors'})
-    .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('normal'); })
-    .then(function(buf) {
-      normalB64 = bufToB64(buf);
-      return fetch(boldUrl, {mode:'cors'});
-    })
-    .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject('bold'); })
-    .then(function(buf) {
-      var boldB64 = bufToB64(buf);
+  function applyFont(normalB64, boldB64) {
+    try {
       var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
       jsPDF.API.events.push(['addFonts', function(){
         this.addFileToVFS('NotoSans-Regular.ttf', normalB64);
@@ -5915,12 +5928,37 @@ function _loadPolishFont(callback) {
       window._jspdfFontReady = true;
       window._jspdfFontName  = 'NotoSans';
       window._jspdfNeedsPl   = false;
+      // Zapisz w cache
+      try { localStorage.setItem(CACHE_KEY_N, normalB64); localStorage.setItem(CACHE_KEY_B, boldB64); } catch(e){}
       callback(null);
-    })
-    .catch(function(e) {
-      console.warn('NotoSans load failed, falling back to helvetica:', e);
-      fallback();
-    });
+    } catch(e) { fallback(); }
+  }
+
+  // Sprawdź cache
+  try {
+    var cn = localStorage.getItem(CACHE_KEY_N);
+    var cb = localStorage.getItem(CACHE_KEY_B);
+    if (cn && cb) { applyFont(cn, cb); return; }
+  } catch(e){}
+
+  // Pobierz font z CDN (TTF — jedyny format obsługiwany przez jsPDF)
+  var sources = [
+    'https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/static/',
+    'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/'
+  ];
+  var si = 0;
+  function trySrc() {
+    if (si >= sources.length) { fallback(); return; }
+    var base = sources[si++];
+    var normalB64;
+    fetch(base + 'NotoSans-Regular.ttf', {mode:'cors'})
+      .then(function(r){ return r.ok ? r.arrayBuffer() : Promise.reject(); })
+      .then(function(buf){ normalB64 = bufToB64(buf); return fetch(base + 'NotoSans-Bold.ttf', {mode:'cors'}); })
+      .then(function(r){ return r.ok ? r.arrayBuffer() : Promise.reject(); })
+      .then(function(buf){ applyFont(normalB64, bufToB64(buf)); })
+      .catch(trySrc);
+  }
+  trySrc();
 }
 
 function generatePDFCurrent() {
