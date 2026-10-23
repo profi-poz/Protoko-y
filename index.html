@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 141</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 142</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3890,10 +3890,12 @@ function biuroRender() {
         const localIds = new Set(protokoly.map(p => String(p.id)));
         const onlyServer = res.protokoly.filter(p => !localIds.has(String(p.id)));
         allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => {
-          // Sortuj po dacie wysłania (timestamp ID) — nowsze na górze
-          const ta = a.wyslano || a.id || a.data || '';
-          const tb = b.wyslano || b.id || b.data || '';
-          return String(tb).localeCompare(String(ta));
+          // Sortuj po ID (timestamp tworzenia) — nowiej napisane na górze
+          const ia = Number(a.id) || 0;
+          const ib = Number(b.id) || 0;
+          if (ib !== ia) return ib - ia;
+          // Fallback dla starych protokołów bez numerycznego ID
+          return (b.data||'').localeCompare(a.data||'');
         });
       }
       doRender();
