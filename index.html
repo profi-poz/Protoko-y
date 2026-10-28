@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 145</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 144</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3735,11 +3735,9 @@ function maybeSaveObiektToServer(d) {
   // BUG FIX: Dla awaryjnych/serwisowych NIE zmieniaj typu obiektu
   const isAwaryjnyTyp = d.typ === 'awaryjny' || d.rodzaj === 'awaryjny';
 
-  // Szukaj istniejącego obiektu po nazwie + typie — każda instalacja to osobny obiekt
-  const typDoSzukania = isAwaryjnyTyp ? '' : (d.typ || '');
+  // Szukaj istniejącego obiektu po nazwie (porównanie case-insensitive + trim)
   const idx = _obiektyCache.findIndex(o =>
-    o.obiekt.trim().toLowerCase() === d.obiekt.trim().toLowerCase() &&
-    (o.typ || '').toUpperCase() === (typDoSzukania || '').toUpperCase()
+    o.obiekt.trim().toLowerCase() === d.obiekt.trim().toLowerCase()
   );
 
   const obj = {
