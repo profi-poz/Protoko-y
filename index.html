@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 142</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 145</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -3735,9 +3735,11 @@ function maybeSaveObiektToServer(d) {
   // BUG FIX: Dla awaryjnych/serwisowych NIE zmieniaj typu obiektu
   const isAwaryjnyTyp = d.typ === 'awaryjny' || d.rodzaj === 'awaryjny';
 
-  // Szukaj istniejącego obiektu po nazwie (porównanie case-insensitive + trim)
+  // Szukaj istniejącego obiektu po nazwie + typie — każda instalacja to osobny obiekt
+  const typDoSzukania = isAwaryjnyTyp ? '' : (d.typ || '');
   const idx = _obiektyCache.findIndex(o =>
-    o.obiekt.trim().toLowerCase() === d.obiekt.trim().toLowerCase()
+    o.obiekt.trim().toLowerCase() === d.obiekt.trim().toLowerCase() &&
+    (o.typ || '').toUpperCase() === (typDoSzukania || '').toUpperCase()
   );
 
   const obj = {
@@ -3888,14 +3890,22 @@ function biuroRender() {
       delete window[cbName];
       if (res && res.protokoly && res.protokoly.length) {
         const localIds = new Set(protokoly.map(p => String(p.id)));
-        const onlyServer = res.protokoly.filter(p => !localIds.has(String(p.id)));
+        const localKeys = new Set(protokoly.map(p =>
+          (p.obiekt||'').trim().toLowerCase() + '|' + (p.data||'') + '|' + (p.typ||'')
+        ));
+        const onlyServer = res.protokoly.filter(p =>
+          !localIds.has(String(p.id)) &&
+          !localKeys.has((p.obiekt||'').trim().toLowerCase() + '|' + (p.data||'') + '|' + (p.typ||''))
+        );
+        // Sortuj po "Wysłano" (kolumna X) — kiedy protokół został wystawiony
+        // Lokalne mają wyslano ustawione przy zapisie, serwer zwraca je z GAS
         allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => {
-          // Sortuj po ID (timestamp tworzenia) — nowiej napisane na górze
-          const ia = Number(a.id) || 0;
-          const ib = Number(b.id) || 0;
-          if (ib !== ia) return ib - ia;
-          // Fallback dla starych protokołów bez numerycznego ID
-          return (b.data||'').localeCompare(a.data||'');
+          const wa = a.wyslano || '';
+          const wb = b.wyslano || '';
+          if (wb && wa) return wb.localeCompare(wa); // oba mają wyslano — sortuj po nim
+          if (wb) return 1;  // b ma, a nie — b wyżej
+          if (wa) return -1; // a ma, b nie — a wyżej
+          return (b.data||'').localeCompare(a.data||''); // żadne nie ma — fallback po dacie
         });
       }
       doRender();
