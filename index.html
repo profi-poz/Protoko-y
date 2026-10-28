@@ -720,7 +720,7 @@ Content-Type: application/json
             <button onclick="forceAppUpdate()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">🔄 Aktualizuj</button>
           </div>
         </div>
-        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 145</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">v4.9 build 146</div>
       </div>
       <button class="btn btn-red" onclick="clearHistory()">🗑️ Wyczyść całą historię</button>
     </div>
@@ -1030,6 +1030,23 @@ let protokoly = JSON.parse(localStorage.getItem(SK) || '[]');
 let _biuroUnlocked = false; // raz na sesję dla profilu Biuro
 let _biuroPendingAction = null; // co wykonać po odblokowaniu
 let serverProtokoly = []; // protokoły z serwera (wszystkich użytkowników)
+// Klucz sortowania "kiedy wystawiono": kolumna Wysłano z serwera lub timestamp ID lokalnego protokołu
+function wyslanoKey(p) {
+  if (p && p.wyslano && /^\d{4}-\d{2}-\d{2}/.test(p.wyslano)) return p.wyslano;
+  var n = Number(p && p.id);
+  if (n > 1e12) {
+    var d = new Date(n), z = function(x){ return String(x).padStart(2,'0'); };
+    return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds());
+  }
+  return '';
+}
+function cmpWyslano(a, b) {
+  var ka = wyslanoKey(a), kb = wyslanoKey(b);
+  if (ka && kb) return kb.localeCompare(ka);
+  if (kb) return 1;
+  if (ka) return -1;
+  return (b.data||'').localeCompare(a.data||'');
+}
 let allProtokoly = []; // połączone lokalne + serwer (bez duplikatów)
 let _obiektyCache = JSON.parse(localStorage.getItem('profipoz_obiekty') || '[]'); // cache obiektów
 
@@ -2572,10 +2589,7 @@ async function syncFromServer() {
     });
   allProtokoly = [...protokoly, ...onlyServer]
     .filter(p => p && p.typ && VALID_TYPY.has(p.typ))
-    .sort((a,b) => {
-    const da = a.data || '', db = b.data || '';
-    return db.localeCompare(da);
-  });
+    .sort(cmpWyslano);
 }
 
 function delProto(id) {
@@ -3899,14 +3913,7 @@ function biuroRender() {
         );
         // Sortuj po "Wysłano" (kolumna X) — kiedy protokół został wystawiony
         // Lokalne mają wyslano ustawione przy zapisie, serwer zwraca je z GAS
-        allProtokoly = [...protokoly, ...onlyServer].sort((a,b) => {
-          const wa = a.wyslano || '';
-          const wb = b.wyslano || '';
-          if (wb && wa) return wb.localeCompare(wa); // oba mają wyslano — sortuj po nim
-          if (wb) return 1;  // b ma, a nie — b wyżej
-          if (wa) return -1; // a ma, b nie — a wyżej
-          return (b.data||'').localeCompare(a.data||''); // żadne nie ma — fallback po dacie
-        });
+        allProtokoly = [...protokoly, ...onlyServer].sort(cmpWyslano);
       }
       doRender();
     };
